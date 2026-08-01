@@ -34,6 +34,10 @@ signals), Angular Material, Transloco, bcryptjs, jsonwebtoken, Jest.
 - Angular Material theme uses a custom rose primary palette and a red accent/warn palette, with
   light and dark modes.
 - Commit after every task using the working tree state left by that task's steps.
+- Next.js dynamic route handlers use async `params` (`{ params }: { params: Promise<{ id: string }> }`,
+  destructured via `const { id } = await params;`) — this workspace was scaffolded on Next.js 16,
+  where `params` is a Promise, not a plain object. Every `[id]/route.ts` and `[...path]/route.ts`
+  handler in this plan uses this form.
 
 ---
 
@@ -1306,7 +1310,7 @@ import { writeAuditLog } from '../../../../lib/audit/audit-log';
 import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let userId: string;
   try {
     userId = await requireAuth(request, 'rbac-admin', 'edit');
@@ -1315,6 +1319,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (e instanceof ForbiddenError) return apiError('FORBIDDEN', e.message, 403);
     throw e;
   }
+
+  const { id } = await params;
 
   const body = (await request.json()) as {
     fullName?: string;
@@ -1331,8 +1337,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.active !== undefined) data['active'] = body.active;
   if (body.newPassword) data['passwordHash'] = await hashPassword(body.newPassword);
 
-  await prisma.user.update({ where: { id: params.id }, data });
-  await writeAuditLog({ userId, action: 'update', entity: 'User', entityId: params.id });
+  await prisma.user.update({ where: { id }, data });
+  await writeAuditLog({ userId, action: 'update', entity: 'User', entityId: id });
 
   return NextResponse.json({ ok: true });
 }
@@ -1403,7 +1409,7 @@ import { writeAuditLog } from '../../../../lib/audit/audit-log';
 import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let userId: string;
   try {
     userId = await requireAuth(request, 'rbac-admin', 'edit');
@@ -1413,21 +1419,22 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     throw e;
   }
 
+  const { id } = await params;
   const body = (await request.json()) as { name?: string; permissionIds?: string[] };
 
   await prisma.$transaction(async (tx) => {
     if (body.name !== undefined) {
-      await tx.role.update({ where: { id: params.id }, data: { name: body.name } });
+      await tx.role.update({ where: { id }, data: { name: body.name } });
     }
     if (body.permissionIds !== undefined) {
-      await tx.rolePermission.deleteMany({ where: { roleId: params.id } });
+      await tx.rolePermission.deleteMany({ where: { roleId: id } });
       await tx.rolePermission.createMany({
-        data: body.permissionIds.map((permissionId) => ({ roleId: params.id, permissionId })),
+        data: body.permissionIds.map((permissionId) => ({ roleId: id, permissionId })),
       });
     }
   });
 
-  await writeAuditLog({ userId, action: 'update', entity: 'Role', entityId: params.id });
+  await writeAuditLog({ userId, action: 'update', entity: 'Role', entityId: id });
 
   return NextResponse.json({ ok: true });
 }
@@ -1560,7 +1567,7 @@ import { writeAuditLog } from '../../../../lib/audit/audit-log';
 import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let userId: string;
   try {
     userId = await requireAuth(request, 'patients', 'view');
@@ -1570,7 +1577,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     throw e;
   }
 
-  const patient = await getPatientById(params.id);
+  const { id } = await params;
+  const patient = await getPatientById(id);
   if (!patient) return apiError('NOT_FOUND', 'Patient not found', 404);
 
   await writeAuditLog({ userId, action: 'view', entity: 'Patient', entityId: patient.id, patientId: patient.id });
@@ -1591,7 +1599,7 @@ import { writeAuditLog } from '../../../../lib/audit/audit-log';
 import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 
-export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   let userId: string;
   try {
     userId = await requireAuth(request, 'patients', 'view');
@@ -1601,7 +1609,8 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
     throw e;
   }
 
-  const relativePath = params.path.join('/');
+  const { path } = await params;
+  const relativePath = path.join('/');
   const absolutePath = resolveFilePath(relativePath);
 
   let buffer: Buffer;
@@ -1611,7 +1620,7 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
     return apiError('NOT_FOUND', 'File not found', 404);
   }
 
-  const patientId = params.path[1];
+  const patientId = path[1];
   await writeAuditLog({
     userId,
     action: 'view',
