@@ -17,10 +17,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { path } = await params;
   const relativePath = path.join('/');
-  const absolutePath = resolveFilePath(relativePath);
 
   let buffer: Buffer;
   try {
+    const absolutePath = resolveFilePath(relativePath);
     buffer = await readFile(absolutePath);
   } catch {
     return apiError('NOT_FOUND', 'File not found', 404);

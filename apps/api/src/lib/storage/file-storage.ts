@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
-import { extname, join } from 'path';
+import { extname, join, resolve, sep } from 'path';
 
 function storageRoot(): string {
   return process.env.STORAGE_ROOT ?? './storage';
@@ -19,6 +19,13 @@ export async function saveFile(
   return join(category, patientId, filename);
 }
 
+export class InvalidFilePathError extends Error {}
+
 export function resolveFilePath(relativePath: string): string {
-  return join(storageRoot(), relativePath);
+  const root = resolve(storageRoot());
+  const target = resolve(root, relativePath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new InvalidFilePathError(`Path escapes storage root: ${relativePath}`);
+  }
+  return target;
 }
