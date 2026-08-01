@@ -1642,7 +1642,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     patientId,
   });
 
-  return new NextResponse(buffer);
+  return new NextResponse(new Uint8Array(buffer));
 }
 ```
 
