@@ -107,8 +107,12 @@ git commit -m "chore: scaffold Nx workspace with api (Next.js) and web (Angular)
 
 ## Task 2: Postgres (dev), Prisma schema, initial migration
 
+This machine already has a native (non-Docker) PostgreSQL server running locally, so this task
+connects to that instead of provisioning a dev Postgres container. `docker-compose.prod.yml`
+(Task 18) is unaffected — that targets the production deployment server, which does use
+containerized Postgres.
+
 **Files:**
-- Create: `docker-compose.yml` (local dev Postgres only)
 - Create: `.env.example`
 - Create: `.env` (gitignored)
 - Create: `prisma/schema.prisma`
@@ -127,49 +131,34 @@ npm install @prisma/client
 npm install -D prisma tsx
 ```
 
-- [ ] **Step 2: Dev Postgres via docker-compose**
+- [ ] **Step 2: Point Prisma at the local native Postgres instance**
 
-Create `docker-compose.yml`:
-
-```yaml
-services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: expedientes
-      POSTGRES_PASSWORD: expedientes
-      POSTGRES_DB: expedientes
-    ports:
-      - '5432:5432'
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
-volumes:
-  db_data:
-```
+The controller will give you the exact `DATABASE_URL` connection string for the already-running
+local Postgres server (host `localhost`, port `5432`) in the dispatch message — use that exact
+value, do not invent credentials. If the `expedientes` database referenced by that URL doesn't
+exist yet, create it with `psql` using the same connection's admin user before running the
+migration in Step 5, e.g.:
 
 ```bash
-docker compose up -d
+psql "<connection string without the trailing /expedientes>" -c 'CREATE DATABASE expedientes;'
 ```
 
 - [ ] **Step 3: Env files**
 
-Create `.env.example`:
+Create `.env.example` (placeholder values only — never put the real local password in this
+committed file):
 
 ```
-DATABASE_URL="postgresql://expedientes:expedientes@localhost:5432/expedientes"
+DATABASE_URL="postgresql://username:password@localhost:5432/expedientes"
 JWT_SECRET="change-me-in-production"
 STORAGE_ROOT="./storage"
 SEED_ADMIN_EMAIL="admin@clinic.local"
 SEED_ADMIN_PASSWORD="ChangeMe123!"
 ```
 
-Copy it to `.env` (gitignored — confirm `.env` is in `.gitignore`, add it if the Nx generator
-didn't already):
-
-```bash
-cp .env.example .env
-```
+Create `.env` (gitignored — confirm `.env` is in `.gitignore`, add it if the Nx generator didn't
+already) with the same keys, using the real `DATABASE_URL` the controller gave you for
+`DATABASE_URL` and the same placeholder-equivalent values shown above for the rest.
 
 - [ ] **Step 4: Prisma schema**
 
@@ -265,10 +254,10 @@ Expected: migration applies cleanly, `node_modules/@prisma/client` is generated.
 
 ```bash
 git add -A
-git commit -m "feat: add Prisma schema and dev Postgres compose file"
+git commit -m "feat: add Prisma schema and initial migration"
 ```
 
-(`.env` stays untracked; `.env.example` and `docker-compose.yml` are committed.)
+(`.env` stays untracked; `.env.example` is committed.)
 
 ---
 
