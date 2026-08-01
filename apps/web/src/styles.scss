@@ -1,1 +1,60 @@
-/* You can add global styles to this file, and also import other style files */
+// Rose/red Material 3 theme, switchable between light and dark via the `data-theme`
+// attribute on <html> (set by ThemeService). See `./styles/_palette.scss` for why this
+// uses the M3 `mat.theme()` system-tokens API instead of the classic M2 theming mixins.
+@use '@angular/material' as mat;
+@use './styles/theme-colors' as theme-colors;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: theme-colors.$primary-palette,
+        tertiary: theme-colors.$tertiary-palette,
+        theme-type: light,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+html[data-theme='dark'] {
+  @include mat.theme(
+    (
+      color: (
+        primary: theme-colors.$primary-palette,
+        tertiary: theme-colors.$tertiary-palette,
+        theme-type: dark,
+      ),
+    )
+  );
+}
+
+html:not([data-theme]) {
+  @media (prefers-color-scheme: dark) {
+    @include mat.theme(
+      (
+        color: (
+          primary: theme-colors.$primary-palette,
+          tertiary: theme-colors.$tertiary-palette,
+          theme-type: dark,
+        ),
+      )
+    );
+  }
+}
+
+body {
+  // Set a default background and text colors for the application using Angular
+  // Material's system-level CSS variables. Learn more about these variables at
+  // https://material.angular.dev/guide/theming#css-custom-properties
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+
+  // Reset the user agent margin.
+  margin: 0;
+  height: 100%;
+}

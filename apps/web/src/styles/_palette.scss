@@ -1,0 +1,17 @@
+// Source hex values for the Expedientes rose/red brand palette.
+//
+// The installed @angular/material version (~22) has fully removed the classic M2
+// theming API (`mat.define-palette`, `mat.define-light-theme`, `mat.define-dark-theme`,
+// `mat.all-component-themes`) in favor of the Material 3 "system tokens" API
+// (`mat.theme()`), which consumes M3 tonal palettes (13-16 tone stops per role, plus
+// neutral/neutral-variant/secondary/error sub-palettes) rather than the old 50-900/A100-
+// A700 M2 palette maps this file would otherwise define.
+//
+// `./_theme-colors.scss` (generated via
+// `ng generate @angular/material:m3-theme --primaryColor=#e11d48 --secondaryColor=#ef4444
+// --tertiaryColor=#ef4444 --errorColor=#ef4444`) holds the actual M3 tonal palettes consumed
+// by `mat.theme()` in `../styles.scss`. This file just keeps the two brand source colors
+// as a single point of reference, and is available for any custom (non-Material) styling
+// that wants to reference the same rose/red brand colors directly.
+$rose-primary: #e11d48;
+$red-accent: #ef4444;
