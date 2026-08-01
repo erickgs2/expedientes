@@ -5,7 +5,7 @@ import { writeAuditLog } from '../../../../lib/audit/audit-log';
 import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let userId: string;
   try {
     userId = await requireAuth(request, 'rbac-admin', 'edit');
@@ -14,6 +14,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (e instanceof ForbiddenError) return apiError('FORBIDDEN', e.message, 403);
     throw e;
   }
+
+  const { id } = await params;
 
   const body = (await request.json()) as {
     fullName?: string;
@@ -30,8 +32,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.active !== undefined) data['active'] = body.active;
   if (body.newPassword) data['passwordHash'] = await hashPassword(body.newPassword);
 
-  await prisma.user.update({ where: { id: params.id }, data });
-  await writeAuditLog({ userId, action: 'update', entity: 'User', entityId: params.id });
+  await prisma.user.update({ where: { id }, data });
+  await writeAuditLog({ userId, action: 'update', entity: 'User', entityId: id });
 
   return NextResponse.json({ ok: true });
 }
