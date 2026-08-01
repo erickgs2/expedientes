@@ -2568,7 +2568,7 @@ export class UsersService {
 `apps/web/src/app/rbac-admin/users/user-form-dialog.component.ts`:
 
 ```typescript
-import { Component, Inject, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -2646,8 +2646,14 @@ export class UserFormDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<UserFormDialogComponent>);
   private readonly usersService = inject(UsersService);
   private readonly fb = inject(FormBuilder);
-
   protected readonly saving = signal(false);
+
+  // `data` must be a class field (not a constructor parameter property) and declared before
+  // `form`, since `form`'s initializer reads `this.data` — declaring it after `form` (or as a
+  // constructor param property, which Angular/TS assigns after field initializers run) produces
+  // a production-build-only "TS2729: used before its initialization" error that dev mode doesn't
+  // surface.
+  protected readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
 
   protected readonly form = this.fb.group({
     fullName: [this.data.user?.fullName ?? '', Validators.required],
@@ -2657,8 +2663,6 @@ export class UserFormDialogComponent {
     language: [this.data.user?.language ?? 'es', Validators.required],
     active: [this.data.user?.active ?? true],
   });
-
-  constructor(@Inject(MAT_DIALOG_DATA) protected data: UserFormDialogData) {}
 
   async save(): Promise<void> {
     if (this.form.invalid) return;
@@ -2882,7 +2886,7 @@ export class RolesService {
 `apps/web/src/app/rbac-admin/roles/role-form-dialog.component.ts`:
 
 ```typescript
-import { Component, Inject, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -2950,22 +2954,25 @@ export class RoleFormDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<RoleFormDialogComponent>);
   private readonly rolesService = inject(RolesService);
   private readonly fb = inject(FormBuilder);
-
   protected readonly saving = signal(false);
-  protected readonly modules: string[];
-  protected readonly selected: Set<string>;
+
+  // `data` must be a field injected before any field initializer that reads it (`modules`,
+  // `selected`, `form` below) — see UserFormDialogComponent for why a constructor parameter
+  // property here would produce a production-build-only "used before its initialization" error.
+  protected readonly data = inject<RoleFormDialogData>(MAT_DIALOG_DATA);
+
+  protected readonly modules: string[] = [...new Set(this.data.permissions.map((p) => p.module))];
+
+  protected readonly selected: Set<string> = (() => {
+    const grantedKeys = new Set(this.data.role?.permissions ?? []);
+    return new Set(
+      this.data.permissions.filter((p) => grantedKeys.has(`${p.module}:${p.action}`)).map((p) => p.id)
+    );
+  })();
 
   protected readonly form = this.fb.group({
     name: [this.data.role?.name ?? '', Validators.required],
   });
-
-  constructor(@Inject(MAT_DIALOG_DATA) protected data: RoleFormDialogData) {
-    this.modules = [...new Set(data.permissions.map((p) => p.module))];
-    const grantedKeys = new Set(data.role?.permissions ?? []);
-    this.selected = new Set(
-      data.permissions.filter((p) => grantedKeys.has(`${p.module}:${p.action}`)).map((p) => p.id)
-    );
-  }
 
   protected permissionsByModule(module: string): AdminPermission[] {
     return this.data.permissions.filter((p) => p.module === module);
