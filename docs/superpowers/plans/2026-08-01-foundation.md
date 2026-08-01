@@ -841,7 +841,7 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
 ```typescript
 import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
-import { extname, join } from 'path';
+import { extname, join, resolve, sep } from 'path';
 
 function storageRoot(): string {
   return process.env.STORAGE_ROOT ?? './storage';
@@ -860,10 +860,23 @@ export async function saveFile(
   return join(category, patientId, filename);
 }
 
+export class InvalidFilePathError extends Error {}
+
 export function resolveFilePath(relativePath: string): string {
-  return join(storageRoot(), relativePath);
+  const root = resolve(storageRoot());
+  const target = resolve(root, relativePath);
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new InvalidFilePathError(`Path escapes storage root: ${relativePath}`);
+  }
+  return target;
 }
 ```
+
+`resolveFilePath` resolves both the storage root and the requested path to absolute paths and
+rejects anything that normalizes outside the root (e.g. `../../.env` segments smuggled through a
+caller like Task 10's file-serving route) — without this check, `join(storageRoot(), relativePath)`
+would silently collapse `..` segments and let a caller read arbitrary files on the server,
+including `.env`.
 
 - [ ] **Step 7: Commit**
 
@@ -1611,10 +1624,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { path } = await params;
   const relativePath = path.join('/');
-  const absolutePath = resolveFilePath(relativePath);
 
   let buffer: Buffer;
   try {
+    const absolutePath = resolveFilePath(relativePath);
     buffer = await readFile(absolutePath);
   } catch {
     return apiError('NOT_FOUND', 'File not found', 404);
