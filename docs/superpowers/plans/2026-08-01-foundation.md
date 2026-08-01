@@ -809,6 +809,7 @@ Expected: PASS (2 tests).
 `apps/api/src/lib/audit/audit-log.ts`:
 
 ```typescript
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 
 export interface AuditLogInput {
@@ -828,7 +829,7 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
       entity: input.entity,
       entityId: input.entityId,
       patientId: input.patientId,
-      metadata: input.metadata,
+      metadata: input.metadata as Prisma.InputJsonValue | undefined,
     },
   });
 }
