@@ -58,7 +58,8 @@
     "libs/shared/*"
   ],
   "prisma": {
-    "schema": "./prisma/schema.prisma"
+    "schema": "./prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@angular/common": "~22.0.4",
