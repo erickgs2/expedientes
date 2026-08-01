@@ -9,4 +9,9 @@ export const appRoutes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./rbac-admin/users/user-list.component').then((m) => m.UserListComponent),
   },
+  {
+    path: 'admin/roles',
+    canActivate: [authGuard],
+    loadComponent: () => import('./rbac-admin/roles/role-list.component').then((m) => m.RoleListComponent),
+  },
 ];
