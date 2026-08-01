@@ -52,7 +52,8 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "libs/shared/*"
   ],
   "prisma": {
     "schema": "./prisma/schema.prisma"
