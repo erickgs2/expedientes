@@ -1,0 +1,14 @@
+node_modules
+dist
+tmp
+.git
+.next
+.nx
+.angular
+coverage
+test-output
+__screenshots__
+.env
+.env.local
+.env.*.local
+*.log
