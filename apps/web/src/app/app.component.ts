@@ -6,11 +6,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ThemeService } from './shell/theme.service';
+import { PatientBannerComponent } from './patient-drive/patient-banner.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, MatToolbarModule, MatButtonModule, MatIconModule, MatMenuModule, TranslocoModule],
+  imports: [
+    RouterOutlet,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    TranslocoModule,
+    PatientBannerComponent,
+  ],
   template: `
     <mat-toolbar color="primary">
       <span>{{ 'shell.title' | transloco }}</span>
@@ -26,6 +35,7 @@ import { ThemeService } from './shell/theme.service';
         <mat-icon>{{ theme.mode() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>
       </button>
     </mat-toolbar>
+    <app-patient-banner></app-patient-banner>
     <router-outlet></router-outlet>
   `,
   styles: [

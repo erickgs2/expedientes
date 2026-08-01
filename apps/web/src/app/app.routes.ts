@@ -2,8 +2,14 @@ import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 
 export const appRoutes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '', pathMatch: 'full', redirectTo: 'patients' },
   { path: 'login', loadComponent: () => import('./login/login.component').then((m) => m.LoginComponent) },
+  {
+    path: 'patients',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./patient-drive/patient-search.component').then((m) => m.PatientSearchComponent),
+  },
   {
     path: 'admin/users',
     canActivate: [authGuard],
