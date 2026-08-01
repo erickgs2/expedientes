@@ -1,0 +1,13 @@
+{
+  "shell": {
+    "title": "Expedientes",
+    "toggleTheme": "Cambiar tema",
+    "language": "Idioma"
+  },
+  "auth": {
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "login": "Iniciar sesión",
+    "invalidCredentials": "Correo o contraseña inválidos"
+  }
+}

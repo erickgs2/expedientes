@@ -1,0 +1,13 @@
+{
+  "shell": {
+    "title": "Expedientes",
+    "toggleTheme": "Toggle theme",
+    "language": "Language"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "login": "Log in",
+    "invalidCredentials": "Invalid email or password"
+  }
+}

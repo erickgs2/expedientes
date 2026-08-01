@@ -71,6 +71,7 @@
     "@angular/material": "~22.0.4",
     "@angular/platform-browser": "~22.0.4",
     "@angular/router": "~22.0.4",
+    "@jsverse/transloco": "^8.4.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
