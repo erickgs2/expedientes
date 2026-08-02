@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 
 export interface ValoracionUpdateData {
@@ -27,4 +28,11 @@ export async function getValoracion(id: string) {
 
 export async function updateValoracion(id: string, data: ValoracionUpdateData) {
   return prisma.valoracion.update({ where: { id }, data });
+}
+
+export async function updateValoracionDiagram(id: string, diagramData: Prisma.InputJsonValue) {
+  return prisma.valoracion.update({
+    where: { id },
+    data: { diagramData, diagramUpdatedAt: new Date() },
+  });
 }
