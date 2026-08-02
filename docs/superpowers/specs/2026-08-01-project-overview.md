@@ -53,10 +53,18 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
 
 1. **Foundation** — Nx monorepo, auth/RBAC, i18n, Material theming, Patient Drive shell,
    audit log, file storage, deployment scaffold. (see
-   `2026-08-01-foundation-design.md`)
-2. **Historia Clínica** — general patient intake record
-3. **Valoración** — facial assessment: structured fields + diagram drawing + photo capture
+   `2026-08-01-foundation-design.md`) — complete
+2. **Historia Clínica** — general patient intake record — complete
+3. **Valoración** — facial assessment. Decomposed (2026-08-02) into three independent
+   sub-projects, each with its own brainstorm → spec → plan → cycle, build order as listed:
+   1. **Structured fields** — admin-configurable assessment fields + free-text notes (same
+      pattern as Historia Clínica)
+   2. **Facial diagram drawing tool** — canvas drawing, markers, multiple diagram views,
+      cross-visit watermark/reference overlay; designed for reuse by Treatments
+   3. **Photo capture** — camera capture with a centering oval guide, before/after tagging,
+      progressive timeline; builds on Foundation's existing file storage
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
+   (reuses Valoración's diagram tool and photo capture)
 5. **Appointment management** — scheduling + WhatsApp notifications
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
