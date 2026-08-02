@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   updateValoracionDiagrams,
+  VIEW_KEY_TO_ENUM,
   type DiagramViewsUpdate,
 } from '../../../../../lib/valoracion/valoracion';
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
@@ -8,7 +9,9 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 
-const VALID_VIEW_KEYS = ['front', 'leftProfile', 'rightProfile'];
+// Derived from the service's mapping rather than typed out again, so request validation and the
+// key→enum mapping can never disagree about which views exist.
+const VALID_VIEW_KEYS = Object.keys(VIEW_KEY_TO_ENUM);
 
 interface DiagramBody {
   views?: Record<string, Record<string, unknown> | null>;

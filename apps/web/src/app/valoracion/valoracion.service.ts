@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
   Valoracion,
+  ValoracionSummary,
   ValoracionUpdateInput,
   ValoracionDiagramsUpdateInput,
 } from '@expedientes/shared-types';
@@ -22,9 +23,12 @@ function todayLocalDateString(): string {
 export class ValoracionService {
   private readonly http = inject(HttpClient);
 
-  list(patientId: string): Promise<Valoracion[]> {
+  // `ValoracionSummary`, not `Valoracion`: the list endpoint doesn't include the `diagrams`
+  // relation, so typing these rows as full `Valoracion`s would promise a field that is `undefined`
+  // at runtime. Fetch a single Valoración with `get()` when its diagrams are needed.
+  list(patientId: string): Promise<ValoracionSummary[]> {
     return firstValueFrom(
-      this.http.get<{ valoraciones: Valoracion[] }>(`/api/patients/${patientId}/valoracion`)
+      this.http.get<{ valoraciones: ValoracionSummary[] }>(`/api/patients/${patientId}/valoracion`)
     ).then((r) => r.valoraciones);
   }
 

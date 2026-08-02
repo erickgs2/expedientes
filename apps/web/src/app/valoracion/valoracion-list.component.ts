@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
-import type { Valoracion } from '@expedientes/shared-types';
+import type { ValoracionSummary } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
@@ -48,7 +48,7 @@ export class ValoracionListComponent implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly patient = this.activePatient.patient;
-  protected readonly valoraciones = signal<Valoracion[]>([]);
+  protected readonly valoraciones = signal<ValoracionSummary[]>([]);
   protected readonly creating = signal(false);
 
   async ngOnInit(): Promise<void> {
