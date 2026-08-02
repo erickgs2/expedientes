@@ -48,13 +48,14 @@ model RolePermission {
 }
 
 model Patient {
-  id              String           @id @default(uuid())
+  id              String            @id @default(uuid())
   fullName        String
   phone           String
   documentId      String
   historiaClinica HistoriaClinica?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  valoraciones    Valoracion[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([fullName])
   @@index([phone])
@@ -126,4 +127,20 @@ model HistoriaClinicaAllergy {
   allergy           Allergy         @relation(fields: [allergyId], references: [id], onDelete: Cascade)
 
   @@id([historiaClinicaId, allergyId])
+}
+
+model Valoracion {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  fecha                 DateTime @default(now())
+  queQuiereElPaciente   String?
+  queNecesitaElPaciente String?
+  notas                 String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
 }
