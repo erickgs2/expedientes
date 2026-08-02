@@ -65,21 +65,67 @@ const ALLOWED_OBJECT_TYPES = new Set([
   'line',
   'polygon',
   'path',
+  // Not a drawable object: Fabric v6 serializes every `Group` with a nested
+  // `layoutManager: { type: 'layoutManager', strategy: 'fit-content' }` descriptor (verified by
+  // serializing a real marker group with the installed library). The nested-type walk below sees it,
+  // so it has to be accepted or every pin/X marker this app ever saved would be dropped on load.
+  // It is inert with respect to this filter's purpose: `LayoutManager.fromObject` resolves a layout
+  // strategy from a registry and loads no URLs, and anything nested *inside* it is still walked.
+  'layoutManager',
 ]);
 
+/** True for `{}`-shaped values only — arrays, `null` and primitives are excluded. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
- * True when `obj` and every object nested inside it (a `Group`'s children are revived recursively
- * by `enlivenObjects`) has an allowed `type`. Recursing matters: without it a blob shaped like
- * `{type:'Group', objects:[{type:'image', src:'https://attacker…'}]}` would pass a top-level-only
- * check and still cause a fetch when the group's children were revived.
+ * True when *no* plain object anywhere inside `value` declares a `type` outside
+ * {@link ALLOWED_OBJECT_TYPES}.
+ *
+ * The walk is deliberately generic — every plain-object-valued property is inspected, not a fixed
+ * list of known slots — because Fabric revives far more than a `Group`'s `objects` array. Verified
+ * in `fabric/dist/index.mjs` (v6.9.1): `FabricObject._fromObject` calls `enlivenObjectEnlivables`,
+ * which iterates `Object.values(serializedObject)` and revives *any* value whose `type` is in the
+ * class registry (`:1938-1966`). That reaches `clipPath` (revived as any Fabric class, `Image`
+ * included) and `fill`/`stroke` (revived as a `Pattern`, whose `fromObject` calls `loadImage` just
+ * like `Image` does) — so a checked-only-`objects` filter still let
+ * `{type:'Circle', clipPath:{type:'Image', src:'https://attacker…'}}` and
+ * `{type:'Circle', fill:{type:'Pattern', source:'https://attacker…'}}` through, and both really did
+ * fetch. Walking everything also covers whatever revivable slot a future Fabric version adds,
+ * without this filter needing to learn its name.
  */
-function isAllowedDiagramObject(obj: unknown): boolean {
-  if (!obj || typeof obj !== 'object') return false;
-  const record = obj as Record<string, unknown>;
-  if (!ALLOWED_OBJECT_TYPES.has(record['type'] as string)) return false;
-  const children = record['objects'];
-  if (children === undefined) return true;
-  return Array.isArray(children) && children.every(isAllowedDiagramObject);
+function findDisallowedType(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const offending = findDisallowedType(item);
+      if (offending !== null) return offending;
+    }
+    return null;
+  }
+  if (!isPlainObject(value)) return null;
+  if ('type' in value && !ALLOWED_OBJECT_TYPES.has(value['type'] as string)) {
+    return String(value['type']);
+  }
+  for (const nested of Object.values(value)) {
+    const offending = findDisallowedType(nested);
+    if (offending !== null) return offending;
+  }
+  return null;
+}
+
+/**
+ * `null` when `obj` is safe to hand to `util.enlivenObjects`; otherwise the first disallowed `type`
+ * found anywhere inside it (returned rather than a bare boolean so the caller can log *which* type
+ * was rejected — with a whole-graph walk, "Group" alone would say nothing useful about a poisoned
+ * `clipPath` buried in a child).
+ *
+ * A top-level `Group`'s `objects` array is just one instance of the generic "array of plain objects"
+ * case, not a special one.
+ */
+function findDisallowedDiagramType(obj: unknown): string | null {
+  if (!isPlainObject(obj)) return 'not-an-object';
+  return findDisallowedType(obj);
 }
 
 @Component({
@@ -259,10 +305,19 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
     // Drop text notes that were opened but left empty, so a stray click with the text tool doesn't
     // persist a zero-width IText. Scoped to empty text objects only.
     this.canvas.on('text:editing:exited', ({ target }) => {
-      if (target && !target.text.trim()) {
+      if (!target || target.text.trim()) return;
+      // Deferred, NOT removed inline: this handler runs while Fabric is still inside
+      // `IText.exitEditing`, which after firing `text:editing:exited` re-reads `this.canvas` to fire
+      // `object:modified` when the text changed (`fabric/dist/index.mjs:21244-21258`). Removing the
+      // object here nulls `target.canvas`, so that follow-up line would throw an uncaught
+      // TypeError — aborting whatever click ended the edit — whenever a note that *had* text was
+      // cleared to empty. A microtask lets `exitEditing` finish first; what gets removed is
+      // unchanged, only when.
+      queueMicrotask(() => {
+        if (this.destroyed) return;
         this.canvas.remove(target);
         this.canvas.requestRenderAll();
-      }
+      });
     });
 
     try {
@@ -275,11 +330,16 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.initialDiagramData && Array.isArray(this.initialDiagramData['objects'])) {
         const stored = this.initialDiagramData['objects'] as Record<string, unknown>[];
         const safe = stored.filter((obj) => {
-          const allowed = isAllowedDiagramObject(obj);
-          if (!allowed) {
-            console.warn('Ignoring unsupported diagram object', obj?.['type']);
+          const offendingType = findDisallowedDiagramType(obj);
+          if (offendingType !== null) {
+            console.warn(
+              'Ignoring unsupported diagram object',
+              obj?.['type'],
+              'because of nested type',
+              offendingType
+            );
           }
-          return allowed;
+          return offendingType === null;
         });
         const objects = await util.enlivenObjects(safe);
         if (this.destroyed) return;
