@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -77,6 +78,7 @@ export class PatientSearchComponent {
   private readonly patientsService = inject(PatientsService);
   private readonly activePatient = inject(ActivePatientStore);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   protected query = '';
   protected readonly results = signal<PatientSummary[]>([]);
@@ -94,6 +96,7 @@ export class PatientSearchComponent {
 
   selectPatient(patient: PatientSummary): void {
     this.activePatient.select(patient);
+    this.router.navigate(['/historia-clinica']);
   }
 
   async createPatient(): Promise<void> {
@@ -106,5 +109,6 @@ export class PatientSearchComponent {
     });
     this.activePatient.select(patient);
     this.createForm.reset();
+    this.router.navigate(['/historia-clinica']);
   }
 }
