@@ -1,13 +1,17 @@
-import type { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { updateValoracionDiagram } from '../../../../../lib/valoracion/valoracion';
+import {
+  updateValoracionDiagrams,
+  type DiagramViewsUpdate,
+} from '../../../../../lib/valoracion/valoracion';
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 
+const VALID_VIEW_KEYS = ['front', 'leftProfile', 'rightProfile'];
+
 interface DiagramBody {
-  diagramData: Record<string, unknown>;
+  views?: Record<string, Record<string, unknown> | null>;
 }
 
 export const PATCH = withApiErrors(
@@ -16,16 +20,27 @@ export const PATCH = withApiErrors(
     const { id } = await params;
     const body = (await request.json()) as DiagramBody;
 
-    if (!body.diagramData || typeof body.diagramData !== 'object') {
-      return apiError('INVALID_INPUT', 'diagramData is required', 400);
+    if (!body.views || typeof body.views !== 'object') {
+      return apiError('INVALID_INPUT', 'views is required', 400);
+    }
+    for (const [key, value] of Object.entries(body.views)) {
+      if (!VALID_VIEW_KEYS.includes(key)) {
+        return apiError('INVALID_INPUT', `Unknown view "${key}"`, 400);
+      }
+      if (value !== null && (typeof value !== 'object' || Array.isArray(value))) {
+        return apiError('INVALID_INPUT', `Invalid data for view "${key}"`, 400);
+      }
     }
 
-    // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which
-    // `withApiErrors` already maps to a 404 — see apps/api/src/lib/http/with-api-errors.ts.
-    const valoracion = await updateValoracionDiagram(
-      id,
-      body.diagramData as Prisma.InputJsonValue
-    );
+    // No existence pre-check for most cases: `upsert`/`deleteMany` on a bad `valoracionId` either
+    // no-ops (deleteMany) or fails the FK constraint (upsert's create), both handled below. The one
+    // case that needs an explicit check is an all-omitted-or-empty `views` body against a bad id,
+    // where no database operation runs at all to surface the error — `getValoracion` returning
+    // `null` catches that.
+    const valoracion = await updateValoracionDiagrams(id, body.views as DiagramViewsUpdate);
+    if (!valoracion) {
+      return apiError('NOT_FOUND', 'Valoración not found', 404);
+    }
 
     await writeAuditLogSafe({
       userId,

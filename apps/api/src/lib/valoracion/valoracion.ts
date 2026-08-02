@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { DiagramView, Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 
 export interface ValoracionUpdateData {
@@ -23,16 +23,54 @@ export async function createValoracion(patientId: string, fecha?: Date) {
 }
 
 export async function getValoracion(id: string) {
-  return prisma.valoracion.findUnique({ where: { id } });
+  return prisma.valoracion.findUnique({
+    where: { id },
+    include: { diagrams: true },
+  });
 }
 
 export async function updateValoracion(id: string, data: ValoracionUpdateData) {
   return prisma.valoracion.update({ where: { id }, data });
 }
 
-export async function updateValoracionDiagram(id: string, diagramData: Prisma.InputJsonValue) {
-  return prisma.valoracion.update({
-    where: { id },
-    data: { diagramData, diagramUpdatedAt: new Date() },
-  });
+const VIEW_KEY_TO_ENUM: Record<string, DiagramView> = {
+  front: 'FRONT',
+  leftProfile: 'LEFT_PROFILE',
+  rightProfile: 'RIGHT_PROFILE',
+};
+
+export interface DiagramViewsUpdate {
+  front?: Prisma.InputJsonValue | null;
+  leftProfile?: Prisma.InputJsonValue | null;
+  rightProfile?: Prisma.InputJsonValue | null;
+}
+
+/**
+ * Upserts or clears whichever views are present in `views`. A key mapped to `null` deletes that
+ * view's row (if any); an omitted key is left untouched — same null-means-clear,
+ * omitted-means-unchanged rule this project uses for individual text fields, applied here to whole
+ * per-view records. All writes run in one transaction.
+ */
+export async function updateValoracionDiagrams(id: string, views: DiagramViewsUpdate) {
+  const operations = (Object.entries(views) as [keyof DiagramViewsUpdate, Prisma.InputJsonValue | null | undefined][])
+    .filter(
+      (entry): entry is [keyof DiagramViewsUpdate, Prisma.InputJsonValue | null] =>
+        entry[1] !== undefined
+    )
+    .map(([key, value]) => {
+      const view = VIEW_KEY_TO_ENUM[key];
+      if (value === null) {
+        return prisma.valoracionDiagram.deleteMany({ where: { valoracionId: id, view } });
+      }
+      return prisma.valoracionDiagram.upsert({
+        where: { valoracionId_view: { valoracionId: id, view } },
+        create: { valoracionId: id, view, data: value },
+        update: { data: value },
+      });
+    });
+
+  if (operations.length > 0) {
+    await prisma.$transaction(operations);
+  }
+  return getValoracion(id);
 }
