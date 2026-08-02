@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { getUserIdFromRequest } from '../auth/session';
-import { requirePermission, ForbiddenError } from '../rbac/permissions';
+import { requirePermission, ForbiddenError, InactiveUserError } from '../rbac/permissions';
 
 export class UnauthenticatedError extends Error {}
 
@@ -17,4 +17,4 @@ export async function requireAuth(
   return userId;
 }
 
-export { ForbiddenError };
+export { ForbiddenError, InactiveUserError };
