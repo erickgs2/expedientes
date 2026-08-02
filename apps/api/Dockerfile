@@ -5,10 +5,10 @@ RUN npm ci
 RUN npx prisma generate
 RUN npx nx build api
 
-FROM node:20-alpine
+FROM node:20-alpine AS runtime
 WORKDIR /app
-COPY --from=build /workspace/dist/apps/api ./
-COPY --from=build /workspace/node_modules ./node_modules
-COPY --from=build /workspace/prisma ./prisma
+COPY --from=build /workspace/apps/api/.next/standalone ./
+COPY --from=build /workspace/apps/api/.next/static ./apps/api/.next/static
+COPY --from=build /workspace/apps/api/public ./apps/api/public
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "apps/api/server.js"]

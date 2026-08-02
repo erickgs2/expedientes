@@ -1,3 +1,7 @@
+# This stack has NO TLS termination. The app's login cookie is Secure-only in production
+# (NODE_ENV=production, always true for this build), so it will not work over plain HTTP except
+# on localhost. Put this behind a real reverse proxy with a certificate (e.g. Caddy, nginx +
+# certbot) or a VPN/private network before using it for anything beyond local testing.
 services:
   db:
     image: postgres:16
@@ -12,6 +16,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: runtime
     environment:
       DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
       JWT_SECRET: ${JWT_SECRET}
@@ -20,6 +25,20 @@ services:
       - storage_data:/data/storage
     depends_on:
       - db
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    environment:
+      DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
+    command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+    depends_on:
+      - db
+    profiles: ['tools']
 
   web:
     build:
