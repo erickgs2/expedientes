@@ -83,11 +83,16 @@ export async function updateHistoriaClinica(patientId: string, data: HistoriaCli
   });
 }
 
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+}
+
 export async function searchAllergies(query: string): Promise<{ id: string; name: string }[]> {
-  const trimmed = query.trim();
-  return prisma.allergy.findMany({
-    where: trimmed ? { name: { contains: trimmed, mode: 'insensitive' } } : {},
-    orderBy: { name: 'asc' },
-    take: 10,
-  });
+  const trimmed = normalizeForSearch(query.trim());
+  const allergies = await prisma.allergy.findMany({ orderBy: { name: 'asc' } });
+  if (!trimmed) return allergies.slice(0, 10);
+  return allergies.filter((allergy) => normalizeForSearch(allergy.name).includes(trimmed)).slice(0, 10);
 }
