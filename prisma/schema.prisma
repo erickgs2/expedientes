@@ -138,6 +138,8 @@ model Valoracion {
   queQuiereElPaciente   String?
   queNecesitaElPaciente String?
   notas                 String?
+  diagramData           Json?
+  diagramUpdatedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

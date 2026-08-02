@@ -5,6 +5,8 @@ export interface Valoracion {
   queQuiereElPaciente: string | null;
   queNecesitaElPaciente: string | null;
   notas: string | null;
+  diagramData: Record<string, unknown> | null;
+  diagramUpdatedAt: string | null;
 }
 
 export interface ValoracionUpdateInput {
@@ -12,4 +14,8 @@ export interface ValoracionUpdateInput {
   queQuiereElPaciente?: string | null;
   queNecesitaElPaciente?: string | null;
   notas?: string | null;
+}
+
+export interface ValoracionDiagramUpdateInput {
+  diagramData: Record<string, unknown>;
 }
