@@ -69,3 +69,6 @@ apps/api/next-env.d.ts
 
 # Local file storage (STORAGE_ROOT default) - never commit uploaded files
 storage/
+# ...but that pattern also matches the file-storage source directory, where it would silently
+# swallow any newly added source file. Keep that one visible.
+!apps/api/src/lib/storage/
