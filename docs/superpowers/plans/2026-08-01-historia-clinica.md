@@ -1086,7 +1086,11 @@ export class HistoriaClinicaFormComponent implements OnInit {
   protected readonly edad = computed(() => {
     const value = this.fechaNacimientoValue();
     if (!value) return null;
-    const birth = new Date(value);
+    // Parse as local midnight, not UTC midnight (`new Date('YYYY-MM-DD')` parses as UTC, but
+    // getMonth()/getDate() below read back in local time — for negative UTC-offset timezones
+    // that mismatch can shift the date back a day near a month boundary and throw off the
+    // "already had a birthday this year" comparison).
+    const birth = new Date(`${value}T00:00:00`);
     if (Number.isNaN(birth.getTime())) return null;
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
