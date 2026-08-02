@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { permissionGuard } from './auth/permission.guard';
+import { activePatientGuard } from './auth/active-patient.guard';
 
 export const appRoutes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'patients' },
@@ -20,5 +21,13 @@ export const appRoutes: Routes = [
     path: 'admin/roles',
     canActivate: [authGuard, permissionGuard('rbac-admin', 'view')],
     loadComponent: () => import('./rbac-admin/roles/role-list.component').then((m) => m.RoleListComponent),
+  },
+  {
+    path: 'historia-clinica',
+    canActivate: [authGuard, activePatientGuard],
+    loadComponent: () =>
+      import('./historia-clinica/historia-clinica-form.component').then(
+        (m) => m.HistoriaClinicaFormComponent
+      ),
   },
 ];
