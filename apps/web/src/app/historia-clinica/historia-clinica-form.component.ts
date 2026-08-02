@@ -260,8 +260,13 @@ export class HistoriaClinicaFormComponent implements OnInit {
       return;
     }
 
-    const historia = await this.historiaClinicaService.get(patient.id);
-    if (historia) {
+    // `finally`, not a trailing `set(false)`: Angular does not await `ngOnInit`, so a rejected
+    // load would otherwise leave the page stuck on "Cargando..." with no way forward. The error
+    // itself is already reported by `errorInterceptor`.
+    try {
+      const historia = await this.historiaClinicaService.get(patient.id);
+      if (!historia) return;
+
       this.exists.set(true);
       this.form.patchValue({
         ocupacion: historia.ocupacion ?? '',
@@ -283,8 +288,9 @@ export class HistoriaClinicaFormComponent implements OnInit {
         antecedentesHeredofamiliares: historia.antecedentesHeredofamiliares ?? '',
       });
       this.allergyNames.set(historia.allergies.map((entry) => entry.allergy.name));
+    } finally {
+      this.loading.set(false);
     }
-    this.loading.set(false);
   }
 
   protected async onAllergyInputChange(value: string): Promise<void> {
