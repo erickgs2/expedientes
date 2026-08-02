@@ -71,7 +71,14 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    3. **Photo capture** — camera capture with a centering oval guide, before/after tagging,
       progressive timeline; builds on Foundation's existing file storage
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
-   (reuses Valoración's diagram tool and photo capture)
+   (reuses Valoración's diagram tool and photo capture). **Note (2026-08-02, from the facial
+   diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
+   are currently coupled to Valoración specifically — they inject `ValoracionService` directly (for
+   save, the reference-visit list, and the reference-visit fetch), require a `patientId`, and
+   hardcode `valoracion.diagram.*` i18n keys and the `valoracion:edit` permission check. Reuse by
+   Treatments is not drop-in; budget time to extract a reference-source abstraction (e.g. an
+   `@Input() referenceSource` exposing `list()`/`get()` plus a label projector) before Treatments'
+   own brainstorm/plan assumes these components can be reused as-is.
 5. **Appointment management** — scheduling + WhatsApp notifications
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
