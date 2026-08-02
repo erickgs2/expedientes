@@ -30,4 +30,16 @@ export const appRoutes: Routes = [
         (m) => m.HistoriaClinicaFormComponent
       ),
   },
+  {
+    path: 'valoracion',
+    canActivate: [authGuard, permissionGuard('valoracion', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./valoracion/valoracion-list.component').then((m) => m.ValoracionListComponent),
+  },
+  {
+    path: 'valoracion/:id',
+    canActivate: [authGuard, permissionGuard('valoracion', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./valoracion/valoracion-detail.component').then((m) => m.ValoracionDetailComponent),
+  },
 ];
