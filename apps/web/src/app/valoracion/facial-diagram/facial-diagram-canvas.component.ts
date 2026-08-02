@@ -555,7 +555,16 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       if (overlay.length > 0) {
         this.canvas.insertAt(0, ...overlay);
       }
-      this.referenceObjects = overlay;
+      // Accumulate, never replace. In the normal case the removal at the top of this method has
+      // already emptied `referenceObjects`, so this is just `overlay`. It matters only when two
+      // data-bearing calls both get past the `enlivenObjects` await (an `ngOnChanges` call
+      // overlapping the `ngAfterViewInit` tail-end one, or two rapid reference selections): a plain
+      // assignment would drop the earlier call's objects from tracking while leaving them on the
+      // canvas — untracked overlay objects are no longer filtered out by `getSerializedData` or
+      // `clearAll`, so a Save would write another visit's annotations into THIS visit's record.
+      // Accumulating keeps the pre-`insertAt` code's safety property: the worst case stays a
+      // transient visual duplicate (cleaned up by the next call's removal), never a persisted one.
+      this.referenceObjects = [...this.referenceObjects, ...overlay];
       this.canvas.requestRenderAll();
     } catch (error) {
       console.error('Failed to load facial diagram reference overlay', error);
