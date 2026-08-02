@@ -57,7 +57,7 @@ import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-vie
       </form>
       <app-facial-diagram-views
         [valoracionId]="valoracionId"
-        [patientId]="patient()!.id"
+        [patientId]="patientId"
         [diagrams]="diagrams"
       />
     }
@@ -81,6 +81,7 @@ export class ValoracionDetailComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected valoracionId = '';
+  protected patientId = '';
   protected diagrams: ValoracionDiagram[] = [];
 
   protected readonly form = this.fb.group({
@@ -111,6 +112,7 @@ export class ValoracionDetailComponent implements OnInit {
         this.router.navigate(['/valoracion']);
         return;
       }
+      this.patientId = this.patient()!.id; // patient() is guaranteed non-null here, per the check above
       this.form.patchValue({
         fecha: valoracion.fecha.substring(0, 10),
         queQuiereElPaciente: valoracion.queQuiereElPaciente ?? '',
