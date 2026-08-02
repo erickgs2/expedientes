@@ -138,11 +138,28 @@ model Valoracion {
   queQuiereElPaciente   String?
   queNecesitaElPaciente String?
   notas                 String?
-  diagramData           Json?
-  diagramUpdatedAt      DateTime?
+
+  diagrams ValoracionDiagram[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([patientId])
+}
+
+enum DiagramView {
+  FRONT
+  LEFT_PROFILE
+  RIGHT_PROFILE
+}
+
+model ValoracionDiagram {
+  id           String      @id @default(uuid())
+  valoracionId String
+  valoracion   Valoracion  @relation(fields: [valoracionId], references: [id])
+  view         DiagramView
+  data         Json
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([valoracionId, view])
 }

@@ -1,3 +1,11 @@
+export type DiagramView = 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE';
+
+export interface ValoracionDiagram {
+  view: DiagramView;
+  data: Record<string, unknown>;
+  updatedAt: string;
+}
+
 export interface Valoracion {
   id: string;
   patientId: string;
@@ -5,8 +13,7 @@ export interface Valoracion {
   queQuiereElPaciente: string | null;
   queNecesitaElPaciente: string | null;
   notas: string | null;
-  diagramData: Record<string, unknown> | null;
-  diagramUpdatedAt: string | null;
+  diagrams: ValoracionDiagram[];
 }
 
 export interface ValoracionUpdateInput {
@@ -16,6 +23,10 @@ export interface ValoracionUpdateInput {
   notas?: string | null;
 }
 
-export interface ValoracionDiagramUpdateInput {
-  diagramData: Record<string, unknown>;
+export interface ValoracionDiagramsUpdateInput {
+  views: {
+    front?: Record<string, unknown> | null;
+    leftProfile?: Record<string, unknown> | null;
+    rightProfile?: Record<string, unknown> | null;
+  };
 }
