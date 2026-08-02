@@ -14,6 +14,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { AllergyOption } from '@expedientes/shared-types';
+import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from './historia-clinica.service';
 
@@ -32,6 +33,7 @@ import { HistoriaClinicaService } from './historia-clinica.service';
     MatAutocompleteModule,
     MatIconModule,
     TranslocoModule,
+    HasPermissionDirective,
   ],
   template: `
     @if (loading()) {
@@ -176,7 +178,13 @@ import { HistoriaClinicaService } from './historia-clinica.service';
           </mat-form-field>
         </mat-expansion-panel>
 
-        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+        <button
+          *appHasPermission="exists() ? 'historia-clinica:edit' : 'historia-clinica:create'"
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="saving()"
+        >
           {{ 'common.save' | transloco }}
         </button>
       </form>

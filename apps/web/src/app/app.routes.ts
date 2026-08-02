@@ -24,7 +24,7 @@ export const appRoutes: Routes = [
   },
   {
     path: 'historia-clinica',
-    canActivate: [authGuard, activePatientGuard],
+    canActivate: [authGuard, permissionGuard('historia-clinica', 'view'), activePatientGuard],
     loadComponent: () =>
       import('./historia-clinica/historia-clinica-form.component').then(
         (m) => m.HistoriaClinicaFormComponent
