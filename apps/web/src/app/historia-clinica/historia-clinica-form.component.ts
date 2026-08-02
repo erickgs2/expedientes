@@ -12,6 +12,7 @@ import {
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { AllergyOption } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
@@ -32,6 +33,7 @@ import { HistoriaClinicaService } from './historia-clinica.service';
     MatChipsModule,
     MatAutocompleteModule,
     MatIconModule,
+    RouterLink,
     TranslocoModule,
     HasPermissionDirective,
   ],
@@ -40,6 +42,7 @@ import { HistoriaClinicaService } from './historia-clinica.service';
       <p>{{ 'common.loading' | transloco }}</p>
     } @else {
       <h1>{{ 'historiaClinica.title' | transloco }} — {{ patient()?.fullName }}</h1>
+      <a mat-button routerLink="/valoracion">{{ 'historiaClinica.viewValoraciones' | transloco }}</a>
       <form [formGroup]="form" (ngSubmit)="save()">
         <mat-expansion-panel [expanded]="true">
           <mat-expansion-panel-header>

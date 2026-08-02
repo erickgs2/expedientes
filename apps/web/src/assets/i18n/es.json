@@ -99,7 +99,8 @@
       "otro": "Otro"
     },
     "notApplicable": "No aplica",
-    "allergyPlaceholder": "Escribe y presiona Enter para agregar"
+    "allergyPlaceholder": "Escribe y presiona Enter para agregar",
+    "viewValoraciones": "Ver valoraciones"
   },
   "valoracion": {
     "listTitle": "Valoraciones",

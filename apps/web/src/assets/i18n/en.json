@@ -99,7 +99,8 @@
       "otro": "Other"
     },
     "notApplicable": "Not applicable",
-    "allergyPlaceholder": "Type and press Enter to add"
+    "allergyPlaceholder": "Type and press Enter to add",
+    "viewValoraciones": "View assessments"
   },
   "valoracion": {
     "listTitle": "Assessments",
