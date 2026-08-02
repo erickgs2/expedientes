@@ -57,10 +57,16 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
 2. **Historia Clínica** — general patient intake record — complete
 3. **Valoración** — facial assessment. Decomposed (2026-08-02) into three independent
    sub-projects, each with its own brainstorm → spec → plan → cycle, build order as listed:
-   1. **Structured fields** — admin-configurable assessment fields + free-text notes (same
-      pattern as Historia Clínica)
-   2. **Facial diagram drawing tool** — canvas drawing, markers, multiple diagram views,
-      cross-visit watermark/reference overlay; designed for reuse by Treatments
+   1. **Visit records** — a minimal per-visit container (date, "qué quiere/necesita el
+      paciente", general notes) — complete
+   2. **Facial diagram drawing tool** — designed for reuse by Treatments. Further decomposed
+      (2026-08-02) into three incremental phases, each building on the last:
+      1. **Core canvas (single view)** — freehand drawing, predefined markers, pinned text
+         notes, save/load for one diagram view. A generic placeholder base image is used until
+         an admin-upload flow exists (deferred, not part of this phase).
+      2. **Multiple diagram views** — front/left/right profile, each independently annotated
+      3. **Cross-visit watermark/reference overlay** — toggleable, per-visit-selectable
+         reference layers showing past visits' annotations
    3. **Photo capture** — camera capture with a centering oval guide, before/after tagging,
       progressive timeline; builds on Foundation's existing file storage
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
