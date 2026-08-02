@@ -137,6 +137,10 @@
         "front": "Frente",
         "leftProfile": "Perfil izquierdo",
         "rightProfile": "Perfil derecho"
+      },
+      "reference": {
+        "toggle": "Mostrar visita anterior de referencia",
+        "pick": "Seleccionar visita"
       }
     }
   }

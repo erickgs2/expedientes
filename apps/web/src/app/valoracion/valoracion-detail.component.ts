@@ -55,7 +55,11 @@ import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-vie
           {{ 'common.save' | transloco }}
         </button>
       </form>
-      <app-facial-diagram-views [valoracionId]="valoracionId" [diagrams]="diagrams" />
+      <app-facial-diagram-views
+        [valoracionId]="valoracionId"
+        [patientId]="patient()!.id"
+        [diagrams]="diagrams"
+      />
     }
   `,
   styles: [

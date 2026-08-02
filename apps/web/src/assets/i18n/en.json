@@ -137,6 +137,10 @@
         "front": "Front",
         "leftProfile": "Left profile",
         "rightProfile": "Right profile"
+      },
+      "reference": {
+        "toggle": "Show reference from a past visit",
+        "pick": "Select visit"
       }
     }
   }
