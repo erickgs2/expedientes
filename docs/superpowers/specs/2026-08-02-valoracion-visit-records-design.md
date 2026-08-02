@@ -14,11 +14,14 @@ patient can have many Valoración visits over time — one per assessment.
 
 ## Product decisions (settled during brainstorming)
 
-- **No structured clinical fields.** The original brief's "admin-configurable structured fields
-  (skin type, symmetry, notable zones)" were only examples, not a firm requirement — the user
-  confirmed the facial diagram (built in the next sub-project) covers this entirely via freehand
-  drawing and pinned text/handwritten notes. This sub-project ships **no fields beyond a date and
-  one general free-text notes box** — there is nothing else to build here.
+- **No structured clinical fields, with two exceptions.** The original brief's "admin-configurable
+  structured fields (skin type, symmetry, notable zones)" were only examples, not a firm
+  requirement — the user confirmed the facial diagram (built in the next sub-project) covers
+  everything else entirely via freehand drawing and pinned text/handwritten notes. The two
+  exceptions are **"Qué quiere el paciente"** and **"Qué necesita el paciente"** — free-text
+  fields that also exist on Historia Clínica as a baseline, refined per-visit here (per the
+  decision below). Beyond those two plus the date and a general notes box, there is nothing else
+  to build in this sub-project.
 - **One record per visit**, not a single evolving record. Matches the earlier decision (recorded
   in Historia Clínica's design) that "qué quiere/qué necesita el paciente" gets refined per-visit
   inside Valoración — that only makes sense if each visit is its own record. It also matches the
@@ -46,8 +49,10 @@ model Valoracion {
   patientId String
   patient   Patient  @relation(fields: [patientId], references: [id])
 
-  fecha DateTime @default(now())
-  notas String?
+  fecha                 DateTime @default(now())
+  queQuiereElPaciente   String?
+  queNecesitaElPaciente String?
+  notas                 String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,6 +60,12 @@ model Valoracion {
   @@index([patientId])
 }
 ```
+
+`queQuiereElPaciente`/`queNecesitaElPaciente` start empty on each new visit (no auto-pull from
+Historia Clínica's baseline values) — staff re-enter/refine them fresh each time, matching "create
+immediately, edit after" and keeping this sub-project free of cross-record fetch logic. A
+cross-referencing convenience (e.g. showing Historia Clínica's baseline alongside the field as a
+hint) is a reasonable future enhancement, not part of this sub-project.
 
 `patientId` has no `@unique` (unlike `HistoriaClinica`) — this is the one-to-many relationship.
 Add the reverse relation `valoraciones Valoracion[]` on `Patient`.
@@ -85,8 +96,9 @@ Add the reverse relation `valoraciones Valoracion[]` on `Patient`.
   newest first) with a "Nueva valoración" button that calls `create()` then
   `router.navigate(['/valoracion', newId])`.
 - `apps/web/src/app/valoracion/valoracion-detail.component.ts` — route `/valoracion/:id`, same
-  guards. Loads the visit, shows date + notes, saves via `update()`. Gate the save action with
-  `*appHasPermission="'valoracion:edit'"`, matching Historia Clínica's post-review fix.
+  guards. Loads the visit, shows date, "qué quiere/necesita el paciente", and general notes, saves
+  via `update()`. Gate the save action with `*appHasPermission="'valoracion:edit'"`, matching
+  Historia Clínica's post-review fix.
 - `apps/web/src/app/historia-clinica/historia-clinica-form.component.ts` gets one small addition:
   a link/button to `/valoracion` for the active patient.
 - i18n: new Transloco keys under `valoracion.*` in both `es.json`/`en.json`, following the
