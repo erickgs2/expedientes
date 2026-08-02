@@ -3,8 +3,9 @@ import { prisma } from '../../../../lib/prisma/client';
 import { getUserIdFromRequest } from '../../../../lib/auth/session';
 import { getUserPermissions } from '../../../../lib/rbac/permissions';
 import { apiError } from '../../../../lib/http/api-error';
+import { withApiErrors } from '../../../../lib/http/with-api-errors';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiErrors(async (request: NextRequest) => {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
     return apiError('UNAUTHENTICATED', 'Not logged in', 401);
@@ -28,4 +29,4 @@ export async function GET(request: NextRequest) {
       permissions,
     },
   });
-}
+});

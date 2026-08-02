@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma/client';
 import { hashPassword } from '../../../lib/auth/password';
-import { writeAuditLog } from '../../../lib/audit/audit-log';
-import { requireAuth, ForbiddenError, UnauthenticatedError } from '../../../lib/http/require-auth';
+import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
+import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
+import { withApiErrors } from '../../../lib/http/with-api-errors';
 
-export async function GET(request: NextRequest) {
-  try {
-    await requireAuth(request, 'rbac-admin', 'view');
-  } catch (e) {
-    if (e instanceof UnauthenticatedError) return apiError('UNAUTHENTICATED', e.message, 401);
-    if (e instanceof ForbiddenError) return apiError('FORBIDDEN', e.message, 403);
-    throw e;
-  }
+export const GET = withApiErrors(async (request: NextRequest) => {
+  await requireAuth(request, 'rbac-admin', 'view');
 
   const users = await prisma.user.findMany({
     include: { role: true },
@@ -30,17 +25,10 @@ export async function GET(request: NextRequest) {
       roleName: u.role.name,
     })),
   });
-}
+});
 
-export async function POST(request: NextRequest) {
-  let userId: string;
-  try {
-    userId = await requireAuth(request, 'rbac-admin', 'create');
-  } catch (e) {
-    if (e instanceof UnauthenticatedError) return apiError('UNAUTHENTICATED', e.message, 401);
-    if (e instanceof ForbiddenError) return apiError('FORBIDDEN', e.message, 403);
-    throw e;
-  }
+export const POST = withApiErrors(async (request: NextRequest) => {
+  const userId = await requireAuth(request, 'rbac-admin', 'create');
 
   const body = (await request.json()) as {
     email?: string;
@@ -64,7 +52,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  await writeAuditLog({ userId, action: 'create', entity: 'User', entityId: created.id });
+  await writeAuditLogSafe({ userId, action: 'create', entity: 'User', entityId: created.id });
 
   return NextResponse.json({ id: created.id }, { status: 201 });
-}
+});

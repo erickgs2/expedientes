@@ -22,3 +22,19 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
     },
   });
 }
+
+/**
+ * Writes an audit log entry without letting a logging failure fail the caller's request.
+ *
+ * Route handlers write their audit entry *after* the primary mutation has already committed, so
+ * rethrowing here would 500 a request whose write actually succeeded — and a retrying client would
+ * then duplicate that write. Availability of the primary operation deliberately does not depend on
+ * the audit log succeeding; the failure is logged to the server console instead.
+ */
+export async function writeAuditLogSafe(input: AuditLogInput): Promise<void> {
+  try {
+    await writeAuditLog(input);
+  } catch (error) {
+    console.error('audit log failed', error);
+  }
+}

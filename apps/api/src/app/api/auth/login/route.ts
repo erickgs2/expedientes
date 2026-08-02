@@ -4,9 +4,11 @@ import { verifyPassword } from '../../../../lib/auth/password';
 import { issueToken } from '../../../../lib/auth/jwt';
 import { AUTH_COOKIE_NAME } from '../../../../lib/auth/session';
 import { getUserPermissions } from '../../../../lib/rbac/permissions';
+import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { apiError } from '../../../../lib/http/api-error';
+import { withApiErrors } from '../../../../lib/http/with-api-errors';
 
-export async function POST(request: NextRequest) {
+export const POST = withApiErrors(async (request: NextRequest) => {
   const { email, password } = (await request.json()) as { email?: string; password?: string };
 
   if (!email || !password) {
@@ -42,5 +44,8 @@ export async function POST(request: NextRequest) {
     maxAge: 8 * 60 * 60,
   });
 
+  // Successful logins only — a failed attempt has no authenticated user to attribute it to.
+  await writeAuditLogSafe({ userId: user.id, action: 'view', entity: 'Session', entityId: user.id });
+
   return response;
-}
+});
