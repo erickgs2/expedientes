@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
@@ -11,7 +11,7 @@ import { ValoracionService } from './valoracion.service';
 @Component({
   selector: 'app-valoracion-list',
   standalone: true,
-  imports: [MatListModule, MatButtonModule, TranslocoModule, HasPermissionDirective],
+  imports: [MatListModule, MatButtonModule, TranslocoModule, HasPermissionDirective, RouterLink],
   template: `
     <h1>{{ 'valoracion.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
     <button
@@ -23,6 +23,9 @@ import { ValoracionService } from './valoracion.service';
     >
       {{ 'valoracion.new' | transloco }}
     </button>
+    <a *appHasPermission="'valoracion:view'" mat-button routerLink="/photos">{{
+      'photoTimeline.navLink' | transloco
+    }}</a>
     <mat-list>
       @for (v of valoraciones(); track v.id) {
         <mat-list-item (click)="openDetail(v.id)" class="clickable">

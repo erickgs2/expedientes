@@ -66,6 +66,12 @@ export class ValoracionService {
     ).then((r) => r.photos);
   }
 
+  listPatientPhotos(patientId: string): Promise<Photo[]> {
+    return firstValueFrom(
+      this.http.get<{ photos: Photo[] }>(`/api/patients/${patientId}/photos`)
+    ).then((r) => r.photos);
+  }
+
   uploadPhoto(valoracionId: string, blob: Blob, tag: PhotoTag): Promise<Photo> {
     const formData = new FormData();
     formData.append('photo', blob, 'photo.jpg');

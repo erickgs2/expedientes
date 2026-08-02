@@ -157,5 +157,10 @@
       "confirmDelete": "¿Eliminar esta foto? Esta acción no se puede deshacer.",
       "empty": "No hay fotos"
     }
+  },
+  "photoTimeline": {
+    "title": "Cronología de fotos",
+    "navLink": "Cronología de fotos",
+    "empty": "No hay fotos registradas"
   }
 }

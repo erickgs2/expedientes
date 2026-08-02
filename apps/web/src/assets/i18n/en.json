@@ -157,5 +157,10 @@
       "confirmDelete": "Delete this photo? This cannot be undone.",
       "empty": "No photos yet"
     }
+  },
+  "photoTimeline": {
+    "title": "Photo timeline",
+    "navLink": "Photo timeline",
+    "empty": "No photos recorded"
   }
 }

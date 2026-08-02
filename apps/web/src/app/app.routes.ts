@@ -42,4 +42,12 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./valoracion/valoracion-detail.component').then((m) => m.ValoracionDetailComponent),
   },
+  {
+    path: 'photos',
+    canActivate: [authGuard, permissionGuard('valoracion', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./valoracion/photo/photo-timeline.component').then(
+        (m) => m.PhotoTimelineComponent
+      ),
+  },
 ];

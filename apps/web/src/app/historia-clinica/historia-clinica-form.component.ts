@@ -45,6 +45,9 @@ import { HistoriaClinicaService } from './historia-clinica.service';
       <a *appHasPermission="'valoracion:view'" mat-button routerLink="/valoracion">{{
         'historiaClinica.viewValoraciones' | transloco
       }}</a>
+      <a *appHasPermission="'valoracion:view'" mat-button routerLink="/photos">{{
+        'photoTimeline.navLink' | transloco
+      }}</a>
       <form [formGroup]="form" (ngSubmit)="save()">
         <mat-expansion-panel [expanded]="true">
           <mat-expansion-panel-header>
