@@ -3,8 +3,10 @@ import {
   Component,
   ElementRef,
   Input,
+  OnChanges,
   OnDestroy,
   OnInit,
+  SimpleChanges,
   ViewChild,
   inject,
   signal,
@@ -236,9 +238,10 @@ function findDisallowedDiagramType(obj: unknown): string | null {
     `,
   ],
 })
-export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
+export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input({ required: true }) view!: DiagramView;
   @Input() initialDiagramData: Record<string, unknown> | null = null;
+  @Input() referenceData: Record<string, unknown> | null = null;
 
   @ViewChild('canvasEl') private readonly canvasEl!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvasWrapper') private readonly canvasWrapper!: ElementRef<HTMLDivElement>;
@@ -263,6 +266,8 @@ export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDe
   protected readonly drawColor = signal(DRAW_COLORS[0]);
   protected readonly drawWidth = signal(DRAW_WIDTHS[0]);
   private pinCounter = 1;
+  /** Overlay objects from a referenced past visit — never saved, never cleared by "Clear all". */
+  private referenceObjects: FabricObject[] = [];
   /**
    * Set at the very top of `ngOnDestroy`. The load sequence awaits network/decode work, so the
    * component can be destroyed (and the canvas disposed) while those promises are still pending;
@@ -274,6 +279,15 @@ export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDe
 
   ngOnInit(): void {
     this.canEdit = this.auth.hasPermission('valoracion', 'edit');
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Only react once the canvas actually exists — `ngOnChanges` can fire before
+    // `ngAfterViewInit` finishes constructing it (e.g. on the very first input binding).
+    // `ngAfterViewInit`'s own tail end applies whatever `referenceData` is already set by the time
+    // it finishes loading, so an early change here is not lost, just deferred.
+    if (!changes['referenceData'] || !this.canvas) return;
+    void this.applyReferenceOverlay();
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -354,6 +368,10 @@ export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDe
       // Only on the success path: leaving this false keeps Save disabled, so a broken load can
       // never overwrite the stored diagram with an empty/partial object set.
       this.loaded.set(true);
+
+      if (this.referenceData) {
+        await this.applyReferenceOverlay();
+      }
     } catch (error) {
       console.error('Failed to load facial diagram', error);
       if (!this.destroyed) {
@@ -386,7 +404,10 @@ export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDe
     // Resolved fresh on each use so a live language switch is reflected; `translate` is synchronous
     // once the active bundle is loaded, which it is by the time this button can be clicked.
     if (!confirm(this.transloco.translate('valoracion.diagram.confirmClearAll'))) return;
-    [...this.canvas.getObjects()].forEach((obj) => this.canvas.remove(obj));
+    this.canvas
+      .getObjects()
+      .filter((obj) => !this.referenceObjects.includes(obj))
+      .forEach((obj) => this.canvas.remove(obj));
     this.canvas.discardActiveObject();
     this.canvas.requestRenderAll();
   }
@@ -463,8 +484,43 @@ export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDe
    * a slow/failed load can never overwrite good stored data for this view.
    */
   getSerializedData(): { version: number; objects: object[]; nextPinNumber: number } | null {
-    const objects = this.canvas.getObjects().map((obj) => obj.toObject());
+    const objects = this.canvas
+      .getObjects()
+      .filter((obj) => !this.referenceObjects.includes(obj))
+      .map((obj) => obj.toObject());
     if (objects.length === 0) return null;
     return { version: 1, objects, nextPinNumber: this.pinCounter };
+  }
+
+  /**
+   * Replaces whatever reference overlay is currently shown with the one for `this.referenceData` —
+   * removing the old overlay's objects first, then (if new data is present) reviving the new one's
+   * objects through the same security allowlist used for the primary diagram (this is stored data
+   * from another record, still untrusted input), marking them non-interactive and translucent, and
+   * sending them behind everything already on the canvas so the current visit's own annotations —
+   * including ones added after this call — always stay visibly on top.
+   */
+  private async applyReferenceOverlay(): Promise<void> {
+    this.referenceObjects.forEach((obj) => this.canvas.remove(obj));
+    this.referenceObjects = [];
+
+    if (!this.referenceData || !Array.isArray(this.referenceData['objects'])) {
+      this.canvas.requestRenderAll();
+      return;
+    }
+
+    const stored = this.referenceData['objects'] as Record<string, unknown>[];
+    const safe = stored.filter((obj) => findDisallowedDiagramType(obj) === null);
+    const objects = await util.enlivenObjects(safe);
+    if (this.destroyed) return;
+
+    objects.forEach((obj) => {
+      const fabricObj = obj as FabricObject;
+      fabricObj.set({ selectable: false, evented: false, opacity: 0.35 });
+      this.canvas.add(fabricObj);
+      this.canvas.sendObjectToBack(fabricObj);
+      this.referenceObjects.push(fabricObj);
+    });
+    this.canvas.requestRenderAll();
   }
 }
