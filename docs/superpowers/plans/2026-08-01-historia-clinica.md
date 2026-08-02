@@ -277,6 +277,14 @@ git commit -m "feat: add historia clínica service layer"
 **Files:**
 - Create: `apps/api/src/app/api/patients/[patientId]/historia-clinica/route.ts`
 - Create: `apps/api/src/app/api/allergies/route.ts`
+- Modify: `apps/api/src/app/api/patients/[id]/route.ts` — rename to
+  `apps/api/src/app/api/patients/[patientId]/route.ts` (and rename its destructured `id` to
+  `patientId` throughout). Next.js's App Router requires every dynamic route at the same path
+  position to use the same parameter name, so the existing `patients/[id]/route.ts` (from
+  Foundation) conflicts with the new `patients/[patientId]/historia-clinica/route.ts` unless both
+  agree on `patientId`. This wasn't caught when the Foundation plan and this plan were written
+  separately — rename the existing file's segment rather than the new one, since `patientId` is
+  the more descriptive name and this plan's new route already needs it.
 
 **Interfaces:**
 - Consumes: `getHistoriaClinica`, `createHistoriaClinica`, `updateHistoriaClinica`,
