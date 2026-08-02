@@ -16,6 +16,13 @@ export async function listPhotos(valoracionId: string) {
   });
 }
 
+export async function listPatientPhotos(patientId: string) {
+  return prisma.photo.findMany({
+    where: { patientId },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
 export async function createPhoto(
   valoracionId: string,
   patientId: string,
