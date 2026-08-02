@@ -132,6 +132,11 @@
         "x": "X",
         "star": "Star",
         "text": "Text note"
+      },
+      "views": {
+        "front": "Front",
+        "leftProfile": "Left profile",
+        "rightProfile": "Right profile"
       }
     }
   }

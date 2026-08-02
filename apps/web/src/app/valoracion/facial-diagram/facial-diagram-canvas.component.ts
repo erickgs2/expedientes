@@ -13,13 +13,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { Canvas, FabricImage, FabricObject, IText, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
+import type { DiagramView } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
-import { ValoracionService } from '../valoracion.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
 
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 600;
-const PLACEHOLDER_IMAGE_URL = '/assets/facial-diagram-placeholder.svg';
+const PLACEHOLDER_IMAGE_URLS: Record<DiagramView, string> = {
+  FRONT: '/assets/facial-diagram-placeholder.svg',
+  LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
+  RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',
+};
 
 type DiagramTool = 'select' | 'pencil' | 'pin' | 'x' | 'star' | 'text';
 
@@ -129,7 +133,7 @@ function findDisallowedDiagramType(obj: unknown): string | null {
 }
 
 @Component({
-  selector: 'app-facial-diagram',
+  selector: 'app-facial-diagram-canvas',
   standalone: true,
   imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule],
   template: `
@@ -193,15 +197,6 @@ function findDisallowedDiagramType(obj: unknown): string | null {
           <button mat-stroked-button type="button" (click)="clearAll()">
             {{ 'valoracion.diagram.clearAll' | transloco }}
           </button>
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            [disabled]="saving() || !loaded()"
-            (click)="save()"
-          >
-            {{ 'valoracion.diagram.save' | transloco }}
-          </button>
         </div>
       }
     </div>
@@ -241,27 +236,25 @@ function findDisallowedDiagramType(obj: unknown): string | null {
     `,
   ],
 })
-export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy {
-  @Input({ required: true }) valoracionId!: string;
+export class FacialDiagramCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
+  @Input({ required: true }) view!: DiagramView;
   @Input() initialDiagramData: Record<string, unknown> | null = null;
 
   @ViewChild('canvasEl') private readonly canvasEl!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvasWrapper') private readonly canvasWrapper!: ElementRef<HTMLDivElement>;
 
-  private readonly valoracionService = inject(ValoracionService);
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
 
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;
-  protected readonly saving = signal(false);
   /**
    * `false` until the stored diagram has finished loading onto the canvas. Saving before that (or
    * after a failed load) would PATCH whatever partial/empty state the canvas happens to hold,
    * destroying the annotations actually on record — so the Save button stays disabled until this
    * flips true, and it only flips true on a successful load.
    */
-  protected readonly loaded = signal(false);
+  readonly loaded = signal(false);
   protected canEdit = false;
 
   protected readonly drawColors = DRAW_COLORS;
@@ -321,7 +314,7 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
     });
 
     try {
-      const background = await FabricImage.fromURL(PLACEHOLDER_IMAGE_URL);
+      const background = await FabricImage.fromURL(PLACEHOLDER_IMAGE_URLS[this.view]);
       if (this.destroyed) return;
       background.set({ selectable: false, evented: false });
       background.scaleToWidth(this.canvasWidth);
@@ -463,17 +456,15 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
     this.setTool('select');
   }
 
-  protected async save(): Promise<void> {
-    this.saving.set(true);
-    try {
-      const objects = this.canvas.getObjects().map((obj) => obj.toObject());
-      await this.valoracionService.updateDiagrams(this.valoracionId, {
-        views: {
-          front: { version: 1, objects, nextPinNumber: this.pinCounter },
-        },
-      });
-    } finally {
-      this.saving.set(false);
-    }
+  /**
+   * Serializes this view's current canvas state, or `null` if nothing has been drawn — the
+   * parent uses `null` to mean "clear this view" when the user emptied out a previously-saved
+   * diagram, and omits the view entirely (not `null`) when this canvas never finished loading, so
+   * a slow/failed load can never overwrite good stored data for this view.
+   */
+  getSerializedData(): { version: number; objects: object[]; nextPinNumber: number } | null {
+    const objects = this.canvas.getObjects().map((obj) => obj.toObject());
+    if (objects.length === 0) return null;
+    return { version: 1, objects, nextPinNumber: this.pinCounter };
   }
 }

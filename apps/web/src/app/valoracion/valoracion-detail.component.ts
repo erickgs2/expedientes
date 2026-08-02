@@ -5,10 +5,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
+import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
-import { FacialDiagramComponent } from './facial-diagram/facial-diagram.component';
+import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-views.component';
 
 @Component({
   selector: 'app-valoracion-detail',
@@ -20,7 +21,7 @@ import { FacialDiagramComponent } from './facial-diagram/facial-diagram.componen
     MatButtonModule,
     TranslocoModule,
     HasPermissionDirective,
-    FacialDiagramComponent,
+    FacialDiagramViewsComponent,
   ],
   template: `
     @if (loading()) {
@@ -54,7 +55,7 @@ import { FacialDiagramComponent } from './facial-diagram/facial-diagram.componen
           {{ 'common.save' | transloco }}
         </button>
       </form>
-      <app-facial-diagram [valoracionId]="valoracionId" [initialDiagramData]="diagramData" />
+      <app-facial-diagram-views [valoracionId]="valoracionId" [diagrams]="diagrams" />
     }
   `,
   styles: [
@@ -76,7 +77,7 @@ export class ValoracionDetailComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected valoracionId = '';
-  protected diagramData: Record<string, unknown> | null = null;
+  protected diagrams: ValoracionDiagram[] = [];
 
   protected readonly form = this.fb.group({
     fecha: [''],
@@ -112,9 +113,7 @@ export class ValoracionDetailComponent implements OnInit {
         queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
       });
-      // Extract the front view's diagram data from the diagrams array
-      const frontDiagram = valoracion.diagrams.find((d) => d.view === 'FRONT');
-      this.diagramData = frontDiagram?.data ?? null;
+      this.diagrams = valoracion.diagrams;
     } finally {
       if (!mismatched) {
         this.loading.set(false);
