@@ -11,8 +11,8 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { TranslocoModule } from '@jsverse/transloco';
-import { Canvas, FabricImage, FabricObject, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { Canvas, FabricImage, FabricObject, IText, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
 import { AuthService } from '../../auth/auth.service';
 import { ValoracionService } from '../valoracion.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
@@ -57,6 +57,9 @@ const DRAW_WIDTHS = [2, 4, 6];
             <mat-button-toggle value="star" (click)="setTool('star')">
               {{ 'valoracion.diagram.tools.star' | transloco }}
             </mat-button-toggle>
+            <mat-button-toggle value="text" (click)="setTool('text')">
+              {{ 'valoracion.diagram.tools.text' | transloco }}
+            </mat-button-toggle>
           </mat-button-toggle-group>
           @if (activeTool() === 'pencil') {
             <div class="diagram-brush-options">
@@ -81,6 +84,12 @@ const DRAW_WIDTHS = [2, 4, 6];
           }
         </div>
         <div class="diagram-actions">
+          <button mat-stroked-button type="button" (click)="deleteSelected()">
+            {{ 'valoracion.diagram.deleteSelected' | transloco }}
+          </button>
+          <button mat-stroked-button type="button" (click)="clearAll()">
+            {{ 'valoracion.diagram.clearAll' | transloco }}
+          </button>
           <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
             {{ 'valoracion.diagram.save' | transloco }}
           </button>
@@ -131,11 +140,13 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private readonly valoracionService = inject(ValoracionService);
   private readonly auth = inject(AuthService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;
   protected readonly saving = signal(false);
   protected canEdit = false;
+  protected clearAllConfirmMessage = '';
 
   protected readonly drawColors = DRAW_COLORS;
   protected readonly drawWidths = DRAW_WIDTHS;
@@ -148,6 +159,7 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnInit(): void {
     this.canEdit = this.auth.hasPermission('valoracion', 'edit');
+    this.clearAllConfirmMessage = this.transloco.translate('valoracion.diagram.confirmClearAll');
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -188,7 +200,25 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
-    // Placeholder for Task 6's delete-selected handling.
+    if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+    const active = this.canvas?.getActiveObject();
+    if (!active) return;
+    if ((active as IText).isEditing) return;
+    event.preventDefault();
+    this.deleteSelected();
+  }
+
+  protected deleteSelected(): void {
+    this.canvas.getActiveObjects().forEach((obj) => this.canvas.remove(obj));
+    this.canvas.discardActiveObject();
+    this.canvas.requestRenderAll();
+  }
+
+  protected clearAll(): void {
+    if (!confirm(this.clearAllConfirmMessage)) return;
+    [...this.canvas.getObjects()].forEach((obj) => this.canvas.remove(obj));
+    this.canvas.discardActiveObject();
+    this.canvas.requestRenderAll();
   }
 
   protected setTool(tool: DiagramTool): void {
@@ -217,9 +247,26 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private onCanvasMouseDown(opt: TPointerEventInfo<TPointerEvent>): void {
     const tool = this.activeTool();
-    if (tool === 'select' || tool === 'pencil' || tool === 'text') return;
+    if (tool === 'select' || tool === 'pencil') return;
 
     const pointer = this.canvas.getPointer(opt.e);
+
+    if (tool === 'text') {
+      const note = new IText('', {
+        left: pointer.x,
+        top: pointer.y,
+        fontSize: 14,
+        fill: '#000000',
+        backgroundColor: 'rgba(255,255,255,0.85)',
+      });
+      this.canvas.add(note);
+      this.setTool('select');
+      this.canvas.setActiveObject(note);
+      note.enterEditing();
+      this.canvas.requestRenderAll();
+      return;
+    }
+
     const marker =
       tool === 'pin'
         ? createPinMarker(this.pinCounter++, pointer.x, pointer.y)

@@ -116,12 +116,16 @@
     },
     "diagram": {
       "save": "Save diagram",
+      "deleteSelected": "Delete selected",
+      "clearAll": "Clear all",
+      "confirmClearAll": "Clear all annotations on the diagram? This cannot be undone.",
       "tools": {
         "select": "Select",
         "pencil": "Pencil",
         "pin": "Pin",
         "x": "X",
-        "star": "Star"
+        "star": "Star",
+        "text": "Text note"
       }
     }
   }

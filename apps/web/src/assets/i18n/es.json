@@ -116,12 +116,16 @@
     },
     "diagram": {
       "save": "Guardar diagrama",
+      "deleteSelected": "Eliminar seleccionado",
+      "clearAll": "Borrar todo",
+      "confirmClearAll": "¿Borrar todas las anotaciones del diagrama? Esta acción no se puede deshacer.",
       "tools": {
         "select": "Seleccionar",
         "pencil": "Lápiz",
         "pin": "Marcador",
         "x": "X",
-        "star": "Estrella"
+        "star": "Estrella",
+        "text": "Nota de texto"
       }
     }
   }
