@@ -6,11 +6,11 @@ import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 
 export const GET = withApiErrors(
-  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'patients', 'view');
 
-    const { id } = await params;
-    const patient = await getPatientById(id);
+    const { patientId } = await params;
+    const patient = await getPatientById(patientId);
     if (!patient) return apiError('NOT_FOUND', 'Patient not found', 404);
 
     await writeAuditLogSafe({
