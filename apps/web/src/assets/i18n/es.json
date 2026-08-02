@@ -115,7 +115,14 @@
       "notas": "Notas"
     },
     "diagram": {
-      "save": "Guardar diagrama"
+      "save": "Guardar diagrama",
+      "tools": {
+        "select": "Seleccionar",
+        "pencil": "Lápiz",
+        "pin": "Marcador",
+        "x": "X",
+        "star": "Estrella"
+      }
     }
   }
 }

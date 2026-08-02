@@ -10,19 +10,26 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoModule } from '@jsverse/transloco';
-import { Canvas, FabricImage, FabricObject, util } from 'fabric';
+import { Canvas, FabricImage, FabricObject, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
 import { AuthService } from '../../auth/auth.service';
 import { ValoracionService } from '../valoracion.service';
+import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
 
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 600;
 const PLACEHOLDER_IMAGE_URL = '/assets/facial-diagram-placeholder.svg';
 
+type DiagramTool = 'select' | 'pencil' | 'pin' | 'x' | 'star' | 'text';
+
+const DRAW_COLORS = ['#000000', '#e53935', '#1e88e5', '#43a047'];
+const DRAW_WIDTHS = [2, 4, 6];
+
 @Component({
   selector: 'app-facial-diagram',
   standalone: true,
-  imports: [MatButtonModule, TranslocoModule],
+  imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule],
   template: `
     <div class="diagram-container">
       <div
@@ -33,6 +40,46 @@ const PLACEHOLDER_IMAGE_URL = '/assets/facial-diagram-placeholder.svg';
         <canvas #canvasEl [width]="canvasWidth" [height]="canvasHeight"></canvas>
       </div>
       @if (canEdit) {
+        <div class="diagram-toolbar">
+          <mat-button-toggle-group [value]="activeTool()">
+            <mat-button-toggle value="select" (click)="setTool('select')">
+              {{ 'valoracion.diagram.tools.select' | transloco }}
+            </mat-button-toggle>
+            <mat-button-toggle value="pencil" (click)="setTool('pencil')">
+              {{ 'valoracion.diagram.tools.pencil' | transloco }}
+            </mat-button-toggle>
+            <mat-button-toggle value="pin" (click)="setTool('pin')">
+              {{ 'valoracion.diagram.tools.pin' | transloco }}
+            </mat-button-toggle>
+            <mat-button-toggle value="x" (click)="setTool('x')">
+              {{ 'valoracion.diagram.tools.x' | transloco }}
+            </mat-button-toggle>
+            <mat-button-toggle value="star" (click)="setTool('star')">
+              {{ 'valoracion.diagram.tools.star' | transloco }}
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+          @if (activeTool() === 'pencil') {
+            <div class="diagram-brush-options">
+              @for (color of drawColors; track color) {
+                <button
+                  type="button"
+                  class="color-swatch"
+                  [style.background]="color"
+                  [class.selected]="drawColor() === color"
+                  [attr.aria-label]="color"
+                  (click)="setColor(color)"
+                ></button>
+              }
+              <mat-button-toggle-group [value]="drawWidth()">
+                @for (width of drawWidths; track width) {
+                  <mat-button-toggle [value]="width" (click)="setWidth(width)">
+                    {{ width }}px
+                  </mat-button-toggle>
+                }
+              </mat-button-toggle-group>
+            </div>
+          }
+        </div>
         <div class="diagram-actions">
           <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="save()">
             {{ 'valoracion.diagram.save' | transloco }}
@@ -52,6 +99,27 @@ const PLACEHOLDER_IMAGE_URL = '/assets/facial-diagram-placeholder.svg';
       .diagram-actions {
         margin-top: 8px;
       }
+      .diagram-toolbar {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .diagram-brush-options {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .color-swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+      }
+      .color-swatch.selected {
+        border-color: var(--mat-sys-primary, #000);
+      }
     `,
   ],
 })
@@ -69,6 +137,13 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
   protected readonly saving = signal(false);
   protected canEdit = false;
 
+  protected readonly drawColors = DRAW_COLORS;
+  protected readonly drawWidths = DRAW_WIDTHS;
+  protected readonly activeTool = signal<DiagramTool>('select');
+  protected readonly drawColor = signal(DRAW_COLORS[0]);
+  protected readonly drawWidth = signal(DRAW_WIDTHS[0]);
+  private pinCounter = 1;
+
   protected canvas!: Canvas;
 
   ngOnInit(): void {
@@ -80,6 +155,9 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
       isDrawingMode: false,
       selection: this.canEdit,
     });
+
+    this.canvas.freeDrawingBrush = new PencilBrush(this.canvas);
+    this.applyBrushSettings();
 
     const background = await FabricImage.fromURL(PLACEHOLDER_IMAGE_URL);
     background.set({ selectable: false, evented: false });
@@ -97,7 +175,10 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
       this.canvas.forEachObject((obj) => obj.set({ selectable: false, evented: false }));
     }
 
-    this.canvas.on('mouse:down', () => this.canvasEl.nativeElement.parentElement?.focus());
+    this.canvas.on('mouse:down', (opt: TPointerEventInfo<TPointerEvent>) => {
+      this.canvasEl.nativeElement.parentElement?.focus();
+      this.onCanvasMouseDown(opt);
+    });
 
     this.canvas.requestRenderAll();
   }
@@ -108,6 +189,47 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
 
   protected onKeyDown(event: KeyboardEvent): void {
     // Placeholder for Task 6's delete-selected handling.
+  }
+
+  protected setTool(tool: DiagramTool): void {
+    this.activeTool.set(tool);
+    this.canvas.isDrawingMode = tool === 'pencil';
+    if (tool === 'pencil') {
+      this.applyBrushSettings();
+    }
+  }
+
+  protected setColor(color: string): void {
+    this.drawColor.set(color);
+    this.applyBrushSettings();
+  }
+
+  protected setWidth(width: number): void {
+    this.drawWidth.set(width);
+    this.applyBrushSettings();
+  }
+
+  private applyBrushSettings(): void {
+    if (!this.canvas.freeDrawingBrush) return;
+    this.canvas.freeDrawingBrush.color = this.drawColor();
+    this.canvas.freeDrawingBrush.width = this.drawWidth();
+  }
+
+  private onCanvasMouseDown(opt: TPointerEventInfo<TPointerEvent>): void {
+    const tool = this.activeTool();
+    if (tool === 'select' || tool === 'pencil' || tool === 'text') return;
+
+    const pointer = this.canvas.getPointer(opt.e);
+    const marker =
+      tool === 'pin'
+        ? createPinMarker(this.pinCounter++, pointer.x, pointer.y)
+        : tool === 'x'
+        ? createXMarker(pointer.x, pointer.y)
+        : createStarMarker(pointer.x, pointer.y);
+
+    this.canvas.add(marker);
+    this.canvas.requestRenderAll();
+    this.setTool('select');
   }
 
   protected async save(): Promise<void> {
