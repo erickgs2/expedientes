@@ -100,5 +100,18 @@
     },
     "notApplicable": "No aplica",
     "allergyPlaceholder": "Escribe y presiona Enter para agregar"
+  },
+  "valoracion": {
+    "listTitle": "Valoraciones",
+    "detailTitle": "Valoración",
+    "new": "Nueva valoración",
+    "empty": "No hay valoraciones registradas",
+    "noNotes": "Sin notas",
+    "fields": {
+      "fecha": "Fecha",
+      "queQuiereElPaciente": "Qué quiere el paciente",
+      "queNecesitaElPaciente": "Qué necesita el paciente",
+      "notas": "Notas"
+    }
   }
 }

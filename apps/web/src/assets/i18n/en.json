@@ -100,5 +100,18 @@
     },
     "notApplicable": "Not applicable",
     "allergyPlaceholder": "Type and press Enter to add"
+  },
+  "valoracion": {
+    "listTitle": "Assessments",
+    "detailTitle": "Assessment",
+    "new": "New assessment",
+    "empty": "No assessments recorded",
+    "noNotes": "No notes",
+    "fields": {
+      "fecha": "Date",
+      "queQuiereElPaciente": "What the patient wants",
+      "queNecesitaElPaciente": "What the patient needs",
+      "notas": "Notes"
+    }
   }
 }
