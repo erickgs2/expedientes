@@ -67,7 +67,8 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       2. **Multiple diagram views** — front/left/right profile, each independently annotated —
          complete
       3. **Cross-visit watermark/reference overlay** — toggleable, per-visit-selectable
-         reference layers showing past visits' annotations
+         reference layers showing past visits' annotations — complete. The facial diagram
+         drawing tool sub-project is now complete (all 3 phases).
    3. **Photo capture** — camera capture with a centering oval guide, before/after tagging,
       progressive timeline; builds on Foundation's existing file storage
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
