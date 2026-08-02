@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { Valoracion, ValoracionUpdateInput } from '@expedientes/shared-types';
+import type {
+  Valoracion,
+  ValoracionUpdateInput,
+  ValoracionDiagramUpdateInput,
+} from '@expedientes/shared-types';
 
 /**
  * Today's date as a local `YYYY-MM-DD` string. Deliberately not `toISOString()`, which converts to
@@ -41,6 +45,12 @@ export class ValoracionService {
   update(id: string, input: ValoracionUpdateInput): Promise<Valoracion> {
     return firstValueFrom(
       this.http.patch<{ valoracion: Valoracion }>(`/api/valoracion/${id}`, input)
+    ).then((r) => r.valoracion);
+  }
+
+  updateDiagram(id: string, input: ValoracionDiagramUpdateInput): Promise<Valoracion> {
+    return firstValueFrom(
+      this.http.patch<{ valoracion: Valoracion }>(`/api/valoracion/${id}/diagram`, input)
     ).then((r) => r.valoracion);
   }
 }

@@ -74,6 +74,7 @@
     "@jsverse/transloco": "^8.4.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
+    "fabric": "^7.4.0",
     "jsonwebtoken": "^9.0.3",
     "next": "~16.1.6",
     "react": "^19.0.0",
