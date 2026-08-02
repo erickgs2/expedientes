@@ -2,12 +2,65 @@
   "shell": {
     "title": "Expedientes",
     "toggleTheme": "Cambiar tema",
-    "language": "Idioma"
+    "language": "Idioma",
+    "logout": "Cerrar sesión",
+    "nav": {
+      "patients": "Pacientes",
+      "users": "Usuarios",
+      "roles": "Roles"
+    }
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "yes": "Sí",
+    "no": "No",
+    "edit": "Editar"
   },
   "auth": {
     "email": "Correo electrónico",
     "password": "Contraseña",
     "login": "Iniciar sesión",
     "invalidCredentials": "Correo o contraseña inválidos"
+  },
+  "rbacAdmin": {
+    "users": {
+      "title": "Usuarios",
+      "new": "Nuevo usuario",
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "role": "Rol",
+      "active": "Activo",
+      "form": {
+        "newTitle": "Nuevo usuario",
+        "editTitle": "Editar usuario",
+        "fullName": "Nombre completo",
+        "email": "Correo electrónico",
+        "password": "Contraseña",
+        "newPassword": "Nueva contraseña (opcional)",
+        "role": "Rol",
+        "language": "Idioma",
+        "active": "Activo"
+      }
+    },
+    "roles": {
+      "title": "Roles",
+      "new": "Nuevo rol",
+      "form": {
+        "newTitle": "Nuevo rol",
+        "editTitle": "Editar rol",
+        "name": "Nombre"
+      }
+    }
+  },
+  "patientDrive": {
+    "title": "Expediente del paciente",
+    "search": "Buscar por nombre, teléfono o documento",
+    "newPatient": "Nuevo paciente",
+    "fullName": "Nombre completo",
+    "phone": "Teléfono",
+    "documentId": "Documento de identidad",
+    "create": "Crear paciente",
+    "clearActive": "Quitar paciente activo"
   }
 }

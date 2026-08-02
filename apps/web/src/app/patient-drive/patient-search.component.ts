@@ -5,6 +5,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { TranslocoModule } from '@jsverse/transloco';
 import type { PatientSummary } from '@expedientes/shared-types';
 import { PatientsService } from './patients.service';
 import { ActivePatientStore } from './active-patient.store';
@@ -20,11 +21,12 @@ import { ActivePatientStore } from './active-patient.store';
     MatListModule,
     MatButtonModule,
     MatExpansionModule,
+    TranslocoModule,
   ],
   template: `
-    <h1>Patient Drive</h1>
+    <h1>{{ 'patientDrive.title' | transloco }}</h1>
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Search by name, phone, or ID</mat-label>
+      <mat-label>{{ 'patientDrive.search' | transloco }}</mat-label>
       <input matInput [(ngModel)]="query" (ngModelChange)="onQueryChange($event)" />
     </mat-form-field>
 
@@ -39,23 +41,23 @@ import { ActivePatientStore } from './active-patient.store';
 
     <mat-expansion-panel>
       <mat-expansion-panel-header>
-        <mat-panel-title>New patient</mat-panel-title>
+        <mat-panel-title>{{ 'patientDrive.newPatient' | transloco }}</mat-panel-title>
       </mat-expansion-panel-header>
       <form [formGroup]="createForm" (ngSubmit)="createPatient()">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Full name</mat-label>
+          <mat-label>{{ 'patientDrive.fullName' | transloco }}</mat-label>
           <input matInput formControlName="fullName" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Phone</mat-label>
+          <mat-label>{{ 'patientDrive.phone' | transloco }}</mat-label>
           <input matInput formControlName="phone" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Document ID</mat-label>
+          <mat-label>{{ 'patientDrive.documentId' | transloco }}</mat-label>
           <input matInput formControlName="documentId" />
         </mat-form-field>
         <button mat-flat-button color="primary" type="submit" [disabled]="createForm.invalid">
-          Create patient
+          {{ 'patientDrive.create' | transloco }}
         </button>
       </form>
     </mat-expansion-panel>

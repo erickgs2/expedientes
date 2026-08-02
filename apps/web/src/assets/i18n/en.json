@@ -2,12 +2,65 @@
   "shell": {
     "title": "Expedientes",
     "toggleTheme": "Toggle theme",
-    "language": "Language"
+    "language": "Language",
+    "logout": "Log out",
+    "nav": {
+      "patients": "Patients",
+      "users": "Users",
+      "roles": "Roles"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No",
+    "edit": "Edit"
   },
   "auth": {
     "email": "Email",
     "password": "Password",
     "login": "Log in",
     "invalidCredentials": "Invalid email or password"
+  },
+  "rbacAdmin": {
+    "users": {
+      "title": "Users",
+      "new": "New user",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "active": "Active",
+      "form": {
+        "newTitle": "New user",
+        "editTitle": "Edit user",
+        "fullName": "Full name",
+        "email": "Email",
+        "password": "Password",
+        "newPassword": "New password (optional)",
+        "role": "Role",
+        "language": "Language",
+        "active": "Active"
+      }
+    },
+    "roles": {
+      "title": "Roles",
+      "new": "New role",
+      "form": {
+        "newTitle": "New role",
+        "editTitle": "Edit role",
+        "name": "Name"
+      }
+    }
+  },
+  "patientDrive": {
+    "title": "Patient Drive",
+    "search": "Search by name, phone, or ID",
+    "newPatient": "New patient",
+    "fullName": "Full name",
+    "phone": "Phone",
+    "documentId": "Document ID",
+    "create": "Create patient",
+    "clearActive": "Clear active patient"
   }
 }

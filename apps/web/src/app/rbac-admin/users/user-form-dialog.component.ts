@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslocoModule } from '@jsverse/transloco';
 import { AdminRole, AdminUser, UsersService } from './users.service';
 
 export interface UserFormDialogData {
@@ -24,27 +25,32 @@ export interface UserFormDialogData {
     MatSelectModule,
     MatCheckboxModule,
     MatButtonModule,
+    TranslocoModule,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data.user ? 'Edit user' : 'New user' }}</h2>
+    <h2 mat-dialog-title>
+      {{ (data.user ? 'rbacAdmin.users.form.editTitle' : 'rbacAdmin.users.form.newTitle') | transloco }}
+    </h2>
     <mat-dialog-content>
       <form [formGroup]="form">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Full name</mat-label>
+          <mat-label>{{ 'rbacAdmin.users.form.fullName' | transloco }}</mat-label>
           <input matInput formControlName="fullName" />
         </mat-form-field>
         @if (!data.user) {
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
+            <mat-label>{{ 'rbacAdmin.users.form.email' | transloco }}</mat-label>
             <input matInput type="email" formControlName="email" />
           </mat-form-field>
         }
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ data.user ? 'New password (optional)' : 'Password' }}</mat-label>
+          <mat-label>
+            {{ (data.user ? 'rbacAdmin.users.form.newPassword' : 'rbacAdmin.users.form.password') | transloco }}
+          </mat-label>
           <input matInput type="password" formControlName="password" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Role</mat-label>
+          <mat-label>{{ 'rbacAdmin.users.form.role' | transloco }}</mat-label>
           <mat-select formControlName="roleId">
             @for (role of data.roles; track role.id) {
               <mat-option [value]="role.id">{{ role.name }}</mat-option>
@@ -52,21 +58,23 @@ export interface UserFormDialogData {
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Language</mat-label>
+          <mat-label>{{ 'rbacAdmin.users.form.language' | transloco }}</mat-label>
           <mat-select formControlName="language">
             <mat-option value="es">Español</mat-option>
             <mat-option value="en">English</mat-option>
           </mat-select>
         </mat-form-field>
         @if (data.user) {
-          <mat-checkbox formControlName="active">Active</mat-checkbox>
+          <mat-checkbox formControlName="active">
+            {{ 'rbacAdmin.users.form.active' | transloco }}
+          </mat-checkbox>
         }
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button (click)="dialogRef.close()">Cancel</button>
+      <button mat-button (click)="dialogRef.close()">{{ 'common.cancel' | transloco }}</button>
       <button mat-flat-button color="primary" [disabled]="form.invalid || saving()" (click)="save()">
-        Save
+        {{ 'common.save' | transloco }}
       </button>
     </mat-dialog-actions>
   `,

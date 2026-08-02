@@ -3,25 +3,46 @@ import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { TranslocoModule } from '@jsverse/transloco';
+import { HasPermissionDirective } from '../../auth/has-permission.directive';
 import { AdminPermission, AdminRoleDetail, RolesService } from './roles.service';
 import { RoleFormDialogComponent } from './role-form-dialog.component';
 
 @Component({
   selector: 'app-role-list',
   standalone: true,
-  imports: [MatListModule, MatButtonModule, MatIconModule, MatDialogModule],
+  imports: [
+    MatListModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDialogModule,
+    TranslocoModule,
+    HasPermissionDirective,
+  ],
   template: `
     <div class="header">
-      <h1>Roles</h1>
-      <button mat-flat-button color="primary" (click)="openCreate()">
-        <mat-icon>add</mat-icon> New role
+      <h1>{{ 'rbacAdmin.roles.title' | transloco }}</h1>
+      <button
+        *appHasPermission="'rbac-admin:create'"
+        mat-flat-button
+        color="primary"
+        (click)="openCreate()"
+      >
+        <mat-icon>add</mat-icon> {{ 'rbacAdmin.roles.new' | transloco }}
       </button>
     </div>
     <mat-list>
       @for (role of roles(); track role.id) {
         <mat-list-item>
           <span matListItemTitle>{{ role.name }}</span>
-          <button mat-icon-button (click)="openEdit(role)"><mat-icon>edit</mat-icon></button>
+          <button
+            *appHasPermission="'rbac-admin:edit'"
+            mat-icon-button
+            (click)="openEdit(role)"
+            [attr.aria-label]="'common.edit' | transloco"
+          >
+            <mat-icon>edit</mat-icon>
+          </button>
         </mat-list-item>
       }
     </mat-list>

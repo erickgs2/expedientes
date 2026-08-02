@@ -1,18 +1,23 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoModule } from '@jsverse/transloco';
 import { ActivePatientStore } from './active-patient.store';
 
 @Component({
   selector: 'app-patient-banner',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, TranslocoModule],
   template: `
     @if (activePatient.patient(); as patient) {
       <div class="banner">
         <mat-icon>person</mat-icon>
         <span>{{ patient.fullName }} · {{ patient.documentId }}</span>
-        <button mat-icon-button (click)="activePatient.clear()" aria-label="Clear active patient">
+        <button
+          mat-icon-button
+          (click)="activePatient.clear()"
+          [attr.aria-label]="'patientDrive.clearActive' | transloco"
+        >
           <mat-icon>close</mat-icon>
         </button>
       </div>

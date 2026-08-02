@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslocoModule } from '@jsverse/transloco';
 import { AdminPermission, AdminRoleDetail, RolesService } from './roles.service';
 
 export interface RoleFormDialogData {
@@ -15,16 +16,28 @@ export interface RoleFormDialogData {
 @Component({
   selector: 'app-role-form-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, MatButtonModule],
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatButtonModule,
+    TranslocoModule,
+  ],
   template: `
-    <h2 mat-dialog-title>{{ data.role ? 'Edit role' : 'New role' }}</h2>
+    <h2 mat-dialog-title>
+      {{ (data.role ? 'rbacAdmin.roles.form.editTitle' : 'rbacAdmin.roles.form.newTitle') | transloco }}
+    </h2>
     <mat-dialog-content>
       <form [formGroup]="form">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Name</mat-label>
+          <mat-label>{{ 'rbacAdmin.roles.form.name' | transloco }}</mat-label>
           <input matInput formControlName="name" />
         </mat-form-field>
       </form>
+      <!-- Module and action names below are the canonical permission identifiers
+           (patients:view, and so on), not UI chrome, so they are deliberately not translated. -->
       <div class="matrix">
         @for (module of modules; track module) {
           <div class="module-row">
@@ -42,9 +55,9 @@ export interface RoleFormDialogData {
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button (click)="dialogRef.close()">Cancel</button>
+      <button mat-button (click)="dialogRef.close()">{{ 'common.cancel' | transloco }}</button>
       <button mat-flat-button color="primary" [disabled]="form.invalid || saving()" (click)="save()">
-        Save
+        {{ 'common.save' | transloco }}
       </button>
     </mat-dialog-actions>
   `,
