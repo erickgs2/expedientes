@@ -3402,6 +3402,8 @@ git commit -m "feat: add Patient Drive with active-patient store, search, and ba
 ## Task 18: Production docker-compose
 
 **Files:**
+- Modify: `apps/api/next.config.js`
+- Create: `.dockerignore`
 - Create: `apps/api/Dockerfile`
 - Create: `apps/web/Dockerfile`
 - Create: `apps/web/nginx.conf`
@@ -3410,6 +3412,53 @@ git commit -m "feat: add Patient Drive with active-patient store, search, and ba
 **Interfaces:**
 - Consumes: the built `apps/api` and `apps/web` outputs from every prior task
 - Produces: `docker compose -f docker-compose.prod.yml up` — a full self-hosted deployment.
+
+- [ ] **Step 0: Enable Next.js standalone output**
+
+`npx nx build api` on its own outputs to `apps/api/.next`, not a `dist/` folder, and that output
+has no single runnable `server.js` — it needs `output: 'standalone'` set for Next.js to produce a
+minimal, self-contained server bundle (verified locally: this generates
+`apps/api/.next/standalone/apps/api/server.js`, with `node_modules/@prisma/client` and
+`node_modules/.prisma/client` already included via Next's dependency tracing, plus a separate
+`apps/api/.next/static` directory that needs to be copied alongside it per Next.js's own
+standalone deployment docs).
+
+Modify `apps/api/next.config.js`:
+
+```javascript
+//@ts-check
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',
+};
+
+module.exports = nextConfig;
+```
+
+- [ ] **Step 0.5: `.dockerignore`**
+
+Without this, `COPY . .` in the build stage would bake the real `.env` (containing the database
+password and `JWT_SECRET`) and `.git` into an image layer.
+
+Create `.dockerignore` at the repo root:
+
+```
+node_modules
+dist
+tmp
+.git
+.next
+.nx
+.angular
+coverage
+test-output
+__screenshots__
+.env
+.env.local
+.env.*.local
+*.log
+```
 
 - [ ] **Step 1: API Dockerfile**
 
@@ -3423,14 +3472,20 @@ RUN npm ci
 RUN npx prisma generate
 RUN npx nx build api
 
-FROM node:20-alpine
+FROM node:20-alpine AS runtime
 WORKDIR /app
-COPY --from=build /workspace/dist/apps/api ./
-COPY --from=build /workspace/node_modules ./node_modules
-COPY --from=build /workspace/prisma ./prisma
+COPY --from=build /workspace/apps/api/.next/standalone ./
+COPY --from=build /workspace/apps/api/.next/static ./apps/api/.next/static
+COPY --from=build /workspace/apps/api/public ./apps/api/public
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "apps/api/server.js"]
 ```
+
+The `build` stage is also used directly (not just as a discarded intermediate) by the `migrate`
+service in Step 3 below, since running `prisma migrate deploy`/`prisma db seed` needs the Prisma
+CLI, `tsx`, and the raw TypeScript source (`prisma/seed.ts` imports from `apps/api/src/lib/auth/
+password.ts`) — none of which exist in the pruned `runtime` stage, by design, since that stage is
+deliberately minimal for serving traffic.
 
 - [ ] **Step 2: Web Dockerfile + nginx config**
 
@@ -3471,6 +3526,18 @@ server {
 
 - [ ] **Step 3: Production compose file**
 
+This app's login cookie is marked `Secure` whenever `NODE_ENV=production` (which `next build`/the
+standalone server always run under), so it will not be sent by the browser over plain HTTP except
+on `localhost`. **This compose file deliberately does not terminate TLS** — put it behind a real
+reverse proxy with a certificate (e.g. Caddy, nginx+certbot) or a VPN/private network before using
+it for anything beyond `http://localhost` testing on the deployment host itself. Document this
+requirement wherever the clinic's actual deployment runbook lives.
+
+The `migrate` service below runs one-off `prisma migrate deploy`/`prisma db seed` commands using
+the Dockerfile's `build` stage (which has the Prisma CLI, `tsx`, and raw source), not the slim
+`runtime` stage the `api` service uses. It's declared under the `tools` profile so
+`docker compose up` never starts it automatically — run it explicitly, once, after the stack is up.
+
 `docker-compose.prod.yml`:
 
 ```yaml
@@ -3488,6 +3555,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: runtime
     environment:
       DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
       JWT_SECRET: ${JWT_SECRET}
@@ -3496,6 +3564,20 @@ services:
       - storage_data:/data/storage
     depends_on:
       - db
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    environment:
+      DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
+    command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+    depends_on:
+      - db
+    profiles: ['tools']
 
   web:
     build:
@@ -3515,9 +3597,10 @@ volumes:
 
 ```bash
 JWT_SECRET=$(openssl rand -hex 32) docker compose -f docker-compose.prod.yml up --build -d
-docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
-docker compose -f docker-compose.prod.yml exec api npx prisma db seed
+docker compose -f docker-compose.prod.yml --profile tools run --rm migrate
 ```
+
+(`migrate` doesn't read `JWT_SECRET`, so it doesn't need that env var — only `api` does.)
 
 Open `http://localhost`, confirm the app loads and login works end to end against the
 containerized stack. Then tear down:
