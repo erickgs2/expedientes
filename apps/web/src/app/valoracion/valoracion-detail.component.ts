@@ -8,6 +8,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
+import { FacialDiagramComponent } from './facial-diagram/facial-diagram.component';
 
 @Component({
   selector: 'app-valoracion-detail',
@@ -19,6 +20,7 @@ import { ValoracionService } from './valoracion.service';
     MatButtonModule,
     TranslocoModule,
     HasPermissionDirective,
+    FacialDiagramComponent,
   ],
   template: `
     @if (loading()) {
@@ -52,6 +54,7 @@ import { ValoracionService } from './valoracion.service';
           {{ 'common.save' | transloco }}
         </button>
       </form>
+      <app-facial-diagram [valoracionId]="valoracionId" [initialDiagramData]="diagramData" />
     }
   `,
   styles: [
@@ -72,7 +75,8 @@ export class ValoracionDetailComponent implements OnInit {
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
-  private valoracionId = '';
+  protected valoracionId = '';
+  protected diagramData: Record<string, unknown> | null = null;
 
   protected readonly form = this.fb.group({
     fecha: [''],
@@ -103,6 +107,7 @@ export class ValoracionDetailComponent implements OnInit {
         queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
       });
+      this.diagramData = valoracion.diagramData;
     } finally {
       this.loading.set(false);
     }

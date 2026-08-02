@@ -113,6 +113,9 @@
       "queQuiereElPaciente": "What the patient wants",
       "queNecesitaElPaciente": "What the patient needs",
       "notas": "Notes"
+    },
+    "diagram": {
+      "save": "Save diagram"
     }
   }
 }
