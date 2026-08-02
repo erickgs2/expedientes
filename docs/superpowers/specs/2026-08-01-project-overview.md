@@ -85,7 +85,15 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    hardcode `valoracion.diagram.*` i18n keys and the `valoracion:edit` permission check. Reuse by
    Treatments is not drop-in; budget time to extract a reference-source abstraction (e.g. an
    `@Input() referenceSource` exposing `list()`/`get()` plus a label projector) before Treatments'
-   own brainstorm/plan assumes these components can be reused as-is.
+   own brainstorm/plan assumes these components can be reused as-is. **Same note applies to photo
+   capture (2026-08-02, from its Phase 1 final review):** `PhotoCaptureComponent`/
+   `PhotoGalleryComponent` repeat the identical pattern — both inject `ValoracionService` directly,
+   take `valoracionId` as their identity, hardcode `valoracion:edit`/`valoracion:view` permission
+   checks and `valoracion.photos.*` i18n keys, and the API lives at
+   `/api/valoracion/[id]/photos`. Additionally, `Photo.valoracionId` is a **required** FK to
+   `Valoracion` — Treatments' own photo capture will need a schema change (nullable
+   `valoracionId` + a `treatmentId`, or a polymorphic owner), not just a component-level
+   abstraction, before it can attach photos to a Treatment visit.
 5. **Appointment management** — scheduling + WhatsApp notifications
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
