@@ -178,6 +178,10 @@ export class FacialDiagramViewsComponent implements OnInit {
       return;
     }
     const visit = await this.valoracionService.get(id);
+    // Discard a stale response: if the user picked something else while this request was in
+    // flight, `selectedReferenceId()` will no longer match `id`, and applying this response now
+    // would silently show the wrong past visit's data as if it were the current selection.
+    if (this.selectedReferenceId() !== id) return;
     this.referenceDiagrams.set(visit.diagrams);
   }
 
