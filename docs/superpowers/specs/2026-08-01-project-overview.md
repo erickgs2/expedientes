@@ -70,7 +70,13 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
          reference layers showing past visits' annotations — complete. The facial diagram
          drawing tool sub-project is now complete (all 3 phases).
    3. **Photo capture** — camera capture with a centering oval guide, before/after tagging,
-      progressive timeline; builds on Foundation's existing file storage
+      progressive timeline; builds on Foundation's existing file storage. Decomposed
+      (2026-08-02) into two phases:
+      1. **Capture + per-visit gallery** — camera capture with the oval framing guide,
+         session-wide before/after mode toggle, upload, and a gallery of the current visit's
+         photos, embedded in the Valoración detail page
+      2. **Progressive timeline** — patient-level chronological before/after view across all of
+         a patient's visits
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
    (reuses Valoración's diagram tool and photo capture). **Note (2026-08-02, from the facial
    diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
