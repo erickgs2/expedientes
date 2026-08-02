@@ -28,7 +28,14 @@ export const POST = withApiErrors(
     const userId = await requireAuth(request, 'valoracion', 'create');
     const { patientId } = await params;
 
-    const valoracion = await createValoracion(patientId);
+    // `.catch(() => ({}))` because `request.json()` throws on an empty body — the frontend always
+    // sends `fecha`, but a client that sends nothing still falls back to the schema default.
+    // `T00:00:00` forces *local* midnight (`new Date('YYYY-MM-DD')` would parse as UTC midnight,
+    // which reads back as the previous day in a negative-UTC-offset timezone).
+    const body = (await request.json().catch(() => ({}))) as { fecha?: string };
+    const fecha = body.fecha ? new Date(`${body.fecha}T00:00:00`) : undefined;
+
+    const valoracion = await createValoracion(patientId, fecha);
 
     await writeAuditLogSafe({
       userId,

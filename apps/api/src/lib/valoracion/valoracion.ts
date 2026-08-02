@@ -14,8 +14,11 @@ export async function listValoraciones(patientId: string) {
   });
 }
 
-export async function createValoracion(patientId: string) {
-  return prisma.valoracion.create({ data: { patientId } });
+// `fecha` is optional: passing `undefined` lets Prisma fall back to the schema's `@default(now())`
+// as a safety net. Callers that know the clinic's local calendar day (the route below) always
+// supply it, since `now()` is a UTC instant that can land on the next calendar day.
+export async function createValoracion(patientId: string, fecha?: Date) {
+  return prisma.valoracion.create({ data: { patientId, fecha } });
 }
 
 export async function getValoracion(id: string) {

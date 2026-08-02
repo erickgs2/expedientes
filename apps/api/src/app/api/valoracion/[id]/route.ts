@@ -41,7 +41,10 @@ export const PATCH = withApiErrors(
     // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which
     // `withApiErrors` already maps to a 404 — see apps/api/src/lib/http/with-api-errors.ts.
     const valoracion = await updateValoracion(id, {
-      fecha: body.fecha ? new Date(body.fecha) : undefined,
+      // `T00:00:00` forces *local* midnight — `new Date('YYYY-MM-DD')` parses as UTC midnight,
+      // which reads back as the previous calendar day in a negative-UTC-offset timezone (the same
+      // class of bug fixed in historia-clinica-form.component.ts's `edad` computation).
+      fecha: body.fecha ? new Date(`${body.fecha}T00:00:00`) : undefined,
       queQuiereElPaciente: body.queQuiereElPaciente,
       queNecesitaElPaciente: body.queNecesitaElPaciente,
       notas: body.notas,
