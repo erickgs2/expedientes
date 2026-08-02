@@ -6,6 +6,8 @@ import type {
   ValoracionSummary,
   ValoracionUpdateInput,
   ValoracionDiagramsUpdateInput,
+  Photo,
+  PhotoTag,
 } from '@expedientes/shared-types';
 
 /**
@@ -56,5 +58,26 @@ export class ValoracionService {
     return firstValueFrom(
       this.http.patch<{ valoracion: Valoracion }>(`/api/valoracion/${id}/diagram`, input)
     ).then((r) => r.valoracion);
+  }
+
+  listPhotos(valoracionId: string): Promise<Photo[]> {
+    return firstValueFrom(
+      this.http.get<{ photos: Photo[] }>(`/api/valoracion/${valoracionId}/photos`)
+    ).then((r) => r.photos);
+  }
+
+  uploadPhoto(valoracionId: string, blob: Blob, tag: PhotoTag): Promise<Photo> {
+    const formData = new FormData();
+    formData.append('photo', blob, 'photo.jpg');
+    formData.append('tag', tag);
+    return firstValueFrom(
+      this.http.post<{ photo: Photo }>(`/api/valoracion/${valoracionId}/photos`, formData)
+    ).then((r) => r.photo);
+  }
+
+  deletePhoto(valoracionId: string, photoId: string): Promise<void> {
+    return firstValueFrom(
+      this.http.delete<void>(`/api/valoracion/${valoracionId}/photos/${photoId}`)
+    ).then(() => undefined);
   }
 }
