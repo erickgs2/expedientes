@@ -1,23 +1,23 @@
 import { prisma } from '../prisma/client';
 
 export interface HistoriaClinicaData {
-  ocupacion?: string;
-  fechaNacimiento?: Date;
-  sexo?: string;
-  queQuiereElPaciente?: string;
-  queNecesitaElPaciente?: string;
-  atributosEmocionales?: string;
-  enfermedadesActuales?: string;
-  medicamentosAcne3Meses?: string;
-  cirugiasEsteticasAnteriores?: string;
-  rutinaCuidadoFacial?: string;
-  consumoAlcohol?: string;
-  consumoTabaco?: string;
-  consumoDrogas?: string;
-  tipoFrecuenciaEjercicio?: string;
-  vacunas?: string;
-  posibilidadEmbarazo?: string;
-  antecedentesHeredofamiliares?: string;
+  ocupacion?: string | null;
+  fechaNacimiento?: Date | null;
+  sexo?: string | null;
+  queQuiereElPaciente?: string | null;
+  queNecesitaElPaciente?: string | null;
+  atributosEmocionales?: string | null;
+  enfermedadesActuales?: string | null;
+  medicamentosAcne3Meses?: string | null;
+  cirugiasEsteticasAnteriores?: string | null;
+  rutinaCuidadoFacial?: string | null;
+  consumoAlcohol?: string | null;
+  consumoTabaco?: string | null;
+  consumoDrogas?: string | null;
+  tipoFrecuenciaEjercicio?: string | null;
+  vacunas?: string | null;
+  posibilidadEmbarazo?: string | null;
+  antecedentesHeredofamiliares?: string | null;
   allergyNames?: string[];
 }
 
