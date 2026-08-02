@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the first of three Valoración sub-projects: a minimal per-visit record (date +
-free-text notes) that later sub-projects (facial diagram tool, photo capture) will attach content
-to. List + detail page, reached from Historia Clínica.
+**Goal:** Build the first of three Valoración sub-projects: a minimal per-visit record (date, "qué
+quiere/necesita el paciente", and general free-text notes) that later sub-projects (facial diagram
+tool, photo capture) will attach content to. List + detail page, reached from Historia Clínica.
 
 **Architecture:** A new `Valoracion` Prisma model, one-to-many with `Patient` (unlike Historia
 Clínica's 1:1). Backend follows the exact conventions established in Foundation and Historia
@@ -67,8 +67,10 @@ model Valoracion {
   patientId String
   patient   Patient  @relation(fields: [patientId], references: [id])
 
-  fecha DateTime @default(now())
-  notas String?
+  fecha                 DateTime @default(now())
+  queQuiereElPaciente   String?
+  queNecesitaElPaciente String?
+  notas                 String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -138,6 +140,8 @@ import { prisma } from '../prisma/client';
 
 export interface ValoracionUpdateData {
   fecha?: Date;
+  queQuiereElPaciente?: string | null;
+  queNecesitaElPaciente?: string | null;
   notas?: string | null;
 }
 
@@ -162,7 +166,8 @@ export async function updateValoracion(id: string, data: ValoracionUpdateData) {
 ```
 
 `createValoracion` deliberately takes no data beyond `patientId` — every new visit starts with
-today's date (the schema's `@default(now())`) and empty notes, per the design's "create
+today's date (the schema's `@default(now())`) and empty "qué quiere/necesita el paciente"/notes
+fields, per the design's "create
 immediately, edit after" decision.
 
 - [ ] **Step 2: Verify it compiles**
@@ -259,6 +264,8 @@ import { withApiErrors } from '../../../../lib/http/with-api-errors';
 
 interface ValoracionBody {
   fecha?: string;
+  queQuiereElPaciente?: string | null;
+  queNecesitaElPaciente?: string | null;
   notas?: string | null;
 }
 
@@ -292,6 +299,8 @@ export const PATCH = withApiErrors(
     // `withApiErrors` already maps to a 404 — see apps/api/src/lib/http/with-api-errors.ts.
     const valoracion = await updateValoracion(id, {
       fecha: body.fecha ? new Date(body.fecha) : undefined,
+      queQuiereElPaciente: body.queQuiereElPaciente,
+      queNecesitaElPaciente: body.queNecesitaElPaciente,
       notas: body.notas,
     });
 
@@ -308,10 +317,11 @@ export const PATCH = withApiErrors(
 );
 ```
 
-Note `notas: body.notas` passes through directly — if the key is absent from the request body,
-`body.notas` is `undefined` (leave unchanged); if the client explicitly sent `null`, it clears the
-field. This is the correct pattern per the Global Constraints note above; Task 5's frontend must
-send `null`, not omit the key, when the user clears the notes field.
+Note `queQuiereElPaciente`/`queNecesitaElPaciente`/`notas` all pass through directly — if a key is
+absent from the request body, its value is `undefined` (leave unchanged); if the client explicitly
+sent `null`, it clears that field. This is the correct pattern per the Global Constraints note
+above; Task 5's frontend must send `null`, not omit the key, when the user clears any of these
+three fields.
 
 - [ ] **Step 3: Manual verification**
 
@@ -343,22 +353,24 @@ curl -i -b /tmp/cookies.txt "http://localhost:3000/api/patients/$PATIENT_ID/valo
 # Get it directly
 curl -i -b /tmp/cookies.txt "http://localhost:3000/api/valoracion/$VALORACION_ID"
 
-# Set notes
+# Set notes and the two "qué quiere/necesita" fields
 curl -i -b /tmp/cookies.txt -X PATCH "http://localhost:3000/api/valoracion/$VALORACION_ID" \
-  -H 'Content-Type: application/json' -d '{"notas":"Piel mixta, buena elasticidad"}'
+  -H 'Content-Type: application/json' \
+  -d '{"notas":"Piel mixta, buena elasticidad","queQuiereElPaciente":"Reducir lineas de expresion","queNecesitaElPaciente":"Hidratacion profunda"}'
 
-# Clear notes explicitly (must become null, not stay unchanged)
+# Clear all three explicitly (must become null, not stay unchanged)
 curl -i -b /tmp/cookies.txt -X PATCH "http://localhost:3000/api/valoracion/$VALORACION_ID" \
-  -H 'Content-Type: application/json' -d '{"notas":null}'
+  -H 'Content-Type: application/json' -d '{"notas":null,"queQuiereElPaciente":null,"queNecesitaElPaciente":null}'
 curl -i -b /tmp/cookies.txt "http://localhost:3000/api/valoracion/$VALORACION_ID"
 
 # Nonexistent id -> 404
 curl -i -b /tmp/cookies.txt "http://localhost:3000/api/valoracion/00000000-0000-0000-0000-000000000000"
 ```
 
-Expected: empty list `[]`, then one entry after create; GET by id returns the record; PATCH with a
-string sets `notas`; PATCH with `null` clears it (confirmed by the follow-up GET showing
-`"notas":null`, not the old string); a nonexistent id returns 404.
+Expected: empty list `[]`, then one entry after create; GET by id returns the record; PATCH with
+strings sets `notas`/`queQuiereElPaciente`/`queNecesitaElPaciente`; PATCH with `null` for all
+three clears them (confirmed by the follow-up GET showing all three as `null`, not the old
+strings); a nonexistent id returns 404.
 
 - [ ] **Step 4: Production build check**
 
@@ -399,11 +411,15 @@ export interface Valoracion {
   id: string;
   patientId: string;
   fecha: string;
+  queQuiereElPaciente: string | null;
+  queNecesitaElPaciente: string | null;
   notas: string | null;
 }
 
 export interface ValoracionUpdateInput {
   fecha?: string;
+  queQuiereElPaciente?: string | null;
+  queNecesitaElPaciente?: string | null;
   notas?: string | null;
 }
 ```
@@ -531,6 +547,8 @@ top-level key stays untouched):
   "noNotes": "Sin notas",
   "fields": {
     "fecha": "Fecha",
+    "queQuiereElPaciente": "Qué quiere el paciente",
+    "queNecesitaElPaciente": "Qué necesita el paciente",
     "notas": "Notas"
   }
 }
@@ -547,6 +565,8 @@ Add the equivalent to `apps/web/src/assets/i18n/en.json`:
   "noNotes": "No notes",
   "fields": {
     "fecha": "Date",
+    "queQuiereElPaciente": "What the patient wants",
+    "queNecesitaElPaciente": "What the patient needs",
     "notas": "Notes"
   }
 }
@@ -671,6 +691,14 @@ import { ValoracionService } from './valoracion.service';
           <input matInput type="date" formControlName="fecha" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'valoracion.fields.queQuiereElPaciente' | transloco }}</mat-label>
+          <textarea matInput formControlName="queQuiereElPaciente" rows="3"></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'valoracion.fields.queNecesitaElPaciente' | transloco }}</mat-label>
+          <textarea matInput formControlName="queNecesitaElPaciente" rows="3"></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'valoracion.fields.notas' | transloco }}</mat-label>
           <textarea matInput formControlName="notas" rows="10"></textarea>
         </mat-form-field>
@@ -705,6 +733,8 @@ export class ValoracionDetailComponent implements OnInit {
 
   protected readonly form = this.fb.group({
     fecha: [''],
+    queQuiereElPaciente: [''],
+    queNecesitaElPaciente: [''],
     notas: [''],
   });
 
@@ -718,6 +748,8 @@ export class ValoracionDetailComponent implements OnInit {
       const valoracion = await this.valoracionService.get(this.valoracionId);
       this.form.patchValue({
         fecha: valoracion.fecha.substring(0, 10),
+        queQuiereElPaciente: valoracion.queQuiereElPaciente ?? '',
+        queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
       });
     } finally {
@@ -731,6 +763,8 @@ export class ValoracionDetailComponent implements OnInit {
       const raw = this.form.value;
       await this.valoracionService.update(this.valoracionId, {
         fecha: raw.fecha || undefined,
+        queQuiereElPaciente: raw.queQuiereElPaciente?.trim() || null,
+        queNecesitaElPaciente: raw.queNecesitaElPaciente?.trim() || null,
         notas: raw.notas?.trim() || null,
       });
     } finally {
@@ -740,8 +774,9 @@ export class ValoracionDetailComponent implements OnInit {
 }
 ```
 
-Note `notas: raw.notas?.trim() || null` — clearing the notes field sends an explicit `null`, per
-the Global Constraints lesson from Historia Clínica's final review. `fecha` uses `|| undefined`
+Note `queQuiereElPaciente`/`queNecesitaElPaciente`/`notas` all use `?.trim() || null` — clearing
+any of these three sends an explicit `null`, per the Global Constraints lesson from Historia
+Clínica's final review. `fecha` uses `|| undefined`
 (never `null`) since a visit's date is never meant to be cleared, only changed.
 
 - [ ] **Step 4: Verify the full build now succeeds**
@@ -833,12 +868,14 @@ npx nx serve web
 In the browser: log in as admin, select or create a patient (lands on Historia Clínica as before),
 click "Ver valoraciones", confirm you land on an empty Valoración list for that patient. Click
 "Nueva valoración", confirm it creates a record and navigates straight into its detail page with
-today's date pre-filled and empty notes. Type some notes, save, navigate back to the list (via
-back button or reselecting the patient and clicking "Ver valoraciones" again) and confirm the new
-visit appears with a notes preview. Open it again, confirm the notes are still there, clear the
-notes field, save, reload the detail page and confirm the notes are genuinely empty (not reverted
-to the old value — this proves the null-vs-undefined lesson was applied correctly). Confirm the
-ES/EN toggle translates the list title, button labels, empty state, and the Historia Clínica link.
+today's date pre-filled and every other field empty. Fill in "Qué quiere el paciente", "Qué
+necesita el paciente", and the general notes field, save, navigate back to the list (via back
+button or reselecting the patient and clicking "Ver valoraciones" again) and confirm the new visit
+appears with a notes preview. Open it again, confirm all three fields are still there, clear all
+three, save, reload the detail page and confirm they're genuinely empty (not reverted to the old
+values — this proves the null-vs-undefined lesson was applied correctly to all three, not just
+notas). Confirm the ES/EN toggle translates the list title, button labels, all three field labels,
+empty state, and the Historia Clínica link.
 
 - [ ] **Step 5: Commit**
 
