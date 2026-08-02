@@ -16,7 +16,8 @@
     "yes": "Yes",
     "no": "No",
     "edit": "Edit",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "loadError": "Couldn't load this record. Please try again."
   },
   "auth": {
     "email": "Email",

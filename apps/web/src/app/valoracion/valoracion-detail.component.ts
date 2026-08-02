@@ -28,6 +28,11 @@ import { PhotoGalleryComponent } from './photo/photo-gallery.component';
   template: `
     @if (loading()) {
       <p>{{ 'common.loading' | transloco }}</p>
+    } @else if (loadFailed()) {
+      <!-- A failed load must never fall through to the record body: the child components below
+           fetch and render server data keyed by the valoracionId, and on this path nothing about
+           that id has been validated against the active patient. -->
+      <p class="load-error">{{ 'common.loadError' | transloco }}</p>
     } @else {
       <h1>{{ 'valoracion.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <form [formGroup]="form" (ngSubmit)="save()">
@@ -70,6 +75,9 @@ import { PhotoGalleryComponent } from './photo/photo-gallery.component';
       .full-width {
         width: 100%;
       }
+      .load-error {
+        color: var(--mat-sys-error, #b3261e);
+      }
     `,
   ],
 })
@@ -83,6 +91,7 @@ export class ValoracionDetailComponent implements OnInit {
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly loadFailed = signal(false);
   protected valoracionId = '';
   protected patientId = '';
   protected diagrams: ValoracionDiagram[] = [];
@@ -97,6 +106,7 @@ export class ValoracionDetailComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.valoracionId = this.route.snapshot.paramMap.get('id') ?? '';
     if (!this.valoracionId) {
+      this.loadFailed.set(true);
       this.loading.set(false);
       return;
     }
@@ -123,6 +133,16 @@ export class ValoracionDetailComponent implements OnInit {
         notas: valoracion.notas ?? '',
       });
       this.diagrams = valoracion.diagrams;
+    } catch (error) {
+      // A thrown fetch (network blip, 500) leaves the identity check *unperformed*, not passed —
+      // on a stale cross-patient URL that would otherwise render the gallery and diagrams for
+      // another patient's visit under the active patient's banner. Show the error state instead
+      // and leave `diagrams`/the form untouched.
+      console.error('Failed to load valoración', error);
+      this.loadFailed.set(true);
+      // Belt and braces alongside the template gate: the unvalidated id from the route is dropped,
+      // so no child binding could carry it even if this state were ever rendered.
+      this.valoracionId = '';
     } finally {
       if (!mismatched) {
         this.loading.set(false);

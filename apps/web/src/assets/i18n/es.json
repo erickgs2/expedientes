@@ -16,7 +16,8 @@
     "yes": "Sí",
     "no": "No",
     "edit": "Editar",
-    "loading": "Cargando..."
+    "loading": "Cargando...",
+    "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo."
   },
   "auth": {
     "email": "Correo electrónico",

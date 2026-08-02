@@ -43,6 +43,11 @@ export const GET = withApiErrors(
         headers: {
           'Content-Type': 'image/jpeg',
           'X-Content-Type-Options': 'nosniff',
+          // Defense in depth, matching how user-content-hosting services isolate uploaded bytes:
+          // even if a browser edge case treated this response as a document, it could load nothing
+          // and run nothing. `inline` is stated explicitly rather than left implicit.
+          'Content-Security-Policy': "default-src 'none'; sandbox",
+          'Content-Disposition': 'inline',
         },
       });
     }

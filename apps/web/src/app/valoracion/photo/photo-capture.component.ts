@@ -136,6 +136,14 @@ export class PhotoCaptureComponent implements OnDestroy {
   private stream: MediaStream | null = null;
   private reviewBlob: Blob | null = null;
   private requestingCamera = false;
+  /**
+   * Set at the very top of `ngOnDestroy`. `getUserMedia()` can still be pending (permission prompt,
+   * camera warm-up) when the component is destroyed, so its continuation re-checks this before
+   * assigning `this.stream` — otherwise the camera hardware would stay live on a dead component,
+   * with no UI showing it, until a full page reload. Distinct from `requestingCamera`, which only
+   * guards re-entrant taps on an instance that is still alive.
+   */
+  private destroyed = false;
 
   // A setter query (not a static `@ViewChild` read in `ngAfterViewInit`) because `#videoEl` is
   // conditionally rendered (`@if (!reviewing())`) — it appears and disappears as the user moves
@@ -160,9 +168,14 @@ export class PhotoCaptureComponent implements OnDestroy {
       return;
     }
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
       });
+      if (this.destroyed) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      this.stream = stream;
       this.active.set(true);
     } catch (error) {
       console.error('Camera access failed', error);
@@ -186,6 +199,9 @@ export class PhotoCaptureComponent implements OnDestroy {
   protected capture(): void {
     const video = this.videoElement;
     if (!video) return;
+    // The video element exists before its metadata loads, and a capture in that narrow window would
+    // produce a 0x0 canvas.
+    if (!video.videoWidth || !video.videoHeight) return;
     const scale = Math.min(
       1,
       MAX_CAPTURE_DIMENSION / Math.max(video.videoWidth, video.videoHeight)
@@ -199,6 +215,9 @@ export class PhotoCaptureComponent implements OnDestroy {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
+        // Two quick taps can put two `toBlob` calls in flight; without this, the second callback
+        // would overwrite `reviewImageUrl` and leak the first one's object URL.
+        this.discardReview();
         this.reviewBlob = blob;
         this.reviewImageUrl = URL.createObjectURL(blob);
         this.reviewing.set(true);
@@ -244,6 +263,7 @@ export class PhotoCaptureComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.stopStream();
     this.discardReview();
   }

@@ -17,6 +17,10 @@ describe('isJpeg', () => {
     expect(isJpeg(Buffer.from([0xff, 0xd8]))).toBe(false);
   });
 
+  it('returns false when the third byte does not match the JPEG signature', () => {
+    expect(isJpeg(Buffer.from([0xff, 0xd8, 0x00, 0x01]))).toBe(false);
+  });
+
   it('returns false for arbitrary text content (e.g. an uploaded .html/.svg pretending to be a photo)', () => {
     expect(isJpeg(Buffer.from('<html></html>'))).toBe(false);
   });
