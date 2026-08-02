@@ -135,6 +135,7 @@ export class PhotoCaptureComponent implements OnDestroy {
   private videoElement: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
   private reviewBlob: Blob | null = null;
+  private requestingCamera = false;
 
   // A setter query (not a static `@ViewChild` read in `ngAfterViewInit`) because `#videoEl` is
   // conditionally rendered (`@if (!reviewing())`) — it appears and disappears as the user moves
@@ -150,9 +151,12 @@ export class PhotoCaptureComponent implements OnDestroy {
   }
 
   protected async openCamera(): Promise<void> {
+    if (this.active() || this.stream || this.requestingCamera) return;
+    this.requestingCamera = true;
     this.cameraError.set(false);
     if (!navigator.mediaDevices?.getUserMedia) {
       this.cameraError.set(true);
+      this.requestingCamera = false;
       return;
     }
     try {
@@ -163,6 +167,8 @@ export class PhotoCaptureComponent implements OnDestroy {
     } catch (error) {
       console.error('Camera access failed', error);
       this.cameraError.set(true);
+    } finally {
+      this.requestingCamera = false;
     }
   }
 
