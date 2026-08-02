@@ -10,6 +10,7 @@ import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
 import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-views.component';
+import { PhotoGalleryComponent } from './photo/photo-gallery.component';
 
 @Component({
   selector: 'app-valoracion-detail',
@@ -22,6 +23,7 @@ import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-vie
     TranslocoModule,
     HasPermissionDirective,
     FacialDiagramViewsComponent,
+    PhotoGalleryComponent,
   ],
   template: `
     @if (loading()) {
@@ -60,6 +62,7 @@ import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-vie
         [patientId]="patientId"
         [diagrams]="diagrams"
       />
+      <app-photo-gallery [valoracionId]="valoracionId" />
     }
   `,
   styles: [

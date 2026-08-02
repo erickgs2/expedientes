@@ -142,6 +142,19 @@
         "toggle": "Show reference from a past visit",
         "pick": "Select visit"
       }
+    },
+    "photos": {
+      "addPhotos": "Add photos",
+      "cameraError": "Couldn't access the camera",
+      "before": "Before",
+      "after": "After",
+      "closeCamera": "Close camera",
+      "capture": "Capture",
+      "retake": "Retake",
+      "usePhoto": "Use photo",
+      "delete": "Delete",
+      "confirmDelete": "Delete this photo? This cannot be undone.",
+      "empty": "No photos yet"
     }
   }
 }

@@ -142,6 +142,19 @@
         "toggle": "Mostrar visita anterior de referencia",
         "pick": "Seleccionar visita"
       }
+    },
+    "photos": {
+      "addPhotos": "Agregar fotos",
+      "cameraError": "No se pudo acceder a la cámara",
+      "before": "Antes",
+      "after": "Después",
+      "closeCamera": "Cerrar cámara",
+      "capture": "Capturar",
+      "retake": "Repetir",
+      "usePhoto": "Usar foto",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar esta foto? Esta acción no se puede deshacer.",
+      "empty": "No hay fotos"
     }
   }
 }
