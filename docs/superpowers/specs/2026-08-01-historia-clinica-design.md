@@ -12,6 +12,19 @@ patient, editable over time (not versioned snapshots) — captures personal info
 background, and personal/family history. Builds directly on Foundation's Patient Drive: selecting
 or creating a patient now auto-navigates into that patient's Historia Clínica.
 
+## Deliberate exception to the project's English-naming convention
+
+The project overview states all code/naming is in English, with Spanish only in UI text via
+Transloco. `HistoriaClinica`'s Prisma schema fields (`ocupacion`, `fechaNacimiento`,
+`queQuiereElPaciente`, etc.) are a **deliberate, confirmed exception**: these are specific
+medical-intake terms lifted directly from the clinic's actual Spanish-language paper form, and the
+user chose to keep them in Spanish in the schema rather than translate them to English identifiers.
+This does not affect what patients/staff see — UI labels still come from Transloco
+(`historiaClinica.fields.*`) exactly as with every other module. Later clinical modules
+(Valoración, Treatments) should follow this same precedent for domain-specific clinical field
+names, while everything else (function names, route paths, service/component names, comments)
+stays in English as usual.
+
 ## Product decisions (settled during brainstorming)
 
 - **Single evolving record per patient.** Created on first save, edited afterward. No version
