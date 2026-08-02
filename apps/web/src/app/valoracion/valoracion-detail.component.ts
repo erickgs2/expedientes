@@ -1,11 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
+import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
 
 @Component({
@@ -23,7 +24,7 @@ import { ValoracionService } from './valoracion.service';
     @if (loading()) {
       <p>{{ 'common.loading' | transloco }}</p>
     } @else {
-      <h1>{{ 'valoracion.detailTitle' | transloco }}</h1>
+      <h1>{{ 'valoracion.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <form [formGroup]="form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'valoracion.fields.fecha' | transloco }}</mat-label>
@@ -63,9 +64,12 @@ import { ValoracionService } from './valoracion.service';
 })
 export class ValoracionDetailComponent implements OnInit {
   private readonly valoracionService = inject(ValoracionService);
+  private readonly activePatient = inject(ActivePatientStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
+  protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   private valoracionId = '';
@@ -85,6 +89,14 @@ export class ValoracionDetailComponent implements OnInit {
     }
     try {
       const valoracion = await this.valoracionService.get(this.valoracionId);
+      // `activePatientGuard` only proves *some* patient is active, not that it's this visit's
+      // patient — reaching this URL again after switching patients (e.g. browser Back) would
+      // otherwise let staff edit patient A's visit while the banner shows patient B. Bail out
+      // before the form is ever populated with the mismatched record's data.
+      if (valoracion.patientId !== this.patient()?.id) {
+        this.router.navigate(['/valoracion']);
+        return;
+      }
       this.form.patchValue({
         fecha: valoracion.fecha.substring(0, 10),
         queQuiereElPaciente: valoracion.queQuiereElPaciente ?? '',
