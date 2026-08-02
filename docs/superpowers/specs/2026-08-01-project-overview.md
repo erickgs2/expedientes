@@ -63,7 +63,7 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       (2026-08-02) into three incremental phases, each building on the last:
       1. **Core canvas (single view)** — freehand drawing, predefined markers, pinned text
          notes, save/load for one diagram view. A generic placeholder base image is used until
-         an admin-upload flow exists (deferred, not part of this phase).
+         an admin-upload flow exists (deferred, not part of this phase). — complete
       2. **Multiple diagram views** — front/left/right profile, each independently annotated
       3. **Cross-visit watermark/reference overlay** — toggleable, per-visit-selectable
          reference layers showing past visits' annotations
