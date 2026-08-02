@@ -112,7 +112,9 @@ export class ValoracionDetailComponent implements OnInit {
         queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
       });
-      this.diagramData = valoracion.diagramData;
+      // Extract the front view's diagram data from the diagrams array
+      const frontDiagram = valoracion.diagrams.find((d) => d.view === 'FRONT');
+      this.diagramData = frontDiagram?.data ?? null;
     } finally {
       if (!mismatched) {
         this.loading.set(false);

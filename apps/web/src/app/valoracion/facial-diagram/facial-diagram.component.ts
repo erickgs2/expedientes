@@ -467,8 +467,10 @@ export class FacialDiagramComponent implements OnInit, AfterViewInit, OnDestroy 
     this.saving.set(true);
     try {
       const objects = this.canvas.getObjects().map((obj) => obj.toObject());
-      await this.valoracionService.updateDiagram(this.valoracionId, {
-        diagramData: { version: 1, objects, nextPinNumber: this.pinCounter },
+      await this.valoracionService.updateDiagrams(this.valoracionId, {
+        views: {
+          front: { version: 1, objects, nextPinNumber: this.pinCounter },
+        },
       });
     } finally {
       this.saving.set(false);

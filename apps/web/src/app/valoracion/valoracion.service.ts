@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   Valoracion,
   ValoracionUpdateInput,
-  ValoracionDiagramUpdateInput,
+  ValoracionDiagramsUpdateInput,
 } from '@expedientes/shared-types';
 
 /**
@@ -48,7 +48,7 @@ export class ValoracionService {
     ).then((r) => r.valoracion);
   }
 
-  updateDiagram(id: string, input: ValoracionDiagramUpdateInput): Promise<Valoracion> {
+  updateDiagrams(id: string, input: ValoracionDiagramsUpdateInput): Promise<Valoracion> {
     return firstValueFrom(
       this.http.patch<{ valoracion: Valoracion }>(`/api/valoracion/${id}/diagram`, input)
     ).then((r) => r.valoracion);
