@@ -2,48 +2,69 @@
 # (NODE_ENV=production, always true for this build), so it will not work over plain HTTP except
 # on localhost. Put this behind a real reverse proxy with a certificate (e.g. Caddy, nginx +
 # certbot) or a VPN/private network before using it for anything beyond local testing.
+#
+# Required environment (from the shell or a .env file next to this compose file). Each is guarded
+# with `:?` so `docker compose up` fails immediately with a named error rather than silently
+# starting with an empty secret:
+#   JWT_SECRET         signing key for session tokens
+#   POSTGRES_USER      database user
+#   POSTGRES_PASSWORD  database password
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: expedientes
-      POSTGRES_PASSWORD: expedientes
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: expedientes
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # `$$` escapes compose interpolation so the variables resolve inside the container.
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
       target: runtime
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
-      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       STORAGE_ROOT: /data/storage
     volumes:
       - storage_data:/data/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   migrate:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
       target: build
+    # Deliberately no `restart` policy: this is a one-off job that must run once and exit, not
+    # restart-loop after it completes.
     environment:
-      DATABASE_URL: postgresql://expedientes:expedientes@db:5432/expedientes
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
     command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     profiles: ['tools']
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
     ports:
       - '80:80'
     depends_on:
