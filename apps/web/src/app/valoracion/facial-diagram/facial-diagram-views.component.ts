@@ -1,11 +1,15 @@
 import { Component, Input, OnInit, inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule } from '@jsverse/transloco';
 import type {
   DiagramView,
   ValoracionDiagram,
   ValoracionDiagramsUpdateInput,
+  ValoracionSummary,
 } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { ValoracionService } from '../valoracion.service';
@@ -22,7 +26,15 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
 @Component({
   selector: 'app-facial-diagram-views',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule, FacialDiagramCanvasComponent],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    TranslocoModule,
+    FacialDiagramCanvasComponent,
+  ],
   template: `
     <div class="diagram-views">
       <mat-button-toggle-group [value]="activeView()">
@@ -33,11 +45,33 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
         }
       </mat-button-toggle-group>
 
+      @if (pastVisits().length > 0) {
+        <div class="diagram-reference">
+          <mat-checkbox [checked]="referenceEnabled()" (change)="toggleReference($event.checked)">
+            {{ 'valoracion.diagram.reference.toggle' | transloco }}
+          </mat-checkbox>
+          @if (referenceEnabled()) {
+            <mat-form-field appearance="outline" class="diagram-reference-select">
+              <mat-label>{{ 'valoracion.diagram.reference.pick' | transloco }}</mat-label>
+              <mat-select
+                [value]="selectedReferenceId()"
+                (selectionChange)="selectReference($event.value)"
+              >
+                @for (visit of pastVisits(); track visit.id) {
+                  <mat-option [value]="visit.id">{{ visit.fecha.substring(0, 10) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+        </div>
+      }
+
       <div [hidden]="activeView() !== 'FRONT'">
         <app-facial-diagram-canvas
           #frontCanvas
           [view]="'FRONT'"
           [initialDiagramData]="dataFor('FRONT')"
+          [referenceData]="referenceDataFor('FRONT')"
         />
       </div>
       <div [hidden]="activeView() !== 'LEFT_PROFILE'">
@@ -45,6 +79,7 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
           #leftCanvas
           [view]="'LEFT_PROFILE'"
           [initialDiagramData]="dataFor('LEFT_PROFILE')"
+          [referenceData]="referenceDataFor('LEFT_PROFILE')"
         />
       </div>
       <div [hidden]="activeView() !== 'RIGHT_PROFILE'">
@@ -52,6 +87,7 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
           #rightCanvas
           [view]="'RIGHT_PROFILE'"
           [initialDiagramData]="dataFor('RIGHT_PROFILE')"
+          [referenceData]="referenceDataFor('RIGHT_PROFILE')"
         />
       </div>
 
@@ -75,11 +111,21 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
       .diagram-views-actions {
         margin-top: 8px;
       }
+      .diagram-reference {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .diagram-reference-select {
+        width: 200px;
+      }
     `,
   ],
 })
 export class FacialDiagramViewsComponent implements OnInit {
   @Input({ required: true }) valoracionId!: string;
+  @Input({ required: true }) patientId!: string;
   @Input() diagrams: ValoracionDiagram[] = [];
 
   private readonly valoracionService = inject(ValoracionService);
@@ -90,20 +136,49 @@ export class FacialDiagramViewsComponent implements OnInit {
   protected readonly saving = signal(false);
   protected canEdit = false;
 
+  protected readonly pastVisits = signal<ValoracionSummary[]>([]);
+  protected readonly referenceEnabled = signal(false);
+  protected readonly selectedReferenceId = signal<string | null>(null);
+  protected readonly referenceDiagrams = signal<ValoracionDiagram[]>([]);
+
   private readonly frontCanvas = viewChild.required<FacialDiagramCanvasComponent>('frontCanvas');
   private readonly leftCanvas = viewChild.required<FacialDiagramCanvasComponent>('leftCanvas');
   private readonly rightCanvas = viewChild.required<FacialDiagramCanvasComponent>('rightCanvas');
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission('valoracion', 'edit');
+    const visits = await this.valoracionService.list(this.patientId);
+    this.pastVisits.set(visits.filter((v) => v.id !== this.valoracionId));
   }
 
   protected dataFor(view: DiagramView): Record<string, unknown> | null {
     return this.diagrams.find((d) => d.view === view)?.data ?? null;
   }
 
+  protected referenceDataFor(view: DiagramView): Record<string, unknown> | null {
+    return this.referenceDiagrams().find((d) => d.view === view)?.data ?? null;
+  }
+
   protected viewLabelKey(view: DiagramView): string {
     return VIEW_LABEL_KEYS[view];
+  }
+
+  protected toggleReference(checked: boolean): void {
+    this.referenceEnabled.set(checked);
+    if (!checked) {
+      this.selectedReferenceId.set(null);
+      this.referenceDiagrams.set([]);
+    }
+  }
+
+  protected async selectReference(id: string | null): Promise<void> {
+    this.selectedReferenceId.set(id);
+    if (!id) {
+      this.referenceDiagrams.set([]);
+      return;
+    }
+    const visit = await this.valoracionService.get(id);
+    this.referenceDiagrams.set(visit.diagrams);
   }
 
   protected async save(): Promise<void> {
