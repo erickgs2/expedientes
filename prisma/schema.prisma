@@ -48,12 +48,13 @@ model RolePermission {
 }
 
 model Patient {
-  id         String   @id @default(uuid())
-  fullName   String
-  phone      String
-  documentId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String           @id @default(uuid())
+  fullName        String
+  phone           String
+  documentId      String
+  historiaClinica HistoriaClinica?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([fullName])
   @@index([phone])
@@ -72,4 +73,57 @@ model AuditLog {
 
   @@index([patientId])
   @@index([userId])
+}
+
+model HistoriaClinica {
+  id        String   @id @default(uuid())
+  patientId String   @unique
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  fecha DateTime @default(now())
+
+  // Información del paciente
+  ocupacion             String?
+  fechaNacimiento       DateTime?
+  sexo                  String?
+  queQuiereElPaciente   String?
+  queNecesitaElPaciente String?
+  atributosEmocionales  String?
+
+  // Información médica
+  enfermedadesActuales        String?
+  medicamentosAcne3Meses      String?
+  cirugiasEsteticasAnteriores String?
+  rutinaCuidadoFacial         String?
+
+  // Antecedentes personales no patológicos
+  consumoAlcohol          String?
+  consumoTabaco           String?
+  consumoDrogas           String?
+  tipoFrecuenciaEjercicio String?
+  vacunas                 String?
+  posibilidadEmbarazo     String?
+
+  // Antecedentes heredofamiliares
+  antecedentesHeredofamiliares String?
+
+  allergies HistoriaClinicaAllergy[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Allergy {
+  id        String                   @id @default(uuid())
+  name      String                   @unique
+  historias HistoriaClinicaAllergy[]
+}
+
+model HistoriaClinicaAllergy {
+  historiaClinicaId String
+  allergyId         String
+  historiaClinica   HistoriaClinica @relation(fields: [historiaClinicaId], references: [id], onDelete: Cascade)
+  allergy           Allergy         @relation(fields: [allergyId], references: [id], onDelete: Cascade)
+
+  @@id([historiaClinicaId, allergyId])
 }
