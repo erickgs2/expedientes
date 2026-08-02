@@ -15,7 +15,8 @@
     "cancel": "Cancelar",
     "yes": "Sí",
     "no": "No",
-    "edit": "Editar"
+    "edit": "Editar",
+    "loading": "Cargando..."
   },
   "auth": {
     "email": "Correo electrónico",
@@ -62,5 +63,42 @@
     "documentId": "Documento de identidad",
     "create": "Crear paciente",
     "clearActive": "Quitar paciente activo"
+  },
+  "historiaClinica": {
+    "title": "Historia clínica",
+    "sections": {
+      "personalInfo": "Información del paciente",
+      "medicalInfo": "Información médica",
+      "personalHistory": "Antecedentes personales no patológicos",
+      "familyHistory": "Antecedentes heredofamiliares"
+    },
+    "fields": {
+      "ocupacion": "Ocupación",
+      "fechaNacimiento": "Fecha de nacimiento",
+      "edad": "Edad",
+      "sexo": "Sexo",
+      "alergias": "Alergias",
+      "queQuiereElPaciente": "Qué quiere el paciente",
+      "queNecesitaElPaciente": "Qué necesita el paciente",
+      "atributosEmocionales": "Atributos emocionales",
+      "enfermedadesActuales": "Enfermedades actuales",
+      "medicamentosAcne3Meses": "Medicamentos para acné en los últimos 3 meses",
+      "cirugiasEsteticasAnteriores": "Cirugías estéticas o tratamientos estéticos anteriores",
+      "rutinaCuidadoFacial": "Rutina de cuidado facial",
+      "consumoAlcohol": "Consumo de alcohol",
+      "consumoTabaco": "Consumo de tabaco",
+      "consumoDrogas": "Consumo de drogas",
+      "tipoFrecuenciaEjercicio": "Tipo y frecuencia de ejercicio",
+      "vacunas": "Vacunas",
+      "posibilidadEmbarazo": "Posibilidad de embarazo",
+      "antecedentesHeredofamiliares": "Antecedentes heredofamiliares"
+    },
+    "sexoOptions": {
+      "femenino": "Femenino",
+      "masculino": "Masculino",
+      "otro": "Otro"
+    },
+    "notApplicable": "No aplica",
+    "allergyPlaceholder": "Escribe y presiona Enter para agregar"
   }
 }

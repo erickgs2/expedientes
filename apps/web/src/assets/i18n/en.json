@@ -15,7 +15,8 @@
     "cancel": "Cancel",
     "yes": "Yes",
     "no": "No",
-    "edit": "Edit"
+    "edit": "Edit",
+    "loading": "Loading..."
   },
   "auth": {
     "email": "Email",
@@ -62,5 +63,42 @@
     "documentId": "Document ID",
     "create": "Create patient",
     "clearActive": "Clear active patient"
+  },
+  "historiaClinica": {
+    "title": "Clinical history",
+    "sections": {
+      "personalInfo": "Patient information",
+      "medicalInfo": "Medical information",
+      "personalHistory": "Non-pathological personal history",
+      "familyHistory": "Family history"
+    },
+    "fields": {
+      "ocupacion": "Occupation",
+      "fechaNacimiento": "Date of birth",
+      "edad": "Age",
+      "sexo": "Sex",
+      "alergias": "Allergies",
+      "queQuiereElPaciente": "What the patient wants",
+      "queNecesitaElPaciente": "What the patient needs",
+      "atributosEmocionales": "Emotional attributes",
+      "enfermedadesActuales": "Current illnesses",
+      "medicamentosAcne3Meses": "Acne medication in the last 3 months",
+      "cirugiasEsteticasAnteriores": "Previous aesthetic surgeries or treatments",
+      "rutinaCuidadoFacial": "Facial care routine",
+      "consumoAlcohol": "Alcohol use",
+      "consumoTabaco": "Tobacco use",
+      "consumoDrogas": "Drug use",
+      "tipoFrecuenciaEjercicio": "Exercise type and frequency",
+      "vacunas": "Vaccinations",
+      "posibilidadEmbarazo": "Possibility of pregnancy",
+      "antecedentesHeredofamiliares": "Family medical history"
+    },
+    "sexoOptions": {
+      "femenino": "Female",
+      "masculino": "Male",
+      "otro": "Other"
+    },
+    "notApplicable": "Not applicable",
+    "allergyPlaceholder": "Type and press Enter to add"
   }
 }
