@@ -129,7 +129,7 @@ function findDisallowedType(value: unknown): string | null {
  * A top-level `Group`'s `objects` array is just one instance of the generic "array of plain objects"
  * case, not a special one.
  */
-function findDisallowedDiagramType(obj: unknown): string | null {
+export function findDisallowedDiagramType(obj: unknown): string | null {
   if (!isPlainObject(obj)) return 'not-an-object';
   return findDisallowedType(obj);
 }
@@ -370,6 +370,10 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       this.loaded.set(true);
 
       if (this.referenceData) {
+        // Safe to await inside this `try`: `applyReferenceOverlay` handles and reports its own
+        // errors and never rejects, so an overlay failure can neither be logged as "Failed to load
+        // facial diagram" nor run the catch block below — the primary diagram has already loaded
+        // successfully at this point (`loaded` is true) and only the overlay would have failed.
         await this.applyReferenceOverlay();
       }
     } catch (error) {
@@ -497,30 +501,67 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
    * removing the old overlay's objects first, then (if new data is present) reviving the new one's
    * objects through the same security allowlist used for the primary diagram (this is stored data
    * from another record, still untrusted input), marking them non-interactive and translucent, and
-   * sending them behind everything already on the canvas so the current visit's own annotations —
+   * inserting them behind everything already on the canvas so the current visit's own annotations —
    * including ones added after this call — always stay visibly on top.
+   *
+   * Never rejects: both call sites are effectively fire-and-forget (`ngOnChanges` calls it with
+   * `void`, and `ngAfterViewInit` awaits it only after the primary diagram has already loaded), so
+   * failures are caught and reported here, with a message that names the overlay specifically
+   * rather than being mistaken for a primary-diagram load failure.
    */
   private async applyReferenceOverlay(): Promise<void> {
-    this.referenceObjects.forEach((obj) => this.canvas.remove(obj));
-    this.referenceObjects = [];
+    try {
+      this.referenceObjects.forEach((obj) => this.canvas.remove(obj));
+      this.referenceObjects = [];
 
-    if (!this.referenceData || !Array.isArray(this.referenceData['objects'])) {
+      if (!this.referenceData || !Array.isArray(this.referenceData['objects'])) {
+        this.canvas.requestRenderAll();
+        return;
+      }
+
+      const stored = this.referenceData['objects'] as Record<string, unknown>[];
+      // Same allowlist as the primary diagram (this is another record's stored blob — still
+      // untrusted input), and the same per-object warning, so a reference blob that starts getting
+      // filtered leaves a diagnostic trail instead of silently rendering short.
+      const safe = stored.filter((obj) => {
+        const offendingType = findDisallowedDiagramType(obj);
+        if (offendingType !== null) {
+          console.warn(
+            'Ignoring unsupported reference object',
+            obj?.['type'],
+            'because of nested type',
+            offendingType
+          );
+        }
+        return offendingType === null;
+      });
+      const objects = await util.enlivenObjects(safe);
+      if (this.destroyed) return;
+
+      const overlay = objects.map((obj) => {
+        const fabricObj = obj as FabricObject;
+        fabricObj.set({ selectable: false, evented: false, opacity: 0.35 });
+        return fabricObj;
+      });
+      // One `insertAt(0, ...overlay)` rather than `add` + `sendObjectToBack` per object: the latter
+      // moves each object to index 0 in turn, which reverses the overlay's own internal stacking
+      // (`[o1,o2,o3]` ends up `[o3,o2,o1]`) and shows overlapping reference annotations layered
+      // the opposite way round from how they were originally drawn. Inserting the whole set at
+      // index 0 in one call keeps their original relative order while still placing all of them
+      // below everything already on the canvas.
+      // `insertAt(index: number, ...objects: FabricObject[]): number` — Collection mixin, exposed on
+      // Canvas via StaticCanvas (verified in the installed fabric@6.9.1:
+      // `node_modules/fabric/dist/src/Collection.d.ts` and `.../canvas/StaticCanvas.d.ts:145`).
+      if (overlay.length > 0) {
+        this.canvas.insertAt(0, ...overlay);
+      }
+      this.referenceObjects = overlay;
       this.canvas.requestRenderAll();
-      return;
+    } catch (error) {
+      console.error('Failed to load facial diagram reference overlay', error);
+      if (!this.destroyed) {
+        this.canvas.requestRenderAll();
+      }
     }
-
-    const stored = this.referenceData['objects'] as Record<string, unknown>[];
-    const safe = stored.filter((obj) => findDisallowedDiagramType(obj) === null);
-    const objects = await util.enlivenObjects(safe);
-    if (this.destroyed) return;
-
-    objects.forEach((obj) => {
-      const fabricObj = obj as FabricObject;
-      fabricObj.set({ selectable: false, evented: false, opacity: 0.35 });
-      this.canvas.add(fabricObj);
-      this.canvas.sendObjectToBack(fabricObj);
-      this.referenceObjects.push(fabricObj);
-    });
-    this.canvas.requestRenderAll();
   }
 }

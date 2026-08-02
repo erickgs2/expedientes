@@ -148,7 +148,14 @@ export class FacialDiagramViewsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission('valoracion', 'edit');
     const visits = await this.valoracionService.list(this.patientId);
-    this.pastVisits.set(visits.filter((v) => v.id !== this.valoracionId));
+    // The `patientId` check is defense in depth, not deduplication: `list()` is already
+    // patient-scoped server-side, so this filter is a no-op today. It exists so the ids that end up
+    // in the picker — and therefore the ids handed to the *unscoped* `GET /api/valoracion/:id` in
+    // `selectReference` — can never come from another patient, even if a future change repoints
+    // this list at an unscoped source. A wrong-patient leak already shipped once in this project.
+    this.pastVisits.set(
+      visits.filter((v) => v.id !== this.valoracionId && v.patientId === this.patientId)
+    );
   }
 
   protected dataFor(view: DiagramView): Record<string, unknown> | null {
@@ -173,15 +180,22 @@ export class FacialDiagramViewsComponent implements OnInit {
 
   protected async selectReference(id: string | null): Promise<void> {
     this.selectedReferenceId.set(id);
-    if (!id) {
-      this.referenceDiagrams.set([]);
-      return;
-    }
+    // Cleared *before* the await, not just on the `!id` path: while the fetch is in flight the
+    // picker already shows the newly-selected visit, so leaving the previous visit's overlay up
+    // would render one visit's annotations under another visit's label. The same clear is what a
+    // failed fetch (network error, deleted record) falls back to — the overlay then simply has
+    // nothing to show, as if no visit were selected, instead of stale data from the wrong visit.
+    this.referenceDiagrams.set([]);
+    if (!id) return;
     const visit = await this.valoracionService.get(id);
     // Discard a stale response: if the user picked something else while this request was in
     // flight, `selectedReferenceId()` will no longer match `id`, and applying this response now
     // would silently show the wrong past visit's data as if it were the current selection.
     if (this.selectedReferenceId() !== id) return;
+    // `GET /api/valoracion/:id` is not patient-scoped server-side. The picker only ever offers ids
+    // from this patient's own list, so this cannot trigger today — it asserts that invariant rather
+    // than trusting it, and on a mismatch shows nothing at all instead of another patient's data.
+    if (visit.patientId !== this.patientId) return;
     this.referenceDiagrams.set(visit.diagrams);
   }
 
