@@ -1288,10 +1288,12 @@ npx nx serve web
 In the browser: log in as admin, search for or create a patient, confirm it auto-navigates to
 `/historia-clinica` with that patient's name shown. Fill in a few fields across different
 sections, add two allergies (one typed fresh, one picked from autocomplete after typing a few
-letters of an allergy you added earlier for a different patient), save. Reload the page (or
-navigate to `/patients` and reselect the same patient) and confirm every field — including the
-allergy chips — is pre-filled exactly as saved. Edit a field, save again, and confirm the change
-persists. Confirm the toolbar's Spanish/English toggle translates every label on this page,
+letters of an allergy you added earlier for a different patient), save. Reload the page and
+confirm the same patient is still active (the selection is persisted for the browser session and
+re-fetched on load) and that every field — including the allergy chips — is pre-filled exactly as
+saved; navigating to `/patients` and reselecting the same patient must show the same. Edit a
+field, save again, and confirm the change persists. Clear a field, save, reload, and confirm it
+stays empty rather than reverting. Confirm the toolbar's Spanish/English toggle translates every label on this page,
 including the section headers and the Sí/No/No aplica options.
 
 - [ ] **Step 4: Commit**

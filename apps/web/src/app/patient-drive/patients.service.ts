@@ -13,6 +13,12 @@ export class PatientsService {
     ).then((r) => r.patients);
   }
 
+  getById(patientId: string): Promise<PatientSummary> {
+    return firstValueFrom(
+      this.http.get<{ patient: PatientSummary }>(`/api/patients/${patientId}`)
+    ).then((r) => r.patient);
+  }
+
   create(input: CreatePatientRequest): Promise<PatientSummary> {
     return firstValueFrom(
       this.http.post<{ patient: PatientSummary }>('/api/patients', input)
