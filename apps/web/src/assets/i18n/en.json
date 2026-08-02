@@ -119,6 +119,12 @@
       "deleteSelected": "Delete selected",
       "clearAll": "Clear all",
       "confirmClearAll": "Clear all annotations on the diagram? This cannot be undone.",
+      "colors": {
+        "black": "Black",
+        "red": "Red",
+        "blue": "Blue",
+        "green": "Green"
+      },
       "tools": {
         "select": "Select",
         "pencil": "Pencil",

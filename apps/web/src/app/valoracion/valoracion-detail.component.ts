@@ -91,6 +91,10 @@ export class ValoracionDetailComponent implements OnInit {
       this.loading.set(false);
       return;
     }
+    // Set when we redirect away on a patient mismatch, so `finally` leaves the loading state up for
+    // the real duration of the navigation (guards re-run and a lazy chunk loads) instead of briefly
+    // rendering the form and diagram bound to the wrong patient's visit.
+    let mismatched = false;
     try {
       const valoracion = await this.valoracionService.get(this.valoracionId);
       // `activePatientGuard` only proves *some* patient is active, not that it's this visit's
@@ -98,6 +102,7 @@ export class ValoracionDetailComponent implements OnInit {
       // otherwise let staff edit patient A's visit while the banner shows patient B. Bail out
       // before the form is ever populated with the mismatched record's data.
       if (valoracion.patientId !== this.patient()?.id) {
+        mismatched = true;
         this.router.navigate(['/valoracion']);
         return;
       }
@@ -109,7 +114,9 @@ export class ValoracionDetailComponent implements OnInit {
       });
       this.diagramData = valoracion.diagramData;
     } finally {
-      this.loading.set(false);
+      if (!mismatched) {
+        this.loading.set(false);
+      }
     }
   }
 
