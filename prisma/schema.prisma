@@ -140,6 +140,7 @@ model Valoracion {
   notas                 String?
 
   diagrams ValoracionDiagram[]
+  photos   Photo[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,4 +163,22 @@ model ValoracionDiagram {
   updatedAt    DateTime    @updatedAt
 
   @@unique([valoracionId, view])
+}
+
+enum PhotoTag {
+  BEFORE
+  AFTER
+}
+
+model Photo {
+  id           String     @id @default(uuid())
+  patientId    String
+  valoracionId String
+  valoracion   Valoracion @relation(fields: [valoracionId], references: [id])
+  tag          PhotoTag
+  filePath     String
+  createdAt    DateTime   @default(now())
+
+  @@index([patientId])
+  @@index([valoracionId])
 }
