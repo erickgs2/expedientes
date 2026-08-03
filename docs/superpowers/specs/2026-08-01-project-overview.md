@@ -85,8 +85,8 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
          a patient's visits — complete. The photo capture sub-project is now complete (both
          phases), and with it, all three Valoración sub-projects are complete.
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
-   (reuses Valoración's diagram tool and photo capture). Decomposed (2026-08-02) into four
-   ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
+   (reuses Valoración's diagram tool and photo capture). — complete. Decomposed (2026-08-02) into
+   four ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
    1. **Treatment catalog** — admin-managed treatment types, each with an editable consent-form
       text template. Foundational; nothing else in this module can reference a treatment type
       until this exists. — complete
@@ -130,11 +130,9 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
         only because consent signing is the first place a lost concurrent edit could discard
         clinically/legally meaningful data rather than just draft notes.
    4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
-      per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
-      by photo capture's Phase 1 final review) get resolved, not deferred further. Decomposed
-      (2026-08-02) into two ordered mini-cycles, each with its own brainstorm → spec → plan →
-      build, matching how Valoración's own diagram tool and photo capture were each built as
-      separate sub-projects:
+      per-treatment use within a Treatment visit. — complete. Decomposed (2026-08-02) into two
+      ordered mini-cycles, each with its own brainstorm → spec → plan → build, matching how
+      Valoración's own diagram tool and photo capture were each built as separate sub-projects:
       1. **Diagram reuse** — extract `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
          from their Valoración-specific coupling and wire the diagram tool into Treatment visits.
          — complete. Resolved the reference-source-abstraction concern raised by the note below: a
@@ -144,16 +142,36 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
          (verified via an explicit manual regression pass, twice). A new `TreatmentItemDiagram`
          model (mirroring `ValoracionDiagram`, keyed on `treatmentItemId`, `onDelete: Cascade` so
          deselecting a not-yet-consented item correctly takes its diagrams with it) backs the
-         Treatments side. **Design note (2026-08-03, from this sub-project's final review):** the
-         extracted `facial-diagram/` component folder still physically lives under
-         `apps/web/src/app/valoracion/`, which both `ValoracionDetailComponent` and
-         `TreatmentDiagramComponent` now import from across that module boundary — harmless today,
-         but the next sub-project (photo reuse) will add a *third* consumer of this pattern. Move
-         `facial-diagram/` to a neutral location (e.g. `apps/web/src/app/shared/facial-diagram/`)
-         during photo reuse's own work, before a third cross-module import makes the eventual move
-         a bigger diff — a pure path move, no logic change.
+         Treatments side.
       2. **Photo reuse** — extract `PhotoCaptureComponent`/`PhotoGalleryComponent` similarly,
-         including the `Photo` schema change needed to attach photos to a Treatment visit.
+         including the `Photo` schema change needed to attach photos to a Treatment visit. —
+         complete. A `PhotoDataSource` strategy object (mirroring `DiagramDataSource` exactly) and
+         a new `TreatmentItemPhoto` model (mirroring `Photo`, keyed on `treatmentItemId`,
+         `onDelete: Cascade` — applied correctly from this sub-project's first task, specifically
+         to avoid repeating the `TreatmentItemDiagram` FK mistake caught by the diagram mini-cycle's
+         final review) closed out the module. `facial-diagram/` and `photo/` both moved from
+         `apps/web/src/app/valoracion/` to `apps/web/src/app/shared/`, resolving the folder-location
+         note from the diagram mini-cycle — except `photo-timeline.component.ts`, the patient-level
+         cross-visit photo page, which the final review correctly flagged as NOT belonging in
+         `shared/` (it's a routed aggregator page depending on both `valoracion/` and `treatments/`
+         services, not a dependency-light reusable widget) and which was relocated again, to its own
+         `apps/web/src/app/photo-timeline/`, before the module was marked done. That timeline page
+         now merges Valoración and Treatment-item photos into one chronologically-sorted view,
+         permission-gated so a `treatments:view`-less user sees it exactly as before this
+         sub-project. **Design notes (2026-08-03, from this sub-project's final review, deferred
+         rather than fixed):**
+         - `/photos`'s route guard checks only `valoracion:view`, not `treatments:view` — a
+           hypothetical role with `treatments:view` but not `valoracion:view` (RBAC is fully
+           custom/admin-configurable, so this is constructible even though no such role exists
+           today) could never open a page that now shows their own data. Needs a deliberate
+           decision (widen the guard to either permission, or explicitly keep this a
+           Valoración-owned page) whenever this next comes up, not an oversight to carry forward
+           silently.
+         - `/api/files/[...path]` gates every stored image — Valoración photos, treatment photos,
+           and consent signatures alike — on `patients:view` alone, not a per-category permission.
+           Pre-existing (unchanged by this sub-project, true for consent signatures since that
+           module too), but now backs a second PHI-image category; a per-category permission check
+           on that route is the eventual fix, not required for this branch.
 
    **Note (2026-08-02, from the facial
    diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
@@ -177,6 +195,9 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    `patientId` only, with no Valoración in the path or query, so it's reusable by Treatments
    as-is. The extraction budget above is specifically for `PhotoCaptureComponent`/
    `PhotoGalleryComponent` (Phase 1) and the diagram tool's components, not the timeline.
+   **Resolved 2026-08-03 by the photo reuse mini-cycle above** — including the timeline itself,
+   which turned out to need its own (light) touch after all: not the coupling this note warned
+   about, but a home of its own once it started aggregating both modules' data.
 5. **Appointment management** — scheduling + WhatsApp notifications
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
