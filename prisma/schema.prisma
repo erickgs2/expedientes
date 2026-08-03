@@ -231,7 +231,7 @@ model Consent {
 model TreatmentItemDiagram {
   id              String        @id @default(uuid())
   treatmentItemId String
-  treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id])
+  treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
   view            DiagramView
   data            Json
   updatedAt       DateTime      @updatedAt

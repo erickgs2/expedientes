@@ -15,7 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { Canvas, FabricImage, FabricObject, IText, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
-import type { DiagramView } from '@expedientes/shared-types';
+import type { DiagramView, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
 
@@ -240,7 +240,7 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
 })
 export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input({ required: true }) view!: DiagramView;
-  @Input({ required: true }) permissionModule!: string;
+  @Input({ required: true }) permissionModule!: PermissionModule;
   @Input() initialDiagramData: Record<string, unknown> | null = null;
   @Input() referenceData: Record<string, unknown> | null = null;
 

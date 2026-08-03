@@ -5,7 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule } from '@jsverse/transloco';
-import type { DiagramView, DiagramViewRecord } from '@expedientes/shared-types';
+import type { DiagramView, DiagramViewRecord, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { FacialDiagramCanvasComponent } from './facial-diagram-canvas.component';
 import type { DiagramDataSource, DiagramReferenceOption } from './diagram-data-source';
@@ -123,7 +123,7 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
 })
 export class FacialDiagramViewsComponent implements OnInit {
   @Input({ required: true }) dataSource!: DiagramDataSource;
-  @Input({ required: true }) permissionModule!: string;
+  @Input({ required: true }) permissionModule!: PermissionModule;
   @Input() diagrams: DiagramViewRecord[] = [];
 
   private readonly auth = inject(AuthService);
