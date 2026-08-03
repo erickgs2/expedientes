@@ -137,6 +137,21 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       separate sub-projects:
       1. **Diagram reuse** — extract `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
          from their Valoración-specific coupling and wire the diagram tool into Treatment visits.
+         — complete. Resolved the reference-source-abstraction concern raised by the note below: a
+         `DiagramDataSource` strategy-object `@Input()` (list/get reference options, save) plus a
+         `permissionModule` `@Input()` replaced the hardcoded `ValoracionService`/`'valoracion'`
+         coupling, with `ValoracionDetailComponent`'s own usage kept fully behavior-preserving
+         (verified via an explicit manual regression pass, twice). A new `TreatmentItemDiagram`
+         model (mirroring `ValoracionDiagram`, keyed on `treatmentItemId`, `onDelete: Cascade` so
+         deselecting a not-yet-consented item correctly takes its diagrams with it) backs the
+         Treatments side. **Design note (2026-08-03, from this sub-project's final review):** the
+         extracted `facial-diagram/` component folder still physically lives under
+         `apps/web/src/app/valoracion/`, which both `ValoracionDetailComponent` and
+         `TreatmentDiagramComponent` now import from across that module boundary — harmless today,
+         but the next sub-project (photo reuse) will add a *third* consumer of this pattern. Move
+         `facial-diagram/` to a neutral location (e.g. `apps/web/src/app/shared/facial-diagram/`)
+         during photo reuse's own work, before a third cross-module import makes the eventual move
+         a bigger diff — a pure path move, no logic change.
       2. **Photo reuse** — extract `PhotoCaptureComponent`/`PhotoGalleryComponent` similarly,
          including the `Photo` schema change needed to attach photos to a Treatment visit.
 
@@ -147,7 +162,8 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    hardcode `valoracion.diagram.*` i18n keys and the `valoracion:edit` permission check. Reuse by
    Treatments is not drop-in; budget time to extract a reference-source abstraction (e.g. an
    `@Input() referenceSource` exposing `list()`/`get()` plus a label projector) before Treatments'
-   own brainstorm/plan assumes these components can be reused as-is. **Same note applies to photo
+   own brainstorm/plan assumes these components can be reused as-is. **Resolved 2026-08-03 by the
+   diagram reuse mini-cycle above.** **Same note applies to photo
    capture (2026-08-02, from its Phase 1 final review):** `PhotoCaptureComponent`/
    `PhotoGalleryComponent` repeat the identical pattern — both inject `ValoracionService` directly,
    take `valoracionId` as their identity, hardcode `valoracion:edit`/`valoracion:view` permission
