@@ -54,7 +54,7 @@ export const appRoutes: Routes = [
     path: 'photos',
     canActivate: [authGuard, permissionGuard('valoracion', 'view'), activePatientGuard],
     loadComponent: () =>
-      import('./shared/photo/photo-timeline.component').then(
+      import('./photo-timeline/photo-timeline.component').then(
         (m) => m.PhotoTimelineComponent
       ),
   },

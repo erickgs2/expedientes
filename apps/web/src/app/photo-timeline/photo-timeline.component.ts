@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { PhotoRecord, PhotoTag, TreatmentTimelinePhoto } from '@expedientes/shared-types';
-import { AuthService } from '../../auth/auth.service';
-import { ActivePatientStore } from '../../patient-drive/active-patient.store';
-import { ValoracionService } from '../../valoracion/valoracion.service';
-import { TreatmentPhotoService } from '../../treatments/treatment-photo.service';
+import { AuthService } from '../auth/auth.service';
+import { ActivePatientStore } from '../patient-drive/active-patient.store';
+import { ValoracionService } from '../valoracion/valoracion.service';
+import { TreatmentPhotoService } from '../treatments/treatment-photo.service';
 
 interface PhotoTimelineGroup {
   id: string;
