@@ -21,7 +21,7 @@ import { createPinMarker, createStarMarker, createXMarker } from './fabric-shape
 
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 600;
-const PLACEHOLDER_IMAGE_URLS: Record<DiagramView, string> = {
+export const PLACEHOLDER_IMAGE_URLS: Record<DiagramView, string> = {
   FRONT: '/assets/facial-diagram-placeholder.svg',
   LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
   RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',

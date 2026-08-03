@@ -73,6 +73,7 @@
     "@angular/router": "~22.0.4",
     "@jsverse/transloco": "^8.4.0",
     "@prisma/client": "^5.22.0",
+    "@react-pdf/renderer": "^4.5.1",
     "bcryptjs": "^3.0.3",
     "fabric": "^6.9.1",
     "jsonwebtoken": "^9.0.3",
