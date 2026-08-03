@@ -10,6 +10,7 @@ import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
 import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-views.component';
+import type { DiagramDataSource } from './facial-diagram/diagram-data-source';
 import { PhotoGalleryComponent } from './photo/photo-gallery.component';
 
 @Component({
@@ -63,8 +64,8 @@ import { PhotoGalleryComponent } from './photo/photo-gallery.component';
         </button>
       </form>
       <app-facial-diagram-views
-        [valoracionId]="valoracionId"
-        [patientId]="patientId"
+        [dataSource]="diagramDataSource"
+        permissionModule="valoracion"
         [diagrams]="diagrams"
       />
       <app-photo-gallery [valoracionId]="valoracionId" />
@@ -95,6 +96,7 @@ export class ValoracionDetailComponent implements OnInit {
   protected valoracionId = '';
   protected patientId = '';
   protected diagrams: ValoracionDiagram[] = [];
+  protected diagramDataSource!: DiagramDataSource;
 
   protected readonly form = this.fb.group({
     fecha: [''],
@@ -133,6 +135,35 @@ export class ValoracionDetailComponent implements OnInit {
         notas: valoracion.notas ?? '',
       });
       this.diagrams = valoracion.diagrams;
+      this.diagramDataSource = {
+        listReferenceOptions: async () => {
+          const visits = await this.valoracionService.list(this.patientId);
+          // The `patientId` check is defense in depth, not deduplication: `list()` is already
+          // patient-scoped server-side, so this filter is a no-op today. It exists so the ids that
+          // end up in the picker — and therefore the ids handed to the *unscoped*
+          // `GET /api/valoracion/:id` below — can never come from another patient, even if a
+          // future change repoints this list at an unscoped source. A wrong-patient leak already
+          // shipped once in this project.
+          return visits
+            .filter((v) => v.id !== this.valoracionId && v.patientId === this.patientId)
+            .map((v) => ({ id: v.id, label: v.fecha.substring(0, 10) }));
+        },
+        getReferenceViews: async (id: string) => {
+          const visit = await this.valoracionService.get(id);
+          // `GET /api/valoracion/:id` is not patient-scoped server-side. The picker only ever
+          // offers ids from this patient's own list, so this cannot trigger today — it asserts
+          // that invariant rather than trusting it, and on a mismatch shows nothing at all instead
+          // of another patient's data.
+          if (visit.patientId !== this.patientId) return [];
+          return visit.diagrams;
+        },
+        save: async (views) => {
+          const valoracion = await this.valoracionService.updateDiagrams(this.valoracionId, {
+            views,
+          });
+          return valoracion.diagrams;
+        },
+      };
     } catch (error) {
       // A thrown fetch (network blip, 500) leaves the identity check *unperformed*, not passed —
       // on a stale cross-patient URL that would otherwise render the gallery and diagrams for

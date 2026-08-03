@@ -240,6 +240,7 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
 })
 export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input({ required: true }) view!: DiagramView;
+  @Input({ required: true }) permissionModule!: string;
   @Input() initialDiagramData: Record<string, unknown> | null = null;
   @Input() referenceData: Record<string, unknown> | null = null;
 
@@ -278,7 +279,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   protected canvas!: Canvas;
 
   ngOnInit(): void {
-    this.canEdit = this.auth.hasPermission('valoracion', 'edit');
+    this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
   }
 
   ngOnChanges(changes: SimpleChanges): void {
