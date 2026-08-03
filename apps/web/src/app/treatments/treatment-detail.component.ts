@@ -239,7 +239,18 @@ export class TreatmentDetailComponent implements OnInit {
       const selectedItems = this.items()
         .filter((i) => i.selected)
         .map((i) => ({ treatmentTypeId: i.treatmentTypeId, notes: i.notes.trim() || null }));
-      await this.treatmentsService.updateItems(this.treatmentId, { items: selectedItems });
+      const treatment = await this.treatmentsService.updateItems(this.treatmentId, {
+        items: selectedItems,
+      });
+      const savedByTypeId = new Map(treatment.items.map((i) => [i.treatmentTypeId, i]));
+      this.items.update((current) =>
+        current.map((i) => {
+          const saved = savedByTypeId.get(i.treatmentTypeId);
+          return saved
+            ? { ...i, itemId: saved.id, hasConsent: saved.hasConsent }
+            : { ...i, itemId: null, hasConsent: false };
+        })
+      );
     } finally {
       this.saving.set(false);
     }

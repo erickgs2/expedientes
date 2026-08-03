@@ -22,7 +22,11 @@ const SIGNATURE_JPEG_QUALITY = 0.9;
       <h1>{{ 'treatments.consentTitle' | transloco }} — {{ item()?.treatmentTypeName }}</h1>
       @if (signedConsent(); as consent) {
         <div class="consent-text">{{ consent.consentText }}</div>
-        <img class="signature-image" [src]="signatureUrl(consent)" alt="" />
+        <img
+          class="signature-image"
+          [src]="signatureUrl(consent)"
+          [alt]="'treatments.signatureAlt' | transloco"
+        />
         <p class="signed-at">
           {{ 'treatments.signedAt' | transloco }} {{ consent.signedAt.substring(0, 10) }}
         </p>
@@ -163,8 +167,10 @@ export class ConsentSignComponent implements OnInit {
     this.ensureCanvasInitialized(canvas);
     this.drawing = true;
     const rect = canvas.getBoundingClientRect();
-    this.lastX = event.clientX - rect.left;
-    this.lastY = event.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    this.lastX = (event.clientX - rect.left) * scaleX;
+    this.lastY = (event.clientY - rect.top) * scaleY;
   }
 
   protected onPointerMove(event: PointerEvent, canvas: HTMLCanvasElement): void {
@@ -172,8 +178,10 @@ export class ConsentSignComponent implements OnInit {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
@@ -206,7 +214,9 @@ export class ConsentSignComponent implements OnInit {
         canvas.toBlob(resolve, 'image/jpeg', SIGNATURE_JPEG_QUALITY)
       );
       if (!blob) return;
-      const consent = await this.consentService.sign(this.itemId, blob);
+      const templateUpdatedAt = this.item()?.consentTemplateUpdatedAt;
+      if (!templateUpdatedAt) return;
+      const consent = await this.consentService.sign(this.itemId, blob, templateUpdatedAt);
       this.signedConsent.set(consent);
     } finally {
       this.signing.set(false);

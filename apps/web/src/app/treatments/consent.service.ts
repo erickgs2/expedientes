@@ -13,9 +13,10 @@ export class ConsentService {
     ).then((r) => r.item);
   }
 
-  sign(itemId: string, signature: Blob): Promise<Consent> {
+  sign(itemId: string, signature: Blob, templateUpdatedAt: string): Promise<Consent> {
     const formData = new FormData();
     formData.append('signature', signature, 'signature.jpg');
+    formData.append('templateUpdatedAt', templateUpdatedAt);
     return firstValueFrom(
       this.http.post<{ consent: Consent }>(`/api/treatment-items/${itemId}/consent`, formData)
     ).then((r) => r.consent);

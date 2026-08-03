@@ -195,6 +195,7 @@
     "signedAt": "Firmado el",
     "clearSignature": "Limpiar",
     "signAction": "Firmar",
-    "consentNotYetSigned": "Este tratamiento aún no tiene un consentimiento firmado."
+    "consentNotYetSigned": "Este tratamiento aún no tiene un consentimiento firmado.",
+    "signatureAlt": "Firma del paciente"
   }
 }

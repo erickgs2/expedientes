@@ -30,8 +30,22 @@ export const POST = withApiErrors(
 
     const formData = await request.formData();
     const signature = formData.get('signature');
+    const templateUpdatedAt = formData.get('templateUpdatedAt');
     if (!(signature instanceof Blob)) {
       return apiError('INVALID_INPUT', 'signature file is required', 400);
+    }
+    if (typeof templateUpdatedAt !== 'string' || !templateUpdatedAt) {
+      return apiError('INVALID_INPUT', 'templateUpdatedAt is required', 400);
+    }
+    // The client only ever supplies this to prove it saw the SAME template version being signed —
+    // never the text itself. If the catalog template changed since the page loaded, reject so the
+    // patient doesn't end up signing text they never actually read.
+    if (new Date(templateUpdatedAt).getTime() !== item.consentTemplateUpdatedAt.getTime()) {
+      return apiError(
+        'CONFLICT',
+        'The consent template has changed since this page was loaded — please reload and try again',
+        409
+      );
     }
 
     const buffer = Buffer.from(await signature.arrayBuffer());
@@ -55,6 +69,16 @@ export const POST = withApiErrors(
       patientId: result.patientId,
     });
 
-    return NextResponse.json({ consent: result.consent }, { status: 201 });
+    return NextResponse.json(
+      {
+        consent: {
+          id: result.consent.id,
+          consentText: result.consent.consentText,
+          signatureImagePath: result.consent.signatureImagePath,
+          signedAt: result.consent.signedAt,
+        },
+      },
+      { status: 201 }
+    );
   }
 );

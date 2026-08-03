@@ -15,5 +15,6 @@ export interface TreatmentItemDetail {
   notes: string | null;
   patientId: string;
   consentTemplate: string;
+  consentTemplateUpdatedAt: string;
   consent: Consent | null;
 }

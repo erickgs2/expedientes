@@ -195,6 +195,7 @@
     "signedAt": "Signed on",
     "clearSignature": "Clear",
     "signAction": "Sign",
-    "consentNotYetSigned": "This treatment does not have a signed consent yet."
+    "consentNotYetSigned": "This treatment does not have a signed consent yet.",
+    "signatureAlt": "Patient signature"
   }
 }

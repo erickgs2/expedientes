@@ -15,6 +15,7 @@ export async function getTreatmentItemDetail(id: string) {
     notes: item.notes,
     patientId: item.treatment.patientId,
     consentTemplate: item.treatmentType.consentTemplate,
+    consentTemplateUpdatedAt: item.treatmentType.updatedAt,
     consent: item.consent
       ? {
           id: item.consent.id,
