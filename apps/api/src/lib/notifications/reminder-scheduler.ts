@@ -2,12 +2,21 @@ import { runReminderSweep } from './appointment-notifications';
 
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+let sweeping = false;
+
 async function runSweepSafely(): Promise<void> {
+  // Guards against a slow sweep still running when the next 5-minute tick fires — `setInterval`
+  // does not wait for the previous callback to finish, and an overlapping sweep would re-query
+  // and double-send reminders for appointments the first sweep hasn't finished marking yet.
+  if (sweeping) return;
+  sweeping = true;
   try {
     await runReminderSweep();
   } catch (error) {
     // A failed sweep (e.g. a transient DB error) must not stop future sweeps from running.
     console.error('Reminder sweep failed', error);
+  } finally {
+    sweeping = false;
   }
 }
 

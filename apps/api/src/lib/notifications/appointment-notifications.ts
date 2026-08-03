@@ -1,6 +1,6 @@
 import { prisma } from '../prisma/client';
 import { writeAuditLogSafe } from '../audit/audit-log';
-import { sendTemplateMessage } from './whatsapp-client';
+import { sendTemplateMessage, isWhatsAppConfigured } from './whatsapp-client';
 import { toWhatsAppNumber } from './phone';
 
 const REMINDER_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -47,6 +47,18 @@ async function sendAppointmentMessage(
     return false;
   }
   if (!appointment) return false;
+
+  if (!isWhatsAppConfigured()) {
+    await writeAuditLogSafe({
+      userId: 'system',
+      action: 'create',
+      entity: 'AppointmentNotification',
+      entityId: appointment.id,
+      patientId: appointment.patientId,
+      metadata: { kind, success: false, reason: 'not_configured' },
+    });
+    return false;
+  }
 
   const to = toWhatsAppNumber(appointment.patient.phone);
   if (!to) {

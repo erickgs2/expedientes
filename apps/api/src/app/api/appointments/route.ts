@@ -73,9 +73,12 @@ export const POST = withApiErrors(async (request: NextRequest) => {
     patientId: appointment.patientId,
   });
 
-  // Best-effort: `sendConfirmation` never throws, so a WhatsApp failure can never turn a
-  // successful booking into a failed API response.
-  await sendConfirmation(appointment.id);
+  // Best-effort and non-blocking: `sendConfirmation` never throws (so a WhatsApp failure can
+  // never turn a successful booking into a failed API response), and this is deliberately NOT
+  // awaited so a slow WhatsApp API call can never delay the booking response either — safe here
+  // specifically because this app runs as a long-lived Docker container (`next start`), not a
+  // serverless function that could be frozen/killed before the promise settles.
+  void sendConfirmation(appointment.id);
 
   return NextResponse.json({ appointment }, { status: 201 });
 });

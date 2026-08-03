@@ -9,6 +9,14 @@
 #   JWT_SECRET         signing key for session tokens
 #   POSTGRES_USER      database user
 #   POSTGRES_PASSWORD  database password
+#
+# Optional environment for WhatsApp booking notifications (Meta Cloud API) — leave unset to run
+# without this feature; the app degrades gracefully and logs one warning instead of sending:
+#   WHATSAPP_ACCESS_TOKEN         Meta Cloud API access token
+#   WHATSAPP_PHONE_NUMBER_ID      Meta-assigned sender phone number id
+#   WHATSAPP_CONFIRMATION_TEMPLATE  approved template name for booking confirmations
+#   WHATSAPP_REMINDER_TEMPLATE      approved template name for reminders
+#   WHATSAPP_TEMPLATE_LANGUAGE      template's registered language code (e.g. es_MX)
 services:
   db:
     image: postgres:16
@@ -37,6 +45,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       STORAGE_ROOT: /data/storage
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_CONFIRMATION_TEMPLATE: ${WHATSAPP_CONFIRMATION_TEMPLATE:-appointment_confirmation}
+      WHATSAPP_REMINDER_TEMPLATE: ${WHATSAPP_REMINDER_TEMPLATE:-appointment_reminder}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_MX}
     volumes:
       - storage_data:/data/storage
     depends_on:

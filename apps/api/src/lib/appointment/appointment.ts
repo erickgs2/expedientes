@@ -93,7 +93,15 @@ export interface UpdateAppointmentData {
  */
 export async function updateAppointment(id: string, data: UpdateAppointmentData) {
   const { treatmentTypeIds, ...rest } = data;
-  await prisma.appointment.update({ where: { id }, data: rest });
+  await prisma.appointment.update({
+    where: { id },
+    data: {
+      ...rest,
+      // Rescheduling must re-arm the reminder — otherwise an appointment whose reminder already
+      // went out for its old time would silently never get one for the new time.
+      ...(rest.startTime !== undefined ? { reminderSentAt: null } : {}),
+    },
+  });
 
   if (treatmentTypeIds) {
     await prisma.$transaction([

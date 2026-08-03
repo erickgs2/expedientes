@@ -13,6 +13,10 @@ const WHATSAPP_API_VERSION = 'v21.0';
  */
 let warnedMissingCredentials = false;
 
+export function isWhatsAppConfigured(): boolean {
+  return !!(process.env['WHATSAPP_ACCESS_TOKEN'] && process.env['WHATSAPP_PHONE_NUMBER_ID']);
+}
+
 export async function sendTemplateMessage(
   to: string,
   templateName: string,
@@ -55,6 +59,7 @@ export async function sendTemplateMessage(
           ],
         },
       }),
+      signal: AbortSignal.timeout(10_000),
     }
   );
 
