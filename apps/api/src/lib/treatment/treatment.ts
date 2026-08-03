@@ -46,3 +46,30 @@ export async function getTreatment(id: string) {
     })),
   };
 }
+
+export interface TreatmentItemInput {
+  treatmentTypeId: string;
+  notes: string | null;
+}
+
+/**
+ * Replaces this treatment's entire item set in one transaction. Deleting-then-recreating (rather
+ * than a diff/upsert) is correct and simple for this sub-project — nothing yet references a
+ * `TreatmentItem` row's own id — but it will need to become a smarter diff once a later
+ * sub-project attaches consent/diagram/photo data to individual items, so a re-save here can't
+ * silently destroy that data by deleting the row it's attached to. Flagged for that sub-project's
+ * own design, not fixed here.
+ */
+export async function replaceTreatmentItems(treatmentId: string, items: TreatmentItemInput[]) {
+  await prisma.$transaction([
+    prisma.treatmentItem.deleteMany({ where: { treatmentId } }),
+    prisma.treatmentItem.createMany({
+      data: items.map((item) => ({
+        treatmentId,
+        treatmentTypeId: item.treatmentTypeId,
+        notes: item.notes,
+      })),
+    }),
+  ]);
+  return getTreatment(treatmentId);
+}
