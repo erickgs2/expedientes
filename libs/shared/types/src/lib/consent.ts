@@ -1,3 +1,5 @@
+import type { DiagramViewRecord } from './diagram.js';
+
 export interface Consent {
   id: string;
   consentText: string;
@@ -17,4 +19,5 @@ export interface TreatmentItemDetail {
   consentTemplate: string;
   consentTemplateUpdatedAt: string;
   consent: Consent | null;
+  diagrams: DiagramViewRecord[];
 }
