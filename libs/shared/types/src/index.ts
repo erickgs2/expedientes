@@ -8,3 +8,4 @@ export * from './lib/photo.js';
 export * from './lib/treatment.js';
 export * from './lib/diagram.js';
 export * from './lib/consent.js';
+export * from './lib/treatment-photo.js';

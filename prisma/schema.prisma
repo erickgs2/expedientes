@@ -215,6 +215,7 @@ model TreatmentItem {
   notes           String?
   consent         Consent?
   diagrams        TreatmentItemDiagram[]
+  photos          TreatmentItemPhoto[]
 
   @@unique([treatmentId, treatmentTypeId])
 }
@@ -237,4 +238,17 @@ model TreatmentItemDiagram {
   updatedAt       DateTime      @updatedAt
 
   @@unique([treatmentItemId, view])
+}
+
+model TreatmentItemPhoto {
+  id              String        @id @default(uuid())
+  treatmentItemId String
+  treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
+  patientId       String
+  tag             PhotoTag
+  filePath        String
+  createdAt       DateTime      @default(now())
+
+  @@index([treatmentItemId])
+  @@index([patientId])
 }
