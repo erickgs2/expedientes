@@ -9,7 +9,8 @@
       "users": "Usuarios",
       "roles": "Roles",
       "treatments": "Tratamientos",
-      "calendar": "Calendario"
+      "calendar": "Calendario",
+      "export": "Exportar"
     }
   },
   "common": {
@@ -236,5 +237,16 @@
       "CANCELLED": "Cancelada",
       "NO_SHOW": "No se presentó"
     }
+  },
+  "export": {
+    "title": "Exportar expediente",
+    "modules": {
+      "historiaClinica": "Historia clínica",
+      "valoracion": "Valoración",
+      "treatments": "Tratamientos"
+    },
+    "generate": "Generar PDF",
+    "generating": "Generando...",
+    "generateFailed": "No se pudo generar el PDF. Inténtelo de nuevo."
   }
 }

@@ -96,4 +96,9 @@ export const appRoutes: Routes = [
         (m) => m.AppointmentCalendarComponent
       ),
   },
+  {
+    path: 'export',
+    canActivate: [authGuard, permissionGuard('export', 'view'), activePatientGuard],
+    loadComponent: () => import('./export/export.component').then((m) => m.ExportComponent),
+  },
 ];

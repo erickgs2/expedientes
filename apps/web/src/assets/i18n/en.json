@@ -9,7 +9,8 @@
       "users": "Users",
       "roles": "Roles",
       "treatments": "Treatments",
-      "calendar": "Calendar"
+      "calendar": "Calendar",
+      "export": "Export"
     }
   },
   "common": {
@@ -236,5 +237,16 @@
       "CANCELLED": "Cancelled",
       "NO_SHOW": "No-show"
     }
+  },
+  "export": {
+    "title": "Export record",
+    "modules": {
+      "historiaClinica": "Medical History",
+      "valoracion": "Assessment",
+      "treatments": "Treatments"
+    },
+    "generate": "Generate PDF",
+    "generating": "Generating...",
+    "generateFailed": "Couldn't generate the PDF. Please try again."
   }
 }
