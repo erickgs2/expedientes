@@ -198,8 +198,8 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    **Resolved 2026-08-03 by the photo reuse mini-cycle above** — including the timeline itself,
    which turned out to need its own (light) touch after all: not the coupling this note warned
    about, but a home of its own once it started aggregating both modules' data.
-5. **Appointment management** — scheduling + WhatsApp notifications. Decomposed (2026-08-03) into
-   two ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
+5. **Appointment management** — scheduling + WhatsApp notifications. — complete. Decomposed
+   (2026-08-03) into two ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
    1. **Appointment core** — CRUD, calendar UI (day/week/month), status tracking (Scheduled,
       Confirmed, Completed, Cancelled, No-show), linking an appointment to planned treatment(s). —
       complete. New `Appointment`/`AppointmentTreatmentType` models (the latter cascade-deleted with
@@ -227,7 +227,52 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    2. **WhatsApp notifications** — booking confirmation + automatic reminder before the
       appointment, built on top of working appointments. Isolated into its own sub-project because
       it introduces two things nothing else in this app has yet: a real external API integration
-      (WhatsApp Business API, via Meta or Twilio) and a scheduled/background reminder mechanism.
+      (WhatsApp Business API, via Meta or Twilio) and a scheduled/background reminder mechanism. —
+      complete. Uses Meta's Cloud API directly (plain `fetch`, no SDK). A confirmation sends
+      (fire-and-forget, non-blocking) the moment an appointment is created; a reminder sends 2 hours
+      before `startTime`, driven by a `setInterval`-based sweep every 5 minutes, started once via
+      Next.js's `instrumentation.ts` server-startup hook — this app runs as a single long-lived
+      Docker container (`next start`), not serverless, so no queue/Redis was introduced.
+      `Appointment.reminderSentAt` gates the reminder so a failed send retries on the next sweep
+      until `startTime` passes, at which point it naturally stops. Every send attempt (success,
+      failure, or skipped-because-unconfigured) gets a `writeAuditLogSafe` entry — the only delivery
+      visibility this sub-project has, no new UI. Two of the four tasks needed one fix round each
+      during implementation (a phone-format bug — Meta's API wants bare digits, no leading `+` — and
+      an unguarded DB lookup that could turn a successful booking into a failed API response). The
+      final whole-branch review then found one Critical issue the task-level reviews structurally
+      couldn't see — `docker-compose.prod.yml` never passed the five `WHATSAPP_*` env vars to the
+      `api` container, so the feature would have shipped as a permanent silent no-op in the only
+      production deployment path — plus four Important issues (an unconfigured/no-op send was
+      recorded as a successful delivery in the audit log; the confirmation send was awaited with no
+      fetch timeout, letting a hung Meta endpoint stall the booking response; overlapping
+      `setInterval` sweeps could double-send a reminder; rescheduling an appointment after its
+      reminder already fired never re-armed it, contradicting the design spec's own claim that
+      editing "reschedules the reminder for free"). All five fixed in one consolidated wave, verified
+      clean. **Design notes (2026-08-03, from the final review, deferred rather than fixed — none are
+      merge-blocking):**
+      - `toWhatsAppNumber` (`apps/api/src/lib/notifications/phone.ts`) has no upper bound on digit
+        count and doesn't strip common Mexican long-distance prefixes (`044`/`045`/`01`) before
+        deciding whether a country code is already present — a number like `044 55 1234 5678` passes
+        through as `0445512345678`, which is not a valid WhatsApp number. Will surface as an
+        observable `reason: 'send_failed'` audit row, not silent data corruption, but worth
+        tightening before this sees real patient phone data at volume.
+      - **Nothing in this sub-project has been verified against a real Meta send** — there is no
+        WhatsApp sandbox in this environment. The request shape, phone normalization, and eligibility
+        queries were all verified by hand-tracing and DB-level checks, not a live delivery. The first
+        real send in production should be watched end-to-end via the `AppointmentNotification` audit
+        rows, specifically checking: whether Mexican numbers need the historical `1` after the
+        country code (`521…`) that Meta has inconsistently required/normalized across API versions;
+        whether the Meta-authored templates use positional (`{{1}}`) or named parameters (this code
+        only sends positional); and that the template's approved language matches
+        `WHATSAPP_TEMPLATE_LANGUAGE`. Any of the three being wrong fails 100% of sends, not
+        partially.
+      - `instrumentation.ts` doesn't guard on `process.env.NEXT_RUNTIME !== 'nodejs'` before starting
+        the scheduler — harmless today (no edge routes exist in this app), but would start a
+        Prisma-dependent sweep loop on the edge runtime if one is ever added.
+      - A booking made inside its own 2-hour reminder window (e.g. booked 40 minutes before start)
+        receives the confirmation and the reminder within minutes of each other — near-duplicate
+        messages. The design deliberately allows the short-notice reminder itself; it just doesn't
+        address this specific overlap with the confirmation.
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
 
