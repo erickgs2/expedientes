@@ -7,7 +7,8 @@
     "nav": {
       "patients": "Patients",
       "users": "Users",
-      "roles": "Roles"
+      "roles": "Roles",
+      "treatments": "Treatments"
     }
   },
   "common": {
@@ -162,5 +163,16 @@
     "title": "Photo timeline",
     "navLink": "Photo timeline",
     "empty": "No photos recorded"
+  },
+  "treatmentCatalog": {
+    "title": "Treatment catalog",
+    "new": "New treatment",
+    "name": "Name",
+    "consentTemplate": "Consent template",
+    "active": "Active",
+    "form": {
+      "newTitle": "New treatment",
+      "editTitle": "Edit treatment"
+    }
   }
 }

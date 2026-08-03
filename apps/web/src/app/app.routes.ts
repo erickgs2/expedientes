@@ -23,6 +23,14 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./rbac-admin/roles/role-list.component').then((m) => m.RoleListComponent),
   },
   {
+    path: 'admin/treatments',
+    canActivate: [authGuard, permissionGuard('treatments', 'view')],
+    loadComponent: () =>
+      import('./treatments/treatment-type-list.component').then(
+        (m) => m.TreatmentTypeListComponent
+      ),
+  },
+  {
     path: 'historia-clinica',
     canActivate: [authGuard, permissionGuard('historia-clinica', 'view'), activePatientGuard],
     loadComponent: () =>

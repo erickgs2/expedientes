@@ -36,6 +36,9 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
           <a *appHasPermission="'rbac-admin:view'" mat-button routerLink="/admin/roles">
             {{ 'shell.nav.roles' | transloco }}
           </a>
+          <a *appHasPermission="'treatments:view'" mat-button routerLink="/admin/treatments">
+            {{ 'shell.nav.treatments' | transloco }}
+          </a>
         </nav>
       }
       <span class="spacer"></span>
