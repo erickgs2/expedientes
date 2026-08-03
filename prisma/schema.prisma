@@ -55,6 +55,7 @@ model Patient {
   historiaClinica HistoriaClinica?
   valoraciones    Valoracion[]
   treatments      Treatment[]
+  appointments    Appointment[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -185,13 +186,14 @@ model Photo {
 }
 
 model TreatmentType {
-  id              String   @id @default(uuid())
+  id              String                     @id @default(uuid())
   name            String
   consentTemplate String
-  active          Boolean  @default(true)
+  active          Boolean                    @default(true)
   items           TreatmentItem[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  appointments    AppointmentTreatmentType[]
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 }
 
 model Treatment {
@@ -251,4 +253,38 @@ model TreatmentItemPhoto {
 
   @@index([treatmentItemId])
   @@index([patientId])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id              String                     @id @default(uuid())
+  patientId       String
+  patient         Patient                    @relation(fields: [patientId], references: [id])
+  startTime       DateTime
+  durationMinutes Int
+  status          AppointmentStatus          @default(SCHEDULED)
+  notes           String?
+  treatmentTypes  AppointmentTreatmentType[]
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([patientId])
+  @@index([startTime])
+}
+
+model AppointmentTreatmentType {
+  id              String        @id @default(uuid())
+  appointmentId   String
+  appointment     Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  treatmentTypeId String
+  treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id])
+
+  @@unique([appointmentId, treatmentTypeId])
 }
