@@ -273,7 +273,29 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
         receives the confirmation and the reminder within minutes of each other — near-duplicate
         messages. The design deliberately allows the short-notice reminder itself; it just doesn't
         address this specific overlap with the confirmation.
-6. **Exportar** — PDF export, selectable modules
+6. **Exportar** — PDF export, selectable modules. — complete. Three independently selectable
+   modules (Historia Clínica, Valoración, Treatments — no Photos, no Appointments), all checked by
+   default. Facial-diagram annotations are rendered to PNG entirely client-side (reusing the
+   existing, security-reviewed Fabric.js allowlist against a detached canvas) and uploaded
+   alongside the export request; the backend re-fetches every selected module's own data directly,
+   embeds those images plus consent-signature images read from disk, and builds the PDF with
+   `@react-pdf/renderer` (new dependency — this app's first use of JSX/React as a document
+   renderer, even though it has no rendered React pages otherwise). Nothing is persisted — a
+   synchronous request/response only. The final review found and fixed two real bugs (the PDF was
+   printing raw stored enum tokens like `femenino`/`no_aplica` instead of display labels, and an
+   untruncated ISO timestamp for date of birth; the diagram-image upload had no
+   size/count/content-type validation, unlike every other binary-upload route in this app). **Design
+   note (2026-08-03, from the final review, spec corrected rather than code changed):** the
+   original design spec claimed `export:create` alone was sufficient to generate an export,
+   without needing `historia-clinica:view`/`valoracion:view`/`treatments:view` — this turned out to
+   be inaccurate: the frontend still fetches Valoración/Treatment data (to render their diagrams)
+   through those modules' own existing, permission-gated endpoints, so a role with only
+   `export:*` gets a 403 partway through and the export silently fails. The simplest fix was
+   accepting this as the real, and reasonable, requirement (a records-generation role needs read
+   access to the data it's generating documents from, matching how this feature works in practice)
+   rather than building a new `export:create`-gated data endpoint just to preserve the original
+   claim. If a genuinely view-less "export only" role is ever needed, that endpoint is the way to
+   get there.
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
 
 ## Requirements captured for future modules (not yet designed in detail)

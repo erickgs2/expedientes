@@ -108,13 +108,24 @@ this runs entirely on the backend).
 
 ### Permissions
 
-Reuses the already-seeded `export:view`/`export:create` module — no seed changes. This is the
-sole gate: the export endpoint does not additionally require `historia-clinica:view`/
-`valoracion:view`/`treatments:view` on top of `export:create` for the modules being exported.
-`export` is modeled as its own independent module in this app's RBAC (matching how it's already
-seeded), covering a role built specifically to generate documents (e.g. for records/compliance
-staff) without necessarily granting full day-to-day access to every underlying module through
-its own UI.
+Reuses the already-seeded `export:view`/`export:create` module — no seed changes. `export:view`
+gates the page, `export:create` gates the backend endpoint itself.
+
+**Correction (2026-08-03, from the final implementation review):** an earlier draft of this
+section claimed `export:create` alone was sufficient — that the endpoint would not additionally
+require `historia-clinica:view`/`valoracion:view`/`treatments:view`. That turned out to be
+inaccurate given the chosen architecture: the frontend renders facial-diagram annotations to PNG
+client-side before submitting the export request, which means it fetches each Valoración/Treatment
+visit's data through those modules' own existing, permission-gated endpoints first. A role holding
+only `export:*` gets a 403 partway through that fetch and the export fails. In practice, generating
+an export therefore requires `export:create` **plus** `valoracion:view`/`treatments:view` for
+whichever modules are checked (Historia Clínica has no diagrams and is fetched entirely
+server-side, so it has no such requirement). This is treated as the accepted, reasonable behavior
+rather than a gap to close — a records-generation role needing read access to the data it
+generates documents from is unsurprising. A genuinely view-less "export only" role is not supported
+by this sub-project; it would need a new `export:create`-gated backend endpoint that supplies
+diagram data directly, bypassing `valoracion:view`/`treatments:view` entirely — deferred unless
+that need actually surfaces.
 
 ## Error Handling
 
