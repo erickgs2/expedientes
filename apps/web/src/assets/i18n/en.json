@@ -196,6 +196,7 @@
     "clearSignature": "Clear",
     "signAction": "Sign",
     "consentNotYetSigned": "This treatment does not have a signed consent yet.",
-    "signatureAlt": "Patient signature"
+    "signatureAlt": "Patient signature",
+    "diagramTitle": "Diagram"
   }
 }
