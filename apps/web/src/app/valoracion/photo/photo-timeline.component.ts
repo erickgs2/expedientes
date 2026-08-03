@@ -18,6 +18,8 @@ interface PhotoTimelineGroup {
     <h1>{{ 'photoTimeline.title' | transloco }} — {{ patient()?.fullName }}</h1>
     @if (loading()) {
       <p>{{ 'common.loading' | transloco }}</p>
+    } @else if (loadFailed()) {
+      <p class="load-error">{{ 'common.loadError' | transloco }}</p>
     } @else {
       @for (group of groups(); track group.valoracionId) {
         <section class="timeline-group">
@@ -38,6 +40,9 @@ interface PhotoTimelineGroup {
   `,
   styles: [
     `
+      .load-error {
+        color: var(--mat-sys-error, #b3261e);
+      }
       .timeline-group {
         margin-bottom: 24px;
       }
@@ -76,6 +81,7 @@ export class PhotoTimelineComponent implements OnInit {
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
+  protected readonly loadFailed = signal(false);
   protected readonly groups = signal<PhotoTimelineGroup[]>([]);
 
   async ngOnInit(): Promise<void> {
@@ -98,6 +104,12 @@ export class PhotoTimelineComponent implements OnInit {
         .filter((group) => group.photos.length > 0)
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
       this.groups.set(groups);
+    } catch (error) {
+      // A thrown fetch must never fall through to render as if the patient simply has no photo
+      // history — this page exists so clinicians can judge change over time, and a silent empty
+      // state here would read as "no prior photos" when the real answer is "couldn't load".
+      console.error('Failed to load photo timeline', error);
+      this.loadFailed.set(true);
     } finally {
       this.loading.set(false);
     }
