@@ -131,7 +131,14 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
         clinically/legally meaningful data rather than just draft notes.
    4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
       per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
-      by photo capture's Phase 1 final review) get resolved, not deferred further.
+      by photo capture's Phase 1 final review) get resolved, not deferred further. Decomposed
+      (2026-08-02) into two ordered mini-cycles, each with its own brainstorm → spec → plan →
+      build, matching how Valoración's own diagram tool and photo capture were each built as
+      separate sub-projects:
+      1. **Diagram reuse** — extract `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
+         from their Valoración-specific coupling and wire the diagram tool into Treatment visits.
+      2. **Photo reuse** — extract `PhotoCaptureComponent`/`PhotoGalleryComponent` similarly,
+         including the `Photo` schema change needed to attach photos to a Treatment visit.
 
    **Note (2026-08-02, from the facial
    diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
