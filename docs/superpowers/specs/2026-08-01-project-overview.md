@@ -53,7 +53,13 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
 
 1. **Foundation** — Nx monorepo, auth/RBAC, i18n, Material theming, Patient Drive shell,
    audit log, file storage, deployment scaffold. (see
-   `2026-08-01-foundation-design.md`) — complete
+   `2026-08-01-foundation-design.md`) — complete. **Known gap (2026-08-02, flagged by photo
+   capture's Phase 2 final review):** `AuthService.logout()` does not clear
+   `ActivePatientStore`/its `sessionStorage` key, so a second user logging in on the same browser
+   session can silently inherit the previous user's active patient via `activePatientGuard`. Not a
+   new access grant (any `patients:view` user could already look that patient up), but worth a
+   small fix — `activePatient.clear()` in `logout()` — the next time Foundation-level auth code is
+   touched.
 2. **Historia Clínica** — general patient intake record — complete
 3. **Valoración** — facial assessment. Decomposed (2026-08-02) into three independent
    sub-projects, each with its own brainstorm → spec → plan → cycle, build order as listed:
@@ -93,7 +99,12 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    `/api/valoracion/[id]/photos`. Additionally, `Photo.valoracionId` is a **required** FK to
    `Valoracion` — Treatments' own photo capture will need a schema change (nullable
    `valoracionId` + a `treatmentId`, or a polymorphic owner), not just a component-level
-   abstraction, before it can attach photos to a Treatment visit.
+   abstraction, before it can attach photos to a Treatment visit. **Update (2026-08-02, from photo
+   capture's Phase 2 final review):** the Phase 2 patient-photo-timeline endpoint
+   (`GET /api/patients/[patientId]/photos`) does NOT share this coupling — it's keyed on
+   `patientId` only, with no Valoración in the path or query, so it's reusable by Treatments
+   as-is. The extraction budget above is specifically for `PhotoCaptureComponent`/
+   `PhotoGalleryComponent` (Phase 1) and the diagram tool's components, not the timeline.
 5. **Appointment management** — scheduling + WhatsApp notifications
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
