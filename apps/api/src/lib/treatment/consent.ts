@@ -4,7 +4,7 @@ import { saveFile } from '../storage/file-storage';
 export async function getTreatmentItemDetail(id: string) {
   const item = await prisma.treatmentItem.findUnique({
     where: { id },
-    include: { treatmentType: true, treatment: true, consent: true },
+    include: { treatmentType: true, treatment: true, consent: true, diagrams: true },
   });
   if (!item) return null;
   return {
@@ -24,6 +24,11 @@ export async function getTreatmentItemDetail(id: string) {
           signedAt: item.consent.signedAt,
         }
       : null,
+    diagrams: item.diagrams.map((d) => ({
+      view: d.view,
+      data: d.data as Record<string, unknown>,
+      updatedAt: d.updatedAt,
+    })),
   };
 }
 
