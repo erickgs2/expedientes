@@ -15,9 +15,9 @@ export const PATCH = withApiErrors(
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
 
-    // Unlike a plain `update`, `deleteMany`/`createMany` don't throw on a nonexistent parent id —
-    // `deleteMany` for a bad `treatmentId` just deletes zero rows, so without this explicit check
-    // a PATCH to a made-up id would silently succeed having done nothing, instead of 404ing.
+    // Unlike a plain `update`, `deleteMany`/`upsert` don't throw on a nonexistent parent id —
+    // without this explicit check a PATCH to a made-up id would silently succeed having done
+    // nothing, instead of 404ing.
     const existing = await getTreatment(id);
     if (!existing) return apiError('NOT_FOUND', 'Treatment not found', 404);
 
@@ -33,9 +33,26 @@ export const PATCH = withApiErrors(
         return apiError('INVALID_INPUT', 'notes must be a string or null', 400);
       }
     }
-    const treatmentTypeIds = body.items.map((item) => item.treatmentTypeId);
+    const treatmentTypeIds = body.items.map((item) => item.treatmentTypeId as string);
     if (new Set(treatmentTypeIds).size !== treatmentTypeIds.length) {
       return apiError('INVALID_INPUT', 'Duplicate treatmentTypeId in items', 400);
+    }
+
+    // A treatment type with a signed consent can never be dropped from the visit's selection —
+    // the frontend already locks its checkbox, but this is the authoritative, server-side
+    // enforcement: the UI lock alone would not stop a direct API call.
+    const submittedTypeIds = new Set(treatmentTypeIds);
+    const removedSignedItems = existing.items.filter(
+      (item) => item.hasConsent && !submittedTypeIds.has(item.treatmentTypeId)
+    );
+    if (removedSignedItems.length > 0) {
+      return apiError(
+        'INVALID_INPUT',
+        `Cannot remove treatment type(s) with a signed consent: ${removedSignedItems
+          .map((item) => item.treatmentTypeId)
+          .join(', ')}`,
+        400
+      );
     }
 
     const treatment = await replaceTreatmentItems(

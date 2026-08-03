@@ -31,7 +31,7 @@ export async function createTreatment(patientId: string, fecha?: Date) {
 export async function getTreatment(id: string) {
   const treatment = await prisma.treatment.findUnique({
     where: { id },
-    include: { items: { include: { treatmentType: true } } },
+    include: { items: { include: { treatmentType: true, consent: true } } },
   });
   if (!treatment) return null;
   return {
@@ -43,6 +43,7 @@ export async function getTreatment(id: string) {
       treatmentTypeId: i.treatmentTypeId,
       treatmentTypeName: i.treatmentType.name,
       notes: i.notes,
+      hasConsent: !!i.consent,
     })),
   };
 }
@@ -53,23 +54,39 @@ export interface TreatmentItemInput {
 }
 
 /**
- * Replaces this treatment's entire item set in one transaction. Deleting-then-recreating (rather
- * than a diff/upsert) is correct and simple for this sub-project — nothing yet references a
- * `TreatmentItem` row's own id — but it will need to become a smarter diff once a later
- * sub-project attaches consent/diagram/photo data to individual items, so a re-save here can't
- * silently destroy that data by deleting the row it's attached to. Flagged for that sub-project's
- * own design, not fixed here.
+ * Replaces this treatment's item set with the submitted one, preserving each surviving item's own
+ * `id` (and therefore any `Consent` row attached to it) via an upsert keyed on
+ * `(treatmentId, treatmentTypeId)`, rather than the delete-then-recreate approach used before
+ * consents existed. Only items genuinely absent from `items` are deleted — callers are expected to
+ * have already confirmed none of those have a signed consent (see the item-save route), since this
+ * function does not re-check that itself.
  */
 export async function replaceTreatmentItems(treatmentId: string, items: TreatmentItemInput[]) {
-  await prisma.$transaction([
-    prisma.treatmentItem.deleteMany({ where: { treatmentId } }),
-    prisma.treatmentItem.createMany({
-      data: items.map((item) => ({
-        treatmentId,
-        treatmentTypeId: item.treatmentTypeId,
-        notes: item.notes,
-      })),
-    }),
-  ]);
+  const existingItems = await prisma.treatmentItem.findMany({
+    where: { treatmentId },
+    select: { id: true, treatmentTypeId: true },
+  });
+  const submittedTypeIds = new Set(items.map((item) => item.treatmentTypeId));
+  const toDeleteIds = existingItems
+    .filter((item) => !submittedTypeIds.has(item.treatmentTypeId))
+    .map((item) => item.id);
+
+  const operations = [
+    ...(toDeleteIds.length > 0
+      ? [prisma.treatmentItem.deleteMany({ where: { id: { in: toDeleteIds } } })]
+      : []),
+    ...items.map((item) =>
+      prisma.treatmentItem.upsert({
+        where: {
+          treatmentId_treatmentTypeId: { treatmentId, treatmentTypeId: item.treatmentTypeId },
+        },
+        update: { notes: item.notes },
+        create: { treatmentId, treatmentTypeId: item.treatmentTypeId, notes: item.notes },
+      })
+    ),
+  ];
+  if (operations.length > 0) {
+    await prisma.$transaction(operations);
+  }
   return getTreatment(treatmentId);
 }
