@@ -36,10 +36,16 @@ async function sendAppointmentMessage(
   templateName: string,
   kind: NotificationKind
 ): Promise<boolean> {
-  const appointment = await prisma.appointment.findUnique({
-    where: { id: appointmentId },
-    include: { patient: true },
-  });
+  let appointment;
+  try {
+    appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { patient: true },
+    });
+  } catch (error) {
+    console.error(`Failed to look up appointment ${appointmentId} for WhatsApp ${kind}`, error);
+    return false;
+  }
   if (!appointment) return false;
 
   const to = toWhatsAppNumber(appointment.patient.phone);
