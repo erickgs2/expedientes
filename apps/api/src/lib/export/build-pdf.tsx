@@ -79,8 +79,18 @@ function HistoriaClinicaSection({
       <Text style={styles.sectionTitle}>{l.sectionTitle}</Text>
       <Text style={styles.subsectionTitle}>{l.personalInfo}</Text>
       <Field label={l.fields.ocupacion} value={historia.ocupacion} />
-      <Field label={l.fields.fechaNacimiento} value={historia.fechaNacimiento} />
-      <Field label={l.fields.sexo} value={historia.sexo} />
+      <Field
+        label={l.fields.fechaNacimiento}
+        value={historia.fechaNacimiento ? historia.fechaNacimiento.substring(0, 10) : null}
+      />
+      <Field
+        label={l.fields.sexo}
+        value={
+          historia.sexo
+            ? (l.sexoOptions[historia.sexo as keyof typeof l.sexoOptions] ?? historia.sexo)
+            : null
+        }
+      />
       <Field label={l.fields.alergias} value={historia.allergyNames.join(', ') || null} />
       <Field label={l.fields.queQuiereElPaciente} value={historia.queQuiereElPaciente} />
       <Field label={l.fields.queNecesitaElPaciente} value={historia.queNecesitaElPaciente} />
@@ -99,7 +109,16 @@ function HistoriaClinicaSection({
       <Field label={l.fields.consumoDrogas} value={historia.consumoDrogas} />
       <Field label={l.fields.tipoFrecuenciaEjercicio} value={historia.tipoFrecuenciaEjercicio} />
       <Field label={l.fields.vacunas} value={historia.vacunas} />
-      <Field label={l.fields.posibilidadEmbarazo} value={historia.posibilidadEmbarazo} />
+      <Field
+        label={l.fields.posibilidadEmbarazo}
+        value={
+          historia.posibilidadEmbarazo
+            ? (l.posibilidadEmbarazoOptions[
+                historia.posibilidadEmbarazo as keyof typeof l.posibilidadEmbarazoOptions
+              ] ?? historia.posibilidadEmbarazo)
+            : null
+        }
+      />
       <Text style={styles.subsectionTitle}>{l.familyHistory}</Text>
       <Field
         label={l.fields.antecedentesHeredofamiliares}

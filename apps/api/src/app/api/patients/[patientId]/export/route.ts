@@ -8,6 +8,13 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { isPng } from '../../../../../lib/storage/image-signature';
+
+// App Router route handlers have no built-in body-size limit. A rendered 480x600 diagram PNG is
+// well under 1 MB; this ceiling is generous headroom, not a tight fit. The count cap bounds how
+// many diagrams one export request can plausibly need to embed.
+const MAX_DIAGRAM_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_DIAGRAM_IMAGES = 100;
 
 function isValidModulesSelection(value: unknown): value is ExportModulesSelection {
   if (typeof value !== 'object' || value === null) return false;
@@ -55,11 +62,27 @@ export const POST = withApiErrors(
     }
 
     const diagramImages = new Map<string, Buffer>();
+    let diagramImageCount = 0;
     for (const [key, value] of formData.entries()) {
       if (key === 'modules' || key === 'language') continue;
-      if (value instanceof File) {
-        diagramImages.set(key, Buffer.from(await value.arrayBuffer()));
+      if (!(value instanceof File)) continue;
+
+      diagramImageCount++;
+      if (diagramImageCount > MAX_DIAGRAM_IMAGES) {
+        return apiError('INVALID_INPUT', 'Too many diagram images', 400);
       }
+
+      const buffer = Buffer.from(await value.arrayBuffer());
+      if (buffer.length > MAX_DIAGRAM_IMAGE_BYTES) {
+        return apiError('INVALID_INPUT', 'Diagram image is too large', 400);
+      }
+      // Never trust the client's declared content-type — verify the actual bytes, the same
+      // discipline this project applies to any other untrusted upload.
+      if (!isPng(buffer)) {
+        return apiError('INVALID_INPUT', 'Diagram image must be a PNG', 400);
+      }
+
+      diagramImages.set(key, buffer);
     }
 
     const pdfBuffer = await buildExportPdf(data, diagramImages, languageRaw);

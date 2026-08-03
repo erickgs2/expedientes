@@ -27,6 +27,8 @@ export interface PdfLabels {
       posibilidadEmbarazo: string;
       antecedentesHeredofamiliares: string;
     };
+    sexoOptions: { femenino: string; masculino: string; otro: string };
+    posibilidadEmbarazoOptions: { si: string; no: string; no_aplica: string };
   };
   valoracion: { sectionTitle: string; visitOn: string; notes: string };
   treatments: { sectionTitle: string; visitOn: string; notes: string; consent: string };
@@ -62,6 +64,8 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
         posibilidadEmbarazo: 'Posibilidad de embarazo',
         antecedentesHeredofamiliares: 'Antecedentes heredofamiliares',
       },
+      sexoOptions: { femenino: 'Femenino', masculino: 'Masculino', otro: 'Otro' },
+      posibilidadEmbarazoOptions: { si: 'Sí', no: 'No', no_aplica: 'No aplica' },
     },
     valoracion: { sectionTitle: 'Valoración', visitOn: 'Visita del', notes: 'Notas' },
     treatments: {
@@ -100,6 +104,8 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
         posibilidadEmbarazo: 'Possibility of pregnancy',
         antecedentesHeredofamiliares: 'Family medical history',
       },
+      sexoOptions: { femenino: 'Female', masculino: 'Male', otro: 'Other' },
+      posibilidadEmbarazoOptions: { si: 'Yes', no: 'No', no_aplica: 'Not applicable' },
     },
     valoracion: { sectionTitle: 'Assessment', visitOn: 'Visit on', notes: 'Notes' },
     treatments: {
