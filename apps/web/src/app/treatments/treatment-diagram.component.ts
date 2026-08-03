@@ -4,8 +4,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { TreatmentItemDetail } from '@expedientes/shared-types';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
-import { FacialDiagramViewsComponent } from '../valoracion/facial-diagram/facial-diagram-views.component';
-import type { DiagramDataSource } from '../valoracion/facial-diagram/diagram-data-source';
+import { FacialDiagramViewsComponent } from '../shared/facial-diagram/facial-diagram-views.component';
+import type { DiagramDataSource } from '../shared/facial-diagram/diagram-data-source';
 import { TreatmentDiagramService } from './treatment-diagram.service';
 
 @Component({

@@ -9,9 +9,10 @@ import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from './valoracion.service';
-import { FacialDiagramViewsComponent } from './facial-diagram/facial-diagram-views.component';
-import type { DiagramDataSource } from './facial-diagram/diagram-data-source';
-import { PhotoGalleryComponent } from './photo/photo-gallery.component';
+import { FacialDiagramViewsComponent } from '../shared/facial-diagram/facial-diagram-views.component';
+import type { DiagramDataSource } from '../shared/facial-diagram/diagram-data-source';
+import { PhotoGalleryComponent } from '../shared/photo/photo-gallery.component';
+import type { PhotoDataSource } from '../shared/photo/photo-data-source';
 
 @Component({
   selector: 'app-valoracion-detail',
@@ -68,7 +69,7 @@ import { PhotoGalleryComponent } from './photo/photo-gallery.component';
         permissionModule="valoracion"
         [diagrams]="diagrams"
       />
-      <app-photo-gallery [valoracionId]="valoracionId" />
+      <app-photo-gallery [dataSource]="photoDataSource" permissionModule="valoracion" />
     }
   `,
   styles: [
@@ -97,6 +98,7 @@ export class ValoracionDetailComponent implements OnInit {
   protected patientId = '';
   protected diagrams: ValoracionDiagram[] = [];
   protected diagramDataSource!: DiagramDataSource;
+  protected photoDataSource!: PhotoDataSource;
 
   protected readonly form = this.fb.group({
     fecha: [''],
@@ -163,6 +165,11 @@ export class ValoracionDetailComponent implements OnInit {
           });
           return valoracion.diagrams;
         },
+      };
+      this.photoDataSource = {
+        list: () => this.valoracionService.listPhotos(this.valoracionId),
+        upload: (blob, tag) => this.valoracionService.uploadPhoto(this.valoracionId, blob, tag),
+        delete: (photoId) => this.valoracionService.deletePhoto(this.valoracionId, photoId),
       };
     } catch (error) {
       // A thrown fetch (network blip, 500) leaves the identity check *unperformed*, not passed —

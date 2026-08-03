@@ -2,10 +2,10 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { Photo, PhotoTag } from '@expedientes/shared-types';
+import type { PermissionModule, PhotoRecord, PhotoTag } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
-import { ValoracionService } from '../valoracion.service';
 import { PhotoCaptureComponent } from './photo-capture.component';
+import type { PhotoDataSource } from './photo-data-source';
 
 @Component({
   selector: 'app-photo-gallery',
@@ -14,7 +14,7 @@ import { PhotoCaptureComponent } from './photo-capture.component';
   template: `
     <div class="photo-gallery">
       @if (canEdit) {
-        <app-photo-capture [valoracionId]="valoracionId" (photoAdded)="onPhotoAdded($event)" />
+        <app-photo-capture [dataSource]="dataSource" (photoAdded)="onPhotoAdded($event)" />
       }
       <div class="photo-grid">
         @for (photo of photos(); track photo.id) {
@@ -70,21 +70,21 @@ import { PhotoCaptureComponent } from './photo-capture.component';
   ],
 })
 export class PhotoGalleryComponent implements OnInit {
-  @Input({ required: true }) valoracionId!: string;
+  @Input({ required: true }) dataSource!: PhotoDataSource;
+  @Input({ required: true }) permissionModule!: PermissionModule;
 
-  private readonly valoracionService = inject(ValoracionService);
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
 
-  protected readonly photos = signal<Photo[]>([]);
+  protected readonly photos = signal<PhotoRecord[]>([]);
   protected canEdit = false;
 
   async ngOnInit(): Promise<void> {
-    this.canEdit = this.auth.hasPermission('valoracion', 'edit');
-    this.photos.set(await this.valoracionService.listPhotos(this.valoracionId));
+    this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
+    this.photos.set(await this.dataSource.list());
   }
 
-  protected photoUrl(photo: Photo): string {
+  protected photoUrl(photo: PhotoRecord): string {
     return `/api/files/${photo.filePath}`;
   }
 
@@ -92,15 +92,15 @@ export class PhotoGalleryComponent implements OnInit {
     return tag === 'BEFORE' ? 'valoracion.photos.before' : 'valoracion.photos.after';
   }
 
-  protected onPhotoAdded(photo: Photo): void {
+  protected onPhotoAdded(photo: PhotoRecord): void {
     this.photos.update((current) => [...current, photo]);
   }
 
-  protected async delete(photo: Photo): Promise<void> {
+  protected async delete(photo: PhotoRecord): Promise<void> {
     // Resolved fresh on each use so a live language switch is reflected, matching the facial
     // diagram tool's `clearAll` confirm pattern.
     if (!confirm(this.transloco.translate('valoracion.photos.confirmDelete'))) return;
-    await this.valoracionService.deletePhoto(this.valoracionId, photo.id);
+    await this.dataSource.delete(photo.id);
     this.photos.update((current) => current.filter((p) => p.id !== photo.id));
   }
 }

@@ -4,15 +4,14 @@ import {
   Input,
   OnDestroy,
   ViewChild,
-  inject,
   output,
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoModule } from '@jsverse/transloco';
-import type { Photo, PhotoTag } from '@expedientes/shared-types';
-import { ValoracionService } from '../valoracion.service';
+import type { PhotoRecord, PhotoTag } from '@expedientes/shared-types';
+import type { PhotoDataSource } from './photo-data-source';
 
 const MAX_CAPTURE_DIMENSION = 1920;
 const JPEG_QUALITY = 0.9;
@@ -120,10 +119,8 @@ const JPEG_QUALITY = 0.9;
   ],
 })
 export class PhotoCaptureComponent implements OnDestroy {
-  @Input({ required: true }) valoracionId!: string;
-  readonly photoAdded = output<Photo>();
-
-  private readonly valoracionService = inject(ValoracionService);
+  @Input({ required: true }) dataSource!: PhotoDataSource;
+  readonly photoAdded = output<PhotoRecord>();
 
   protected readonly active = signal(false);
   protected readonly tag = signal<PhotoTag>('BEFORE');
@@ -236,11 +233,7 @@ export class PhotoCaptureComponent implements OnDestroy {
     if (!this.reviewBlob) return;
     this.uploading.set(true);
     try {
-      const photo = await this.valoracionService.uploadPhoto(
-        this.valoracionId,
-        this.reviewBlob,
-        this.tag()
-      );
+      const photo = await this.dataSource.upload(this.reviewBlob, this.tag());
       this.photoAdded.emit(photo);
       this.discardReview();
       this.reviewing.set(false);

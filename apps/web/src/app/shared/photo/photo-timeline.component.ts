@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { Photo, PhotoTag } from '@expedientes/shared-types';
 import { ActivePatientStore } from '../../patient-drive/active-patient.store';
-import { ValoracionService } from '../valoracion.service';
+import { ValoracionService } from '../../valoracion/valoracion.service';
 
 interface PhotoTimelineGroup {
   valoracionId: string;
