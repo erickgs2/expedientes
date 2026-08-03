@@ -186,7 +186,7 @@ function isSameDay(a: Date, b: Date): boolean {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px;
+        padding: 0 0 16px;
         flex-wrap: wrap;
         gap: 8px;
       }
@@ -200,7 +200,7 @@ function isSameDay(a: Date, b: Date): boolean {
         font-weight: 500;
       }
       .month-list {
-        padding: 0 16px;
+        padding: 0;
       }
       .month-day-row {
         display: flex;

@@ -53,7 +53,7 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px;
+        padding: 0 0 16px;
       }
     `,
   ],

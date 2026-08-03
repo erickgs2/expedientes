@@ -63,7 +63,7 @@ import { TreatmentTypeFormDialogComponent } from './treatment-type-form-dialog.c
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px;
+        padding: 0 0 16px;
       }
     `,
   ],

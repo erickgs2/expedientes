@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { TreatmentSummary } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
@@ -11,24 +12,30 @@ import { TreatmentsService } from './treatments.service';
 @Component({
   selector: 'app-treatment-list',
   standalone: true,
-  imports: [MatListModule, MatButtonModule, TranslocoModule, HasPermissionDirective],
+  imports: [MatListModule, MatButtonModule, MatIconModule, TranslocoModule, HasPermissionDirective],
   template: `
-    <h1>{{ 'treatments.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
-    <button
-      *appHasPermission="'treatments:create'"
-      mat-flat-button
-      color="primary"
-      [disabled]="creating()"
-      (click)="createNew()"
-    >
-      {{ 'treatments.new' | transloco }}
-    </button>
+    <div class="page-header">
+      <h1>{{ 'treatments.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
+      <div class="page-actions">
+        <button
+          *appHasPermission="'treatments:create'"
+          mat-flat-button
+          color="primary"
+          [disabled]="creating()"
+          (click)="createNew()"
+        >
+          <mat-icon>add</mat-icon>
+          {{ 'treatments.new' | transloco }}
+        </button>
+      </div>
+    </div>
     @if (loadFailed()) {
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
       <mat-list>
         @for (t of treatments(); track t.id) {
           <mat-list-item (click)="openDetail(t.id)" class="clickable">
+            <mat-icon matListItemIcon>healing</mat-icon>
             <span matListItemTitle>{{ t.fecha.substring(0, 10) }}</span>
             <span matListItemLine>
               {{
@@ -37,9 +44,13 @@ import { TreatmentsService } from './treatments.service';
                   : ('treatments.noItems' | transloco)
               }}
             </span>
+            <mat-icon matListItemMeta>chevron_right</mat-icon>
           </mat-list-item>
         } @empty {
-          <p>{{ 'treatments.empty' | transloco }}</p>
+          <div class="empty-state">
+            <mat-icon>healing</mat-icon>
+            <p>{{ 'treatments.empty' | transloco }}</p>
+          </div>
         }
       </mat-list>
     }
@@ -48,6 +59,11 @@ import { TreatmentsService } from './treatments.service';
     `
       .clickable {
         cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 150ms ease-out;
+      }
+      .clickable:hover {
+        background-color: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
       }
     `,
   ],

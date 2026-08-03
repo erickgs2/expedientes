@@ -53,8 +53,114 @@ body {
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
   font-family: Roboto, 'Helvetica Neue', sans-serif;
+  line-height: 1.5;
 
   // Reset the user agent margin.
   margin: 0;
   height: 100%;
+}
+
+// ---------------------------------------------------------------------------
+// Typography: plain heading elements fall outside Material's component theming,
+// so give them an explicit scale (Figtree for headings, loaded in index.html).
+// ---------------------------------------------------------------------------
+h1,
+h2,
+h3 {
+  font-family: Figtree, Roboto, 'Helvetica Neue', sans-serif;
+  color: var(--mat-sys-on-surface);
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0 0 20px;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 28px 0 12px;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 20px 0 8px;
+}
+
+// Visible keyboard focus everywhere (Material handles its own controls; this
+// covers plain links and custom clickable elements).
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// ---------------------------------------------------------------------------
+// Shared page conventions, used across feature pages.
+// ---------------------------------------------------------------------------
+
+// Title row: h1 on the left, action buttons on the right.
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  h1 {
+    margin: 0;
+  }
+
+  .page-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+// Friendly centered message for lists with no content yet.
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  border: 1px dashed var(--mat-sys-outline-variant);
+  border-radius: 12px;
+
+  mat-icon {
+    font-size: 36px;
+    width: 36px;
+    height: 36px;
+    opacity: 0.6;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+// Data tables: soften edges and fill the page column.
+table.mat-mdc-table {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

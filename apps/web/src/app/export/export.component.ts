@@ -2,6 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
@@ -18,47 +20,63 @@ import { ExportService, type ExportDiagramImage } from './export.service';
     FormsModule,
     MatCheckboxModule,
     MatButtonModule,
+    MatCardModule,
+    MatIconModule,
     TranslocoModule,
     HasPermissionDirective,
   ],
   template: `
     <h1>{{ 'export.title' | transloco }} — {{ patient()?.fullName }}</h1>
 
-    <mat-checkbox [(ngModel)]="includeHistoriaClinica">
-      {{ 'export.modules.historiaClinica' | transloco }}
-    </mat-checkbox>
-    <br />
-    <mat-checkbox [(ngModel)]="includeValoracion">
-      {{ 'export.modules.valoracion' | transloco }}
-    </mat-checkbox>
-    <br />
-    <mat-checkbox [(ngModel)]="includeTreatments">
-      {{ 'export.modules.treatments' | transloco }}
-    </mat-checkbox>
+    <mat-card class="export-card">
+      <mat-card-content>
+        <div class="module-list" role="group">
+          <mat-checkbox [(ngModel)]="includeHistoriaClinica">
+            {{ 'export.modules.historiaClinica' | transloco }}
+          </mat-checkbox>
+          <mat-checkbox [(ngModel)]="includeValoracion">
+            {{ 'export.modules.valoracion' | transloco }}
+          </mat-checkbox>
+          <mat-checkbox [(ngModel)]="includeTreatments">
+            {{ 'export.modules.treatments' | transloco }}
+          </mat-checkbox>
+        </div>
 
-    @if (errorMessage()) {
-      <p class="error-message">{{ errorMessage() }}</p>
-    }
+        @if (errorMessage()) {
+          <p class="error-message" role="alert">{{ errorMessage() }}</p>
+        }
 
-    <div class="actions">
-      <button
-        *appHasPermission="'export:create'"
-        mat-flat-button
-        color="primary"
-        [disabled]="generating()"
-        (click)="generate()"
-      >
-        {{ (generating() ? 'export.generating' : 'export.generate') | transloco }}
-      </button>
-    </div>
+        <div class="actions">
+          <button
+            *appHasPermission="'export:create'"
+            mat-flat-button
+            color="primary"
+            [disabled]="generating()"
+            (click)="generate()"
+          >
+            <mat-icon>download</mat-icon>
+            {{ (generating() ? 'export.generating' : 'export.generate') | transloco }}
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
   `,
   styles: [
     `
+      .export-card {
+        max-width: 480px;
+      }
+      .module-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
       .actions {
-        margin-top: 16px;
+        margin-top: 20px;
       }
       .error-message {
         color: var(--mat-sys-error, #b3261e);
+        margin: 16px 0 0;
       }
     `,
   ],

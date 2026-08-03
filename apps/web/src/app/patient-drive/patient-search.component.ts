@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { PatientSummary } from '@expedientes/shared-types';
@@ -21,6 +22,7 @@ import { ActivePatientStore } from './active-patient.store';
     MatInputModule,
     MatListModule,
     MatButtonModule,
+    MatIconModule,
     MatExpansionModule,
     TranslocoModule,
   ],
@@ -28,21 +30,26 @@ import { ActivePatientStore } from './active-patient.store';
     <h1>{{ 'patientDrive.title' | transloco }}</h1>
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>{{ 'patientDrive.search' | transloco }}</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
       <input matInput [(ngModel)]="query" (ngModelChange)="onQueryChange($event)" />
     </mat-form-field>
 
     <mat-list>
       @for (patient of results(); track patient.id) {
         <mat-list-item (click)="selectPatient(patient)" class="clickable">
+          <mat-icon matListItemIcon>person</mat-icon>
           <span matListItemTitle>{{ patient.fullName }}</span>
           <span matListItemLine>{{ patient.phone }} · {{ patient.documentId }}</span>
         </mat-list-item>
       }
     </mat-list>
 
-    <mat-expansion-panel>
+    <mat-expansion-panel class="create-panel">
       <mat-expansion-panel-header>
-        <mat-panel-title>{{ 'patientDrive.newPatient' | transloco }}</mat-panel-title>
+        <mat-panel-title>
+          <mat-icon class="panel-icon">person_add</mat-icon>
+          {{ 'patientDrive.newPatient' | transloco }}
+        </mat-panel-title>
       </mat-expansion-panel-header>
       <form [formGroup]="createForm" (ngSubmit)="createPatient()">
         <mat-form-field appearance="outline" class="full-width">
@@ -70,6 +77,18 @@ import { ActivePatientStore } from './active-patient.store';
       }
       .clickable {
         cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 150ms ease-out;
+      }
+      .clickable:hover {
+        background-color: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+      }
+      .create-panel {
+        margin-top: 24px;
+      }
+      .panel-icon {
+        margin-right: 8px;
+        color: var(--mat-sys-primary);
       }
     `,
   ],

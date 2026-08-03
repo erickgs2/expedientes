@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoModule } from '@jsverse/transloco';
 import { AuthService } from '../auth/auth.service';
@@ -18,26 +19,37 @@ import { AuthService } from '../auth/auth.service';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     MatProgressSpinnerModule,
     TranslocoModule,
   ],
   template: `
     <div class="login-container">
-      <mat-card>
+      <mat-card class="login-card">
         <mat-card-content>
+          <div class="login-brand">
+            <mat-icon aria-hidden="true">spa</mat-icon>
+            <h1>Expedientes</h1>
+          </div>
           <form [formGroup]="form" (ngSubmit)="submit()">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>{{ 'auth.email' | transloco }}</mat-label>
-              <input matInput type="email" formControlName="email" />
+              <input matInput type="email" formControlName="email" autocomplete="email" />
             </mat-form-field>
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>{{ 'auth.password' | transloco }}</mat-label>
-              <input matInput type="password" formControlName="password" />
+              <input matInput type="password" formControlName="password" autocomplete="current-password" />
             </mat-form-field>
             @if (error()) {
-              <p class="error">{{ 'auth.invalidCredentials' | transloco }}</p>
+              <p class="error" role="alert">{{ 'auth.invalidCredentials' | transloco }}</p>
             }
-            <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()">
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              class="full-width submit-button"
+              [disabled]="form.invalid || loading()"
+            >
               @if (loading()) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
@@ -54,13 +66,40 @@ import { AuthService } from '../auth/auth.service';
       .login-container {
         display: flex;
         justify-content: center;
-        margin-top: 10vh;
+        align-items: flex-start;
+        padding: 12vh 16px 32px;
+      }
+      .login-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 8px;
+      }
+      .login-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        margin: 8px 0 24px;
+      }
+      .login-brand mat-icon {
+        font-size: 40px;
+        width: 40px;
+        height: 40px;
+        color: var(--mat-sys-primary);
+      }
+      .login-brand h1 {
+        margin: 0;
       }
       .full-width {
         width: 100%;
       }
+      .submit-button {
+        margin-top: 8px;
+        height: 44px;
+      }
       .error {
         color: var(--mat-sys-error, #b91c1c);
+        margin: 0 0 12px;
       }
     `,
   ],

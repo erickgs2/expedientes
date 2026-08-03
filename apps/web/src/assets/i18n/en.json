@@ -3,6 +3,7 @@
     "title": "Expedientes",
     "toggleTheme": "Toggle theme",
     "language": "Language",
+    "menu": "Menu",
     "logout": "Log out",
     "nav": {
       "patients": "Patients",
