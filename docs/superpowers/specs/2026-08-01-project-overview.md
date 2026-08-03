@@ -92,7 +92,7 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       until this exists. — complete
    2. **Treatment visit core** — create a Treatment visit for a patient, show their treatment
       history on entry, select one or more treatment types from the catalog for the visit,
-      per-treatment notes.
+      per-treatment notes. — complete
    3. **Consent signing** — each selected treatment gets its own consent, pre-filled from its
       type's template text, signed via an on-screen drawn signature, embedded as an image in the
       stored consent record. **Design note (2026-08-02, from the treatment catalog's final
@@ -102,7 +102,24 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       display time instead of a snapshot. This sub-project's spec must snapshot the rendered
       consent text onto the signed-consent row at signing time, so a signed document is immutable
       by construction regardless of later catalog edits — this is a hard requirement, not
-      optional polish.
+      optional polish. **Additional design notes (2026-08-02, from treatment visit core's final
+      review):**
+      - `PATCH /api/treatments/[id]/items` replaces a visit's entire `TreatmentItem` set
+        (delete-then-recreate in a transaction) on every save. Once a `TreatmentItem` carries a
+        signed consent, this save strategy must become a diff (update/insert/delete per row) so a
+        re-save of the visit can never delete-then-recreate a row that already has a consent
+        attached to it — a naive carry-over of the current strategy would silently orphan or
+        destroy signed consent data.
+      - A `Treatment` visit's `fecha` has no edit path anywhere (no PATCH endpoint, no UI) — a
+        visit created on the wrong calendar day can never be corrected in the record, unlike
+        `Valoracion`, which does allow editing its `fecha`. Worth a deliberate decision in this or
+        a later sub-project rather than leaving it as an accidental gap.
+      - The item-replace endpoint currently audit-logs only `action: 'update'` with no `metadata`
+        (matching the rest of the app — no route anywhere sets `metadata` today). Because the save
+        is delete-then-recreate, a removed treatment selection and its clinical notes vanish with
+        no record anywhere. This becomes more consequential once consent records attach to
+        individual items — worth capturing before/after `treatmentTypeId` sets in `metadata` when
+        this endpoint is revisited for the diff-based rewrite above.
    4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
       per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
       by photo capture's Phase 1 final review) get resolved, not deferred further.
