@@ -89,13 +89,20 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
    1. **Treatment catalog** — admin-managed treatment types, each with an editable consent-form
       text template. Foundational; nothing else in this module can reference a treatment type
-      until this exists.
+      until this exists. — complete
    2. **Treatment visit core** — create a Treatment visit for a patient, show their treatment
       history on entry, select one or more treatment types from the catalog for the visit,
       per-treatment notes.
    3. **Consent signing** — each selected treatment gets its own consent, pre-filled from its
       type's template text, signed via an on-screen drawn signature, embedded as an image in the
-      stored consent record.
+      stored consent record. **Design note (2026-08-02, from the treatment catalog's final
+      review):** `TreatmentType.consentTemplate` is freely editable in place with no versioning —
+      editing it later would silently change the wording every *previously*-signed consent
+      appears to have been signed against, if this sub-project renders from the live template at
+      display time instead of a snapshot. This sub-project's spec must snapshot the rendered
+      consent text onto the signed-consent row at signing time, so a signed document is immutable
+      by construction regardless of later catalog edits — this is a hard requirement, not
+      optional polish.
    4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
       per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
       by photo capture's Phase 1 final review) get resolved, not deferred further.
