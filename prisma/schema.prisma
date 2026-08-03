@@ -54,6 +54,7 @@ model Patient {
   documentId      String
   historiaClinica HistoriaClinica?
   valoraciones    Valoracion[]
+  treatments      Treatment[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -188,6 +189,30 @@ model TreatmentType {
   name            String
   consentTemplate String
   active          Boolean  @default(true)
+  items           TreatmentItem[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model Treatment {
+  id        String          @id @default(uuid())
+  patientId String
+  patient   Patient         @relation(fields: [patientId], references: [id])
+  fecha     DateTime        @default(now())
+  items     TreatmentItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([patientId])
+}
+
+model TreatmentItem {
+  id              String        @id @default(uuid())
+  treatmentId     String
+  treatment       Treatment     @relation(fields: [treatmentId], references: [id])
+  treatmentTypeId String
+  treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id])
+  notes           String?
+
+  @@unique([treatmentId, treatmentTypeId])
 }
