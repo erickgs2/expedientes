@@ -201,7 +201,29 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
 5. **Appointment management** — scheduling + WhatsApp notifications. Decomposed (2026-08-03) into
    two ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
    1. **Appointment core** — CRUD, calendar UI (day/week/month), status tracking (Scheduled,
-      Confirmed, Completed, Cancelled, No-show), linking an appointment to planned treatment(s).
+      Confirmed, Completed, Cancelled, No-show), linking an appointment to planned treatment(s). —
+      complete. New `Appointment`/`AppointmentTreatmentType` models (the latter cascade-deleted with
+      its appointment; `treatmentType` left `RESTRICT`, matching the catalog's deactivate-don't-delete
+      precedent). A custom-built `AppointmentCalendarComponent` (day/week/month, Material primitives
+      only) plus an `AppointmentFormComponent` dialog (patient autocomplete, treatment-type
+      checkboxes, client-computed non-blocking overlap warning) cover booking/editing/hard-delete.
+      `/calendar` is the first route in the app guarded without `activePatientGuard`, since the
+      calendar is clinic-wide by design. A "Agendar cita" cross-link opens the same dialog from
+      Historia Clínica, pre-filled with the active patient. The final whole-branch review found four
+      plan-level gaps (no delete confirmation, a failed calendar fetch rendering as a falsely-"free"
+      day, a real Angular Material autocomplete/`ngModel` type-mismatch crash on patient selection,
+      and the booking dialog issuing an unguarded `treatments:view` call that could toast an error
+      for a role without it) — all fixed in one consolidated wave. **Design note (2026-08-03, from
+      the fix wave's re-review, parked rather than looped per the "no second fix wave" rule):** the
+      fix wave's own keyboard-accessibility addition to the day/week grid (`(keydown.enter)` on the
+      column background, added to resolve two `nx lint web` a11y errors) has a residual bug —
+      pressing Enter on a focused appointment block/chip also bubbles into the parent column's
+      handler, opening a spurious second "create" dialog alongside the intended edit dialog. Mouse
+      users are unaffected (the click path already calls `stopPropagation()`); this only affects
+      keyboard-only navigation of the day/week grid. Precise fix for whenever this file is next
+      touched: add `(keydown.enter)="$event.stopPropagation()"` to both `.appt-block` and
+      `.appt-chip`, or check `event.target === event.currentTarget` as the first line of
+      `onColumnKeydown`.
    2. **WhatsApp notifications** — booking confirmation + automatic reminder before the
       appointment, built on top of working appointments. Isolated into its own sub-project because
       it introduces two things nothing else in this app has yet: a real external API integration
