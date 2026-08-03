@@ -118,7 +118,7 @@ function isSameDay(a: Date, b: Date): boolean {
                   class="appt-chip"
                   [class.status-cancelled]="appt.status === 'CANCELLED'"
                   [class.status-no-show]="appt.status === 'NO_SHOW'"
-                  (click)="openEdit(appt.id)"
+                  (click)="onAppointmentClick($event, appt)"
                 >
                   {{ formatTime(appt.startTime) }} — {{ appt.patientName }}
                   @if (appt.treatmentTypeNames.length > 0) {
