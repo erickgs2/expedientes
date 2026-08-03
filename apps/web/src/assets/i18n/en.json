@@ -199,6 +199,9 @@
     "signatureAlt": "Patient signature",
     "diagramTitle": "Diagram",
     "viewDiagram": "View diagram",
-    "editDiagram": "Edit diagram"
+    "editDiagram": "Edit diagram",
+    "photosTitle": "Photos",
+    "viewPhotos": "View photos",
+    "addPhotos": "Add photos"
   }
 }

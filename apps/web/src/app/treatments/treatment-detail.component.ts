@@ -109,6 +109,9 @@ interface TreatmentItemForm {
               <a mat-button [routerLink]="['/treatments/items', item.itemId, 'diagram']">
                 {{ (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco }}
               </a>
+              <a mat-button [routerLink]="['/treatments/items', item.itemId, 'photos']">
+                {{ (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco }}
+              </a>
             }
           }
         </div>

@@ -1,13 +1,16 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { TranslocoModule } from '@jsverse/transloco';
-import type { Photo, PhotoTag } from '@expedientes/shared-types';
+import type { PhotoRecord, PhotoTag, TreatmentTimelinePhoto } from '@expedientes/shared-types';
+import { AuthService } from '../../auth/auth.service';
 import { ActivePatientStore } from '../../patient-drive/active-patient.store';
 import { ValoracionService } from '../../valoracion/valoracion.service';
+import { TreatmentPhotoService } from '../../treatments/treatment-photo.service';
 
 interface PhotoTimelineGroup {
-  valoracionId: string;
+  id: string;
+  label: string;
   fecha: string;
-  photos: Photo[];
+  photos: PhotoRecord[];
 }
 
 @Component({
@@ -21,9 +24,9 @@ interface PhotoTimelineGroup {
     } @else if (loadFailed()) {
       <p class="load-error">{{ 'common.loadError' | transloco }}</p>
     } @else {
-      @for (group of groups(); track group.valoracionId) {
+      @for (group of groups(); track group.id) {
         <section class="timeline-group">
-          <h2>{{ group.fecha.substring(0, 10) }}</h2>
+          <h2>{{ group.label }}</h2>
           <div class="photo-grid">
             @for (photo of group.photos; track photo.id) {
               <div class="photo-item">
@@ -77,6 +80,8 @@ interface PhotoTimelineGroup {
 })
 export class PhotoTimelineComponent implements OnInit {
   private readonly valoracionService = inject(ValoracionService);
+  private readonly treatmentPhotoService = inject(TreatmentPhotoService);
+  private readonly auth = inject(AuthService);
   private readonly activePatient = inject(ActivePatientStore);
 
   protected readonly patient = this.activePatient.patient;
@@ -91,18 +96,45 @@ export class PhotoTimelineComponent implements OnInit {
       return;
     }
     try {
-      const [visits, photos] = await Promise.all([
+      // Only attempted for a user who actually has `treatments:view` — a user who permanently
+      // lacks it should see the Valoración-only timeline exactly as it worked before this photo
+      // reuse sub-project, not a permission error every time they open this page.
+      const canViewTreatments = this.auth.hasPermission('treatments', 'view');
+      const [visits, photos, treatmentPhotos] = await Promise.all([
         this.valoracionService.list(patient.id),
         this.valoracionService.listPatientPhotos(patient.id),
+        canViewTreatments
+          ? this.treatmentPhotoService.listPatientPhotos(patient.id)
+          : Promise.resolve<TreatmentTimelinePhoto[]>([]),
       ]);
-      const groups = visits
+
+      const valoracionGroups: PhotoTimelineGroup[] = visits
         .map((visit) => ({
-          valoracionId: visit.id,
+          id: visit.id,
+          label: visit.fecha.substring(0, 10),
           fecha: visit.fecha,
           photos: photos.filter((photo) => photo.valoracionId === visit.id),
         }))
-        .filter((group) => group.photos.length > 0)
-        .sort((a, b) => a.fecha.localeCompare(b.fecha));
+        .filter((group) => group.photos.length > 0);
+
+      const byTreatmentItem = new Map<string, TreatmentTimelinePhoto[]>();
+      for (const photo of treatmentPhotos) {
+        const existing = byTreatmentItem.get(photo.treatmentItemId) ?? [];
+        existing.push(photo);
+        byTreatmentItem.set(photo.treatmentItemId, existing);
+      }
+      const treatmentGroups: PhotoTimelineGroup[] = Array.from(byTreatmentItem.values()).map(
+        (groupPhotos) => ({
+          id: groupPhotos[0].treatmentItemId,
+          label: `${groupPhotos[0].fecha.substring(0, 10)} — ${groupPhotos[0].treatmentTypeName}`,
+          fecha: groupPhotos[0].fecha,
+          photos: groupPhotos,
+        })
+      );
+
+      const groups = [...valoracionGroups, ...treatmentGroups].sort((a, b) =>
+        a.fecha.localeCompare(b.fecha)
+      );
       this.groups.set(groups);
     } catch (error) {
       // A thrown fetch must never fall through to render as if the patient simply has no photo
@@ -115,7 +147,7 @@ export class PhotoTimelineComponent implements OnInit {
     }
   }
 
-  protected photoUrl(photo: Photo): string {
+  protected photoUrl(photo: PhotoRecord): string {
     return `/api/files/${photo.filePath}`;
   }
 

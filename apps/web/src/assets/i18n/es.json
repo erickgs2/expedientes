@@ -199,6 +199,9 @@
     "signatureAlt": "Firma del paciente",
     "diagramTitle": "Diagrama",
     "viewDiagram": "Ver diagrama",
-    "editDiagram": "Editar diagrama"
+    "editDiagram": "Editar diagrama",
+    "photosTitle": "Fotos",
+    "viewPhotos": "Ver fotos",
+    "addPhotos": "Agregar fotos"
   }
 }
