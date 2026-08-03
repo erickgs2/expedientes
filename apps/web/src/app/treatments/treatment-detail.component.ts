@@ -106,6 +106,9 @@ interface TreatmentItemForm {
                   {{ 'treatments.signConsent' | transloco }}
                 </a>
               }
+              <a mat-button [routerLink]="['/treatments/items', item.itemId, 'diagram']">
+                {{ (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco }}
+              </a>
             }
           }
         </div>

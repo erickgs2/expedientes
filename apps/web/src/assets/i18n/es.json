@@ -197,6 +197,8 @@
     "signAction": "Firmar",
     "consentNotYetSigned": "Este tratamiento aún no tiene un consentimiento firmado.",
     "signatureAlt": "Firma del paciente",
-    "diagramTitle": "Diagrama"
+    "diagramTitle": "Diagrama",
+    "viewDiagram": "Ver diagrama",
+    "editDiagram": "Editar diagrama"
   }
 }
