@@ -72,3 +72,6 @@ storage/
 # ...but that pattern also matches the file-storage source directory, where it would silently
 # swallow any newly added source file. Keep that one visible.
 !apps/api/src/lib/storage/
+
+# Subagent-driven-development scratch workspace (ledgers, briefs, review packages)
+.superpowers/
