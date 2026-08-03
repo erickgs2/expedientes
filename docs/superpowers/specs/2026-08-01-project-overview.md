@@ -85,7 +85,22 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
          a patient's visits — complete. The photo capture sub-project is now complete (both
          phases), and with it, all three Valoración sub-projects are complete.
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
-   (reuses Valoración's diagram tool and photo capture). **Note (2026-08-02, from the facial
+   (reuses Valoración's diagram tool and photo capture). Decomposed (2026-08-02) into four
+   ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
+   1. **Treatment catalog** — admin-managed treatment types, each with an editable consent-form
+      text template. Foundational; nothing else in this module can reference a treatment type
+      until this exists.
+   2. **Treatment visit core** — create a Treatment visit for a patient, show their treatment
+      history on entry, select one or more treatment types from the catalog for the visit,
+      per-treatment notes.
+   3. **Consent signing** — each selected treatment gets its own consent, pre-filled from its
+      type's template text, signed via an on-screen drawn signature, embedded as an image in the
+      stored consent record.
+   4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
+      per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
+      by photo capture's Phase 1 final review) get resolved, not deferred further.
+
+   **Note (2026-08-02, from the facial
    diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
    are currently coupled to Valoración specifically — they inject `ValoracionService` directly (for
    save, the reference-visit list, and the reference-visit fetch), require a `patientId`, and
