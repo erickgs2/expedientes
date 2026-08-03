@@ -101,7 +101,13 @@ export class TreatmentTypeListComponent implements OnInit {
   }
 
   async toggleActive(type: TreatmentType, event: MatSlideToggleChange): Promise<void> {
-    await this.treatmentTypesService.update(type.id, { active: event.checked });
-    await this.refresh();
+    try {
+      await this.treatmentTypesService.update(type.id, { active: event.checked });
+      await this.refresh();
+    } catch {
+      // The signal's stored value for this item never changed on failure, so Angular's
+      // one-way [checked] binding won't revert the control on its own — do it explicitly.
+      event.source.checked = type.active;
+    }
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createTreatmentType, listTreatmentTypes } from '../../../lib/treatment/treatment';
+import { createTreatmentType, listTreatmentTypes } from '../../../lib/treatment/treatment-type';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
 import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
