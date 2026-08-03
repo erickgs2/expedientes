@@ -18,7 +18,8 @@
     "no": "No",
     "edit": "Editar",
     "loading": "Cargando...",
-    "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo."
+    "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo.",
+    "back": "Volver"
   },
   "auth": {
     "email": "Correo electrónico",
@@ -186,6 +187,14 @@
     "notes": "Notas",
     "selected": "Seleccionado",
     "notSelected": "No seleccionado",
-    "noActiveTypes": "No hay tipos de tratamiento activos"
+    "noActiveTypes": "No hay tipos de tratamiento activos",
+    "consentLockedBadge": "Firmado",
+    "viewConsent": "Ver consentimiento",
+    "signConsent": "Firmar consentimiento",
+    "consentTitle": "Consentimiento",
+    "signedAt": "Firmado el",
+    "clearSignature": "Limpiar",
+    "signAction": "Firmar",
+    "consentNotYetSigned": "Este tratamiento aún no tiene un consentimiento firmado."
   }
 }

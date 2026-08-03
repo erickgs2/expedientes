@@ -70,4 +70,10 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./treatments/treatment-detail.component').then((m) => m.TreatmentDetailComponent),
   },
+  {
+    path: 'treatments/items/:itemId/consent',
+    canActivate: [authGuard, permissionGuard('treatments', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./treatments/consent-sign.component').then((m) => m.ConsentSignComponent),
+  },
 ];

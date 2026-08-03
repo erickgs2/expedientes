@@ -18,7 +18,8 @@
     "no": "No",
     "edit": "Edit",
     "loading": "Loading...",
-    "loadError": "Couldn't load this record. Please try again."
+    "loadError": "Couldn't load this record. Please try again.",
+    "back": "Back"
   },
   "auth": {
     "email": "Email",
@@ -186,6 +187,14 @@
     "notes": "Notes",
     "selected": "Selected",
     "notSelected": "Not selected",
-    "noActiveTypes": "No active treatment types"
+    "noActiveTypes": "No active treatment types",
+    "consentLockedBadge": "Signed",
+    "viewConsent": "View consent",
+    "signConsent": "Sign consent",
+    "consentTitle": "Consent",
+    "signedAt": "Signed on",
+    "clearSignature": "Clear",
+    "signAction": "Sign",
+    "consentNotYetSigned": "This treatment does not have a signed consent yet."
   }
 }
