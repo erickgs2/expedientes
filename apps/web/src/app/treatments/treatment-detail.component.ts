@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,6 +18,8 @@ interface TreatmentItemForm {
   active: boolean;
   selected: boolean;
   notes: string;
+  itemId: string | null;
+  hasConsent: boolean;
 }
 
 @Component({
@@ -30,6 +32,7 @@ interface TreatmentItemForm {
     MatInputModule,
     MatButtonModule,
     TranslocoModule,
+    RouterLink,
   ],
   template: `
     @if (loading()) {
@@ -51,9 +54,18 @@ interface TreatmentItemForm {
             opacity instead of a proper read-only display.
           -->
           @if (canEdit) {
-            <mat-checkbox [checked]="item.selected" (change)="toggleSelected(item, $event.checked)">
+            <mat-checkbox
+              [checked]="item.selected"
+              [disabled]="item.hasConsent"
+              (change)="toggleSelected(item, $event.checked)"
+            >
               {{ item.name }}
             </mat-checkbox>
+            @if (item.hasConsent) {
+              <span class="consent-locked-badge">{{
+                'treatments.consentLockedBadge' | transloco
+              }}</span>
+            }
           } @else {
             <span class="item-readonly">
               <span class="selection-indicator">{{
@@ -83,6 +95,17 @@ interface TreatmentItemForm {
               <p class="notes-readonly">
                 <strong>{{ 'treatments.notes' | transloco }}:</strong> {{ item.notes }}
               </p>
+            }
+            @if (item.itemId) {
+              @if (item.hasConsent) {
+                <a mat-button [routerLink]="['/treatments/items', item.itemId, 'consent']">
+                  {{ 'treatments.viewConsent' | transloco }}
+                </a>
+              } @else if (canEdit) {
+                <a mat-button [routerLink]="['/treatments/items', item.itemId, 'consent']">
+                  {{ 'treatments.signConsent' | transloco }}
+                </a>
+              }
             }
           }
         </div>
@@ -119,6 +142,11 @@ interface TreatmentItemForm {
       .selection-indicator {
         font-weight: 500;
         margin-right: 6px;
+      }
+      .consent-locked-badge {
+        margin-left: 8px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
       }
     `,
   ],
@@ -193,6 +221,8 @@ export class TreatmentDetailComponent implements OnInit {
         active: type.active,
         selected: !!existing,
         notes: existing?.notes ?? '',
+        itemId: existing?.id ?? null,
+        hasConsent: existing?.hasConsent ?? false,
       };
     });
   }
