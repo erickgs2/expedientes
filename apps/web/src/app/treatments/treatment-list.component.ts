@@ -23,22 +23,26 @@ import { TreatmentsService } from './treatments.service';
     >
       {{ 'treatments.new' | transloco }}
     </button>
-    <mat-list>
-      @for (t of treatments(); track t.id) {
-        <mat-list-item (click)="openDetail(t.id)" class="clickable">
-          <span matListItemTitle>{{ t.fecha.substring(0, 10) }}</span>
-          <span matListItemLine>
-            {{
-              t.treatmentTypeNames.length
-                ? t.treatmentTypeNames.join(', ')
-                : ('treatments.noItems' | transloco)
-            }}
-          </span>
-        </mat-list-item>
-      } @empty {
-        <p>{{ 'treatments.empty' | transloco }}</p>
-      }
-    </mat-list>
+    @if (loadFailed()) {
+      <p>{{ 'common.loadError' | transloco }}</p>
+    } @else {
+      <mat-list>
+        @for (t of treatments(); track t.id) {
+          <mat-list-item (click)="openDetail(t.id)" class="clickable">
+            <span matListItemTitle>{{ t.fecha.substring(0, 10) }}</span>
+            <span matListItemLine>
+              {{
+                t.treatmentTypeNames.length
+                  ? t.treatmentTypeNames.join(', ')
+                  : ('treatments.noItems' | transloco)
+              }}
+            </span>
+          </mat-list-item>
+        } @empty {
+          <p>{{ 'treatments.empty' | transloco }}</p>
+        }
+      </mat-list>
+    }
   `,
   styles: [
     `
@@ -56,11 +60,17 @@ export class TreatmentListComponent implements OnInit {
   protected readonly patient = this.activePatient.patient;
   protected readonly treatments = signal<TreatmentSummary[]>([]);
   protected readonly creating = signal(false);
+  protected readonly loadFailed = signal(false);
 
   async ngOnInit(): Promise<void> {
     const patient = this.patient();
     if (!patient) return;
-    this.treatments.set(await this.treatmentsService.list(patient.id));
+    try {
+      this.treatments.set(await this.treatmentsService.list(patient.id));
+    } catch (error) {
+      console.error('Failed to load treatments', error);
+      this.loadFailed.set(true);
+    }
   }
 
   async createNew(): Promise<void> {

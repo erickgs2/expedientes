@@ -43,17 +43,25 @@ interface TreatmentItemForm {
         <div class="item-row">
           <!--
             The name/selected-state must always render, even for a treatments:view-only user —
-            only the ability to toggle is permission-gated (via [disabled]), never the checkbox's
-            presence or label, so a read-only user can still see which types exist and which are
-            selected on this visit.
+            only the ability to toggle is permission-gated, never the checkbox's presence or
+            label, so a read-only user can still see which types exist and which are selected on
+            this visit. Mirrors the read-only-vs-editable split used below for notes (and by
+            PhotoGalleryComponent/FacialDiagramViewsComponent elsewhere) rather than a disabled
+            interactive control, which would render the label at low-contrast disabled-text
+            opacity instead of a proper read-only display.
           -->
-          <mat-checkbox
-            [checked]="item.selected"
-            [disabled]="!canEdit"
-            (change)="canEdit && toggleSelected(item, $event.checked)"
-          >
-            {{ item.name }}
-          </mat-checkbox>
+          @if (canEdit) {
+            <mat-checkbox [checked]="item.selected" (change)="toggleSelected(item, $event.checked)">
+              {{ item.name }}
+            </mat-checkbox>
+          } @else {
+            <span class="item-readonly">
+              <span class="selection-indicator">{{
+                (item.selected ? 'treatments.selected' : 'treatments.notSelected') | transloco
+              }}</span>
+              {{ item.name }}
+            </span>
+          }
           @if (!item.active) {
             <span class="inactive-badge">{{ 'treatmentCatalog.inactiveBadge' | transloco }}</span>
           }
@@ -68,15 +76,18 @@ interface TreatmentItemForm {
                   rows="3"
                 ></textarea>
               </mat-form-field>
-            } @else {
+            } @else if (item.notes) {
               <!-- Read-only equivalent of the textarea above: notes stay visible, never hidden,
-                   for a view-only user — just not editable. -->
+                   for a view-only user — just not editable. Only rendered when there's actual
+                   note content, so an empty/null note doesn't show a bare "Notas:" label. -->
               <p class="notes-readonly">
                 <strong>{{ 'treatments.notes' | transloco }}:</strong> {{ item.notes }}
               </p>
             }
           }
         </div>
+      } @empty {
+        <p>{{ 'treatments.noActiveTypes' | transloco }}</p>
       }
       @if (canEdit) {
         <button mat-flat-button color="primary" [disabled]="saving()" (click)="save()">
@@ -101,6 +112,13 @@ interface TreatmentItemForm {
       .notes-readonly {
         margin: 4px 0 0;
         color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+      }
+      .item-readonly {
+        display: inline-block;
+      }
+      .selection-indicator {
+        font-weight: 500;
+        margin-right: 6px;
       }
     `,
   ],

@@ -183,6 +183,9 @@
     "empty": "No hay tratamientos registrados",
     "noItems": "Sin tratamientos seleccionados",
     "detailTitle": "Tratamiento",
-    "notes": "Notas"
+    "notes": "Notas",
+    "selected": "Seleccionado",
+    "notSelected": "No seleccionado",
+    "noActiveTypes": "No hay tipos de tratamiento activos"
   }
 }

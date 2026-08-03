@@ -33,6 +33,10 @@ export const PATCH = withApiErrors(
         return apiError('INVALID_INPUT', 'notes must be a string or null', 400);
       }
     }
+    const treatmentTypeIds = body.items.map((item) => item.treatmentTypeId);
+    if (new Set(treatmentTypeIds).size !== treatmentTypeIds.length) {
+      return apiError('INVALID_INPUT', 'Duplicate treatmentTypeId in items', 400);
+    }
 
     const treatment = await replaceTreatmentItems(
       id,
@@ -41,6 +45,7 @@ export const PATCH = withApiErrors(
         notes: item.notes ?? null,
       }))
     );
+    if (!treatment) return apiError('NOT_FOUND', 'Treatment not found', 404);
 
     await writeAuditLogSafe({
       userId,
