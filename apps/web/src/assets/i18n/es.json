@@ -17,6 +17,7 @@
     "yes": "Sí",
     "no": "No",
     "edit": "Editar",
+    "delete": "Eliminar",
     "loading": "Cargando...",
     "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo.",
     "back": "Volver"
@@ -203,5 +204,25 @@
     "photosTitle": "Fotos",
     "viewPhotos": "Ver fotos",
     "addPhotos": "Agregar fotos"
+  },
+  "appointments": {
+    "form": {
+      "newTitle": "Nueva cita",
+      "editTitle": "Editar cita",
+      "patient": "Paciente",
+      "startTime": "Fecha y hora",
+      "duration": "Duración (minutos)",
+      "treatmentTypes": "Tratamientos planeados",
+      "notes": "Notas",
+      "status": "Estado",
+      "overlapWarning": "Esta cita se traslapa con"
+    },
+    "status": {
+      "SCHEDULED": "Agendada",
+      "CONFIRMED": "Confirmada",
+      "COMPLETED": "Completada",
+      "CANCELLED": "Cancelada",
+      "NO_SHOW": "No se presentó"
+    }
   }
 }

@@ -17,6 +17,7 @@
     "yes": "Yes",
     "no": "No",
     "edit": "Edit",
+    "delete": "Delete",
     "loading": "Loading...",
     "loadError": "Couldn't load this record. Please try again.",
     "back": "Back"
@@ -203,5 +204,25 @@
     "photosTitle": "Photos",
     "viewPhotos": "View photos",
     "addPhotos": "Add photos"
+  },
+  "appointments": {
+    "form": {
+      "newTitle": "New appointment",
+      "editTitle": "Edit appointment",
+      "patient": "Patient",
+      "startTime": "Date and time",
+      "duration": "Duration (minutes)",
+      "treatmentTypes": "Planned treatments",
+      "notes": "Notes",
+      "status": "Status",
+      "overlapWarning": "This appointment overlaps with"
+    },
+    "status": {
+      "SCHEDULED": "Scheduled",
+      "CONFIRMED": "Confirmed",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "NO_SHOW": "No-show"
+    }
   }
 }
