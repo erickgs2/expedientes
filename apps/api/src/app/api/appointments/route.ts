@@ -4,6 +4,7 @@ import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
 import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
+import { sendConfirmation } from '../../../lib/notifications/appointment-notifications';
 
 export const GET = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'appointments', 'view');
@@ -71,6 +72,10 @@ export const POST = withApiErrors(async (request: NextRequest) => {
     entityId: appointment.id,
     patientId: appointment.patientId,
   });
+
+  // Best-effort: `sendConfirmation` never throws, so a WhatsApp failure can never turn a
+  // successful booking into a failed API response.
+  await sendConfirmation(appointment.id);
 
   return NextResponse.json({ appointment }, { status: 201 });
 });
