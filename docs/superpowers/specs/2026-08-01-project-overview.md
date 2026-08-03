@@ -95,31 +95,40 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
       per-treatment notes. — complete
    3. **Consent signing** — each selected treatment gets its own consent, pre-filled from its
       type's template text, signed via an on-screen drawn signature, embedded as an image in the
-      stored consent record. **Design note (2026-08-02, from the treatment catalog's final
-      review):** `TreatmentType.consentTemplate` is freely editable in place with no versioning —
-      editing it later would silently change the wording every *previously*-signed consent
-      appears to have been signed against, if this sub-project renders from the live template at
-      display time instead of a snapshot. This sub-project's spec must snapshot the rendered
-      consent text onto the signed-consent row at signing time, so a signed document is immutable
-      by construction regardless of later catalog edits — this is a hard requirement, not
-      optional polish. **Additional design notes (2026-08-02, from treatment visit core's final
-      review):**
-      - `PATCH /api/treatments/[id]/items` replaces a visit's entire `TreatmentItem` set
-        (delete-then-recreate in a transaction) on every save. Once a `TreatmentItem` carries a
-        signed consent, this save strategy must become a diff (update/insert/delete per row) so a
-        re-save of the visit can never delete-then-recreate a row that already has a consent
-        attached to it — a naive carry-over of the current strategy would silently orphan or
-        destroy signed consent data.
-      - A `Treatment` visit's `fecha` has no edit path anywhere (no PATCH endpoint, no UI) — a
-        visit created on the wrong calendar day can never be corrected in the record, unlike
-        `Valoracion`, which does allow editing its `fecha`. Worth a deliberate decision in this or
-        a later sub-project rather than leaving it as an accidental gap.
-      - The item-replace endpoint currently audit-logs only `action: 'update'` with no `metadata`
-        (matching the rest of the app — no route anywhere sets `metadata` today). Because the save
-        is delete-then-recreate, a removed treatment selection and its clinical notes vanish with
-        no record anywhere. This becomes more consequential once consent records attach to
-        individual items — worth capturing before/after `treatmentTypeId` sets in `metadata` when
-        this endpoint is revisited for the diff-based rewrite above.
+      stored consent record. — complete. **Design note (2026-08-02, from the treatment catalog's
+      final review):** `TreatmentType.consentTemplate` is freely editable in place with no
+      versioning — resolved by this sub-project: the signing endpoint snapshots the rendered
+      consent text onto the `Consent` row at signing time (never re-read live), and additionally
+      rejects signing (409) if the template changed since the consent page was loaded, so a signed
+      document is immutable by construction and provably matches what the patient actually read.
+      **Resolved by this sub-project (was a design note from treatment visit core's final
+      review):** `PATCH /api/treatments/[id]/items` used to replace a visit's entire
+      `TreatmentItem` set via delete-then-recreate; this sub-project rewrote it as an
+      upsert-diff that preserves each surviving item's own database id (and therefore any signed
+      `Consent` attached to it) across saves, and added a server-side guard (backed by the
+      `Consent` FK's `ON DELETE RESTRICT`) rejecting any attempt to remove a treatment type that
+      already has a signed consent. **Remaining design notes carried forward:**
+      - A `Treatment` visit's `fecha` still has no edit path anywhere (no PATCH endpoint, no UI) —
+        a visit created on the wrong calendar day can never be corrected in the record, unlike
+        `Valoracion`, which does allow editing its `fecha`. Still an open gap, not addressed by
+        this sub-project.
+      - The item-replace endpoint still audit-logs only `action: 'update'` with no `metadata` — a
+        removed (unsigned) treatment selection and its notes still vanish with no record of what
+        was removed (signed items can no longer be removed at all, so the highest-severity case
+        this note originally warned about is now closed). Worth capturing before/after
+        `treatmentTypeId` sets in `metadata` if this endpoint is revisited again.
+      - **New (2026-08-02, from this sub-project's final review):** signing is one-time and
+        irreversible by design in this sub-project — there is no way to void or re-sign a consent
+        if it was signed by mistake or needs correction. If that need surfaces in practice, a later
+        sub-project (or the "Exportar"/admin tooling) will need a deliberate voiding workflow
+        (e.g. a superseding consent record rather than mutating the original, to preserve the
+        original signed artifact for audit purposes).
+      - **New (2026-08-02, from this sub-project's final review):** no optimistic-concurrency
+        protection exists for two staff members editing the same visit's item selection
+        simultaneously — the second save silently wins and discards the first's changes. This is a
+        module-wide gap (also true of `Valoracion`), not specific to consent signing, flagged here
+        only because consent signing is the first place a lost concurrent edit could discard
+        clinically/legally meaningful data rather than just draft notes.
    4. **Diagram + photo reuse** — adapt the existing facial diagram tool and photo capture for
       per-treatment use within a Treatment visit. This is where the reuse gaps flagged below (and
       by photo capture's Phase 1 final review) get resolved, not deferred further.
