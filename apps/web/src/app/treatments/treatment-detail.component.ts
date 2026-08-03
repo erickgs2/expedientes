@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { Treatment, TreatmentType } from '@expedientes/shared-types';
-import { HasPermissionDirective } from '../auth/has-permission.directive';
+import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { TreatmentsService } from './treatments.service';
 import { TreatmentTypesService } from './treatment-types.service';
@@ -30,7 +30,6 @@ interface TreatmentItemForm {
     MatInputModule,
     MatButtonModule,
     TranslocoModule,
-    HasPermissionDirective,
   ],
   template: `
     @if (loading()) {
@@ -42,10 +41,16 @@ interface TreatmentItemForm {
       <p>{{ 'valoracion.fields.fecha' | transloco }}: {{ fecha().substring(0, 10) }}</p>
       @for (item of items(); track item.treatmentTypeId) {
         <div class="item-row">
+          <!--
+            The name/selected-state must always render, even for a treatments:view-only user —
+            only the ability to toggle is permission-gated (via [disabled]), never the checkbox's
+            presence or label, so a read-only user can still see which types exist and which are
+            selected on this visit.
+          -->
           <mat-checkbox
-            *appHasPermission="'treatments:edit'"
             [checked]="item.selected"
-            (change)="toggleSelected(item, $event.checked)"
+            [disabled]="!canEdit"
+            (change)="canEdit && toggleSelected(item, $event.checked)"
           >
             {{ item.name }}
           </mat-checkbox>
@@ -53,27 +58,31 @@ interface TreatmentItemForm {
             <span class="inactive-badge">{{ 'treatmentCatalog.inactiveBadge' | transloco }}</span>
           }
           @if (item.selected) {
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>{{ 'treatments.notes' | transloco }}</mat-label>
-              <textarea
-                matInput
-                [(ngModel)]="item.notes"
-                [ngModelOptions]="{ standalone: true }"
-                rows="3"
-              ></textarea>
-            </mat-form-field>
+            @if (canEdit) {
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'treatments.notes' | transloco }}</mat-label>
+                <textarea
+                  matInput
+                  [(ngModel)]="item.notes"
+                  [ngModelOptions]="{ standalone: true }"
+                  rows="3"
+                ></textarea>
+              </mat-form-field>
+            } @else {
+              <!-- Read-only equivalent of the textarea above: notes stay visible, never hidden,
+                   for a view-only user — just not editable. -->
+              <p class="notes-readonly">
+                <strong>{{ 'treatments.notes' | transloco }}:</strong> {{ item.notes }}
+              </p>
+            }
           }
         </div>
       }
-      <button
-        *appHasPermission="'treatments:edit'"
-        mat-flat-button
-        color="primary"
-        [disabled]="saving()"
-        (click)="save()"
-      >
-        {{ 'common.save' | transloco }}
-      </button>
+      @if (canEdit) {
+        <button mat-flat-button color="primary" [disabled]="saving()" (click)="save()">
+          {{ 'common.save' | transloco }}
+        </button>
+      }
     }
   `,
   styles: [
@@ -89,6 +98,10 @@ interface TreatmentItemForm {
         font-size: 12px;
         color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
       }
+      .notes-readonly {
+        margin: 4px 0 0;
+        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+      }
     `,
   ],
 })
@@ -96,6 +109,7 @@ export class TreatmentDetailComponent implements OnInit {
   private readonly treatmentsService = inject(TreatmentsService);
   private readonly treatmentTypesService = inject(TreatmentTypesService);
   private readonly activePatient = inject(ActivePatientStore);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -105,9 +119,14 @@ export class TreatmentDetailComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly fecha = signal('');
   protected readonly items = signal<TreatmentItemForm[]>([]);
+  // Plain field, not a signal: matches the established pattern used by
+  // FacialDiagramViewsComponent/PhotoGalleryComponent for the same read-only-vs-editable split —
+  // permissions don't change mid-session, so a one-time check in ngOnInit is sufficient.
+  protected canEdit = false;
   private treatmentId = '';
 
   async ngOnInit(): Promise<void> {
+    this.canEdit = this.auth.hasPermission('treatments', 'edit');
     this.treatmentId = this.route.snapshot.paramMap.get('id') ?? '';
     if (!this.treatmentId) {
       this.loadFailed.set(true);
