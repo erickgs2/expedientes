@@ -82,7 +82,8 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
          session-wide before/after mode toggle, upload, and a gallery of the current visit's
          photos, embedded in the Valoración detail page — complete
       2. **Progressive timeline** — patient-level chronological before/after view across all of
-         a patient's visits
+         a patient's visits — complete. The photo capture sub-project is now complete (both
+         phases), and with it, all three Valoración sub-projects are complete.
 4. **Treatments** — follow-up visits: treatment selection, consent signing, diagram, photos
    (reuses Valoración's diagram tool and photo capture). **Note (2026-08-02, from the facial
    diagram tool's Phase 3 final review):** `FacialDiagramViewsComponent`/`FacialDiagramCanvasComponent`
