@@ -21,11 +21,28 @@ import { createPinMarker, createStarMarker, createXMarker } from './fabric-shape
 
 const CANVAS_WIDTH = 480;
 const CANVAS_HEIGHT = 600;
-export const PLACEHOLDER_IMAGE_URLS: Record<DiagramView, string> = {
-  FRONT: '/assets/facial-diagram-placeholder.svg',
-  LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
-  RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',
+/**
+ * Base images drawn under every diagram, per module: Valoración uses aesthetic line-art faces,
+ * Treatments uses facial-muscle anatomy references (both match the clinic's paper forms).
+ */
+export const DIAGRAM_IMAGE_URLS: Record<'valoracion' | 'treatments', Record<DiagramView, string>> = {
+  valoracion: {
+    FRONT: '/assets/facial-diagram-placeholder.svg',
+    LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
+    RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',
+  },
+  treatments: {
+    FRONT: '/assets/treatment-diagram-front.svg',
+    LEFT_PROFILE: '/assets/treatment-diagram-left.svg',
+    RIGHT_PROFILE: '/assets/treatment-diagram-right.svg',
+  },
 };
+
+/** Resolves the base image for a module+view; any non-treatments module gets the Valoración art. */
+export function diagramImageUrl(module: PermissionModule, view: DiagramView): string {
+  const set = module === 'treatments' ? DIAGRAM_IMAGE_URLS.treatments : DIAGRAM_IMAGE_URLS.valoracion;
+  return set[view];
+}
 
 type DiagramTool = 'select' | 'pencil' | 'pin' | 'x' | 'star' | 'text';
 
@@ -329,7 +346,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     });
 
     try {
-      const background = await FabricImage.fromURL(PLACEHOLDER_IMAGE_URLS[this.view]);
+      const background = await FabricImage.fromURL(diagramImageUrl(this.permissionModule, this.view));
       if (this.destroyed) return;
       background.set({ selectable: false, evented: false });
       background.scaleToWidth(this.canvasWidth);

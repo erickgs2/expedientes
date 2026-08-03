@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 600" width="480" height="600">
+  <rect width="480" height="600" fill="#fafafa"/>
+  <!-- One side of the symmetric muscle detail, mirrored below -->
+  <g id="side" fill="none" stroke="#a3a3a3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ear -->
+    <path d="M108 282 C92 268 80 284 86 308 C92 334 104 352 116 348" stroke="#6e6e6e" stroke-width="2"/>
+    <path d="M100 292 C94 300 96 316 104 328" stroke="#6e6e6e" stroke-width="2"/>
+    <!-- frontalis fibers -->
+    <path d="M150 190 C149 205 151 220 154 233"/>
+    <path d="M159 172 C158 192 160 214 163 233"/>
+    <path d="M168 158 C166 184 168 210 171 234"/>
+    <path d="M177 148 C175 178 177 208 179 234"/>
+    <path d="M186 142 C184 175 185 206 187 235"/>
+    <path d="M195 138 C193 172 194 204 196 235"/>
+    <path d="M204 136 C202 170 203 202 205 234"/>
+    <path d="M213 138 C211 172 212 202 214 232"/>
+    <path d="M222 142 C220 174 221 202 223 230"/>
+    <!-- orbicularis oculi rings -->
+    <ellipse cx="175" cy="286" rx="52" ry="40"/>
+    <ellipse cx="175" cy="286" rx="41" ry="30"/>
+    <ellipse cx="175" cy="286" rx="31" ry="22"/>
+    <!-- eye -->
+    <path d="M150 286 C161 277 189 277 200 286" stroke="#6e6e6e" stroke-width="2"/>
+    <path d="M150 286 C161 295 189 295 200 286" stroke="#6e6e6e" stroke-width="2"/>
+    <circle cx="175" cy="286" r="8" stroke="#6e6e6e" stroke-width="2"/>
+    <circle cx="175" cy="286" r="3.5" fill="#6e6e6e" stroke="none"/>
+    <!-- zygomaticus / cheek fibers -->
+    <path d="M138 336 C155 362 178 392 200 416"/>
+    <path d="M148 344 C164 368 184 394 204 420"/>
+    <path d="M158 352 C172 374 190 398 208 424"/>
+    <path d="M130 348 C142 378 158 404 176 428"/>
+    <path d="M124 360 C134 388 148 414 164 436"/>
+    <!-- levator fibers to upper lip -->
+    <path d="M212 372 C210 388 208 402 206 414"/>
+    <path d="M220 376 C218 390 216 402 214 414"/>
+    <!-- platysma on neck -->
+    <path d="M190 500 C190 528 188 556 186 582"/>
+    <path d="M204 508 C204 534 203 560 202 584"/>
+  </g>
+  <use href="#side" transform="translate(480 0) scale(-1 1)"/>
+  <g fill="none" stroke="#6e6e6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- head outline -->
+    <path d="M240 72 C162 72 108 138 108 232 C108 302 122 372 148 422 C173 468 206 506 240 506 C274 506 307 468 332 422 C358 372 372 302 372 232 C372 138 318 72 240 72 Z"/>
+    <!-- neck -->
+    <path d="M172 468 C174 508 170 548 162 585"/>
+    <path d="M308 468 C306 508 310 548 318 585"/>
+    <!-- procerus / corrugator between brows -->
+    <g stroke="#a3a3a3" stroke-width="1.5">
+      <path d="M233 232 C232 248 232 262 234 272"/>
+      <path d="M240 228 C239 246 239 262 240 274"/>
+      <path d="M247 232 C248 248 248 262 246 272"/>
+    </g>
+    <!-- nose -->
+    <path d="M226 268 C224 296 222 322 218 344"/>
+    <path d="M254 268 C256 296 258 322 262 344"/>
+    <path d="M218 344 C212 354 216 364 228 366"/>
+    <path d="M262 344 C268 354 264 364 252 366"/>
+    <path d="M228 366 C234 370 246 370 252 366"/>
+    <!-- orbicularis oris rings -->
+    <g stroke="#a3a3a3" stroke-width="1.5">
+      <ellipse cx="240" cy="430" rx="62" ry="40"/>
+      <ellipse cx="240" cy="430" rx="48" ry="29"/>
+    </g>
+    <!-- lips -->
+    <path d="M208 424 C222 415 236 414 240 418 C244 414 258 415 272 424"/>
+    <path d="M208 424 C228 432 252 432 272 424"/>
+    <path d="M216 438 C230 446 250 446 264 438"/>
+    <!-- mentalis fibers on chin -->
+    <g stroke="#a3a3a3" stroke-width="1.5">
+      <path d="M226 476 C224 486 222 494 220 502"/>
+      <path d="M233 478 C232 488 231 496 230 503"/>
+      <path d="M240 478 C240 488 240 497 240 504"/>
+      <path d="M247 478 C248 488 249 496 250 503"/>
+      <path d="M254 476 C256 486 258 494 260 502"/>
+    </g>
+  </g>
+</svg>

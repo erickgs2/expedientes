@@ -1,10 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 600" width="480" height="600">
   <rect width="480" height="600" fill="#fafafa"/>
-  <ellipse cx="240" cy="300" rx="150" ry="220" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <ellipse cx="180" cy="260" rx="20" ry="12" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <ellipse cx="300" cy="260" rx="20" ry="12" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <path d="M240 280 L230 340 L250 340 Z" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <path d="M190 400 Q240 430 290 400" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <path d="M150 240 Q180 210 210 235" fill="none" stroke="#c9c9c9" stroke-width="2"/>
-  <path d="M270 235 Q300 210 330 240" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+  <g fill="none" stroke="#666666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- hair: outer silhouette -->
+    <path d="M240 92 C172 92 122 138 118 215 C115 285 122 375 130 455 C133 480 142 498 158 505"/>
+    <path d="M240 92 C308 92 358 138 362 215 C365 285 358 375 350 455 C347 480 338 498 322 505"/>
+    <!-- hair: inner side strands -->
+    <path d="M136 245 C132 318 138 396 148 460"/>
+    <path d="M344 245 C348 318 342 396 332 460"/>
+    <!-- face outline -->
+    <path d="M155 240 C153 312 162 366 185 410 C203 442 222 460 240 460 C258 460 277 442 295 410 C318 366 327 312 325 240"/>
+    <!-- hairline sweep from the side part -->
+    <path d="M218 138 C258 148 300 186 325 243"/>
+    <path d="M218 138 C196 150 170 186 155 240"/>
+    <path d="M226 146 C258 158 288 188 308 226"/>
+    <path d="M212 148 C194 162 177 190 166 222"/>
+    <!-- eyebrows -->
+    <path d="M170 264 C184 251 208 249 224 258"/>
+    <path d="M256 258 C272 249 296 251 310 264"/>
+    <!-- eyelid creases -->
+    <path d="M179 276 C190 268 205 267 215 274"/>
+    <path d="M265 274 C275 267 290 268 301 276"/>
+    <!-- eyes -->
+    <path d="M175 288 C186 277 206 275 219 286"/>
+    <path d="M175 288 C186 295 206 296 219 286"/>
+    <path d="M261 286 C274 275 294 277 305 288"/>
+    <path d="M261 286 C274 296 294 295 305 288"/>
+    <circle cx="197" cy="287" r="6.5"/>
+    <circle cx="283" cy="287" r="6.5"/>
+    <circle cx="197" cy="287" r="2.2" fill="#666666" stroke="none"/>
+    <circle cx="283" cy="287" r="2.2" fill="#666666" stroke="none"/>
+    <!-- nose -->
+    <path d="M234 308 C232 326 229 341 226 350"/>
+    <path d="M226 350 C229 356 235 359 240 357"/>
+    <path d="M254 350 C251 356 245 359 240 357"/>
+    <path d="M221 346 C218 350 218 354 221 356"/>
+    <path d="M259 346 C262 350 262 354 259 356"/>
+    <!-- lips -->
+    <path d="M206 392 C218 384 231 383 240 388 C249 383 262 384 274 392"/>
+    <path d="M206 392 C226 399 254 399 274 392"/>
+    <path d="M212 400 C228 412 252 412 268 400"/>
+    <!-- neck -->
+    <path d="M201 452 C203 476 201 496 196 514"/>
+    <path d="M279 452 C277 476 279 496 284 514"/>
+    <!-- shoulders -->
+    <path d="M196 514 C162 526 130 542 108 560"/>
+    <path d="M284 514 C318 526 350 542 372 560"/>
+  </g>
 </svg>

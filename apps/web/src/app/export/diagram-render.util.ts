@@ -1,7 +1,7 @@
 import { FabricImage, StaticCanvas, util } from 'fabric';
-import type { DiagramView } from '@expedientes/shared-types';
+import type { DiagramView, PermissionModule } from '@expedientes/shared-types';
 import {
-  PLACEHOLDER_IMAGE_URLS,
+  diagramImageUrl,
   findDisallowedDiagramType,
 } from '../shared/facial-diagram/facial-diagram-canvas.component';
 
@@ -25,6 +25,7 @@ const CANVAS_HEIGHT = 600;
  * abort the export rather than silently omitting the image.
  */
 export async function renderDiagramToBlob(
+  module: PermissionModule,
   view: DiagramView,
   data: Record<string, unknown>
 ): Promise<Blob | null> {
@@ -34,7 +35,7 @@ export async function renderDiagramToBlob(
   const canvas = new StaticCanvas(canvasEl);
 
   try {
-    const background = await FabricImage.fromURL(PLACEHOLDER_IMAGE_URLS[view]);
+    const background = await FabricImage.fromURL(diagramImageUrl(module, view));
     background.set({ selectable: false, evented: false });
     background.scaleToWidth(CANVAS_WIDTH);
     canvas.backgroundImage = background;

@@ -139,7 +139,7 @@ export class ExportComponent {
       const fullOnes = await Promise.all(summaries.map((v) => this.valoracionService.get(v.id)));
       for (const valoracion of fullOnes) {
         for (const diagram of valoracion.diagrams) {
-          const blob = await renderDiagramToBlob(diagram.view, diagram.data);
+          const blob = await renderDiagramToBlob('valoracion', diagram.view, diagram.data);
           if (!blob) {
             throw new Error(
               `Failed to render diagram for Valoración ${valoracion.id} (${diagram.view})`
@@ -157,7 +157,7 @@ export class ExportComponent {
         for (const item of treatment.items) {
           const detail = await this.treatmentDiagramService.getItem(item.id);
           for (const diagram of detail.diagrams) {
-            const blob = await renderDiagramToBlob(diagram.view, diagram.data);
+            const blob = await renderDiagramToBlob('treatments', diagram.view, diagram.data);
             if (!blob) {
               throw new Error(
                 `Failed to render diagram for Treatment item ${item.id} (${diagram.view})`
