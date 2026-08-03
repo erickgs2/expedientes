@@ -206,6 +206,15 @@
     "addPhotos": "Agregar fotos"
   },
   "appointments": {
+    "calendarTitle": "Calendario",
+    "new": "Nueva cita",
+    "today": "Hoy",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "viewDay": "Día",
+    "viewWeek": "Semana",
+    "viewMonth": "Mes",
+    "noneThisDay": "Sin citas",
     "form": {
       "newTitle": "Nueva cita",
       "editTitle": "Editar cita",

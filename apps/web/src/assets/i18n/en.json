@@ -206,6 +206,15 @@
     "addPhotos": "Add photos"
   },
   "appointments": {
+    "calendarTitle": "Calendar",
+    "new": "New appointment",
+    "today": "Today",
+    "previous": "Previous",
+    "next": "Next",
+    "viewDay": "Day",
+    "viewWeek": "Week",
+    "viewMonth": "Month",
+    "noneThisDay": "No appointments",
     "form": {
       "newTitle": "New appointment",
       "editTitle": "Edit appointment",
