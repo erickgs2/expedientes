@@ -226,7 +226,8 @@
       "treatmentTypes": "Tratamientos planeados",
       "notes": "Notas",
       "status": "Estado",
-      "overlapWarning": "Esta cita se traslapa con"
+      "overlapWarning": "Esta cita se traslapa con",
+      "confirmDelete": "¿Eliminar esta cita? Esta acción no se puede deshacer."
     },
     "status": {
       "SCHEDULED": "Agendada",

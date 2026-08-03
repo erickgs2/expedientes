@@ -10,7 +10,7 @@ import {
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import type {
   Appointment,
   AppointmentStatus,
@@ -70,7 +70,7 @@ function toDatetimeLocalString(date: Date): string {
           (ngModelChange)="onPatientQueryChange($event)"
           [matAutocomplete]="patientAuto"
         />
-        <mat-autocomplete #patientAuto="matAutocomplete" (optionSelected)="onPatientSelected($event)">
+        <mat-autocomplete #patientAuto="matAutocomplete" [displayWith]="displayPatientOption" (optionSelected)="onPatientSelected($event)">
           @for (patient of patientResults(); track patient.id) {
             <mat-option [value]="patient">{{ patient.fullName }} · {{ patient.phone }}</mat-option>
           }
@@ -84,7 +84,7 @@ function toDatetimeLocalString(date: Date): string {
           type="datetime-local"
           [(ngModel)]="startTimeLocal"
           [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="onStartTimeChange($event)"
+          (ngModelChange)="onStartTimeChange()"
         />
       </mat-form-field>
 
@@ -97,7 +97,7 @@ function toDatetimeLocalString(date: Date): string {
           step="5"
           [(ngModel)]="durationMinutes"
           [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="onDurationChange($event)"
+          (ngModelChange)="onDurationChange()"
         />
       </mat-form-field>
 
@@ -108,11 +108,13 @@ function toDatetimeLocalString(date: Date): string {
         </p>
       }
 
-      <p class="section-label">{{ 'appointments.form.treatmentTypes' | transloco }}</p>
-      @for (option of treatmentTypeOptions(); track option.id) {
-        <mat-checkbox [checked]="option.checked" (change)="toggleTreatmentType(option, $event.checked)">
-          {{ option.name }}
-        </mat-checkbox>
+      @if (canViewTreatmentTypes) {
+        <p class="section-label">{{ 'appointments.form.treatmentTypes' | transloco }}</p>
+        @for (option of treatmentTypeOptions(); track option.id) {
+          <mat-checkbox [checked]="option.checked" (change)="toggleTreatmentType(option, $event.checked)">
+            {{ option.name }}
+          </mat-checkbox>
+        }
       }
 
       <mat-form-field appearance="outline" class="full-width">
@@ -164,6 +166,7 @@ export class AppointmentFormComponent implements OnInit {
   private readonly treatmentTypesService = inject(TreatmentTypesService);
   private readonly appointmentService = inject(AppointmentService);
   private readonly auth = inject(AuthService);
+  private readonly transloco = inject(TranslocoService);
 
   // `data` must be a field injected before any field initializer that reads it (`patientQuery`
   // etc. below) — this project's established MAT_DIALOG_DATA field-ordering convention; see
@@ -173,6 +176,7 @@ export class AppointmentFormComponent implements OnInit {
   protected readonly statuses = STATUSES;
   protected readonly saving = signal(false);
   protected readonly canDelete = this.auth.hasPermission('appointments', 'delete');
+  protected readonly canViewTreatmentTypes = this.auth.hasPermission('treatments', 'view');
 
   protected patientQuery = this.data.appointment?.patientName ?? this.data.initialPatientName ?? '';
   protected readonly patientResults = signal<PatientSummary[]>([]);
@@ -194,18 +198,24 @@ export class AppointmentFormComponent implements OnInit {
   private loadedDay: string | null = null;
 
   ngOnInit(): void {
-    this.loadTreatmentTypes();
+    if (this.canViewTreatmentTypes) {
+      this.loadTreatmentTypes();
+    }
     this.loadDayAppointments();
   }
 
   private async loadTreatmentTypes(): Promise<void> {
-    const types = await this.treatmentTypesService.list();
-    const existingIds = new Set(this.data.appointment?.treatmentTypeIds ?? []);
-    this.treatmentTypeOptions.set(
-      types
-        .filter((t) => t.active || existingIds.has(t.id))
-        .map((t) => ({ id: t.id, name: t.name, checked: existingIds.has(t.id) }))
-    );
+    try {
+      const types = await this.treatmentTypesService.list();
+      const existingIds = new Set(this.data.appointment?.treatmentTypeIds ?? []);
+      this.treatmentTypeOptions.set(
+        types
+          .filter((t) => t.active || existingIds.has(t.id))
+          .map((t) => ({ id: t.id, name: t.name, checked: existingIds.has(t.id) }))
+      );
+    } catch (error) {
+      console.error('Failed to load treatment types', error);
+    }
   }
 
   private async loadDayAppointments(): Promise<void> {
@@ -213,12 +223,16 @@ export class AppointmentFormComponent implements OnInit {
     if (start) {
       const dayKey = start.toDateString();
       if (this.loadedDay !== dayKey) {
-        this.loadedDay = dayKey;
         const dayStart = new Date(start);
         dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(start);
         dayEnd.setHours(23, 59, 59, 999);
-        this.dayAppointments.set(await this.appointmentService.list(dayStart, dayEnd));
+        try {
+          this.dayAppointments.set(await this.appointmentService.list(dayStart, dayEnd));
+          this.loadedDay = dayKey;
+        } catch (error) {
+          console.error('Failed to load day appointments for overlap check', error);
+        }
       }
     }
     this.recomputeOverlap();
@@ -250,10 +264,25 @@ export class AppointmentFormComponent implements OnInit {
     return !!this.selectedPatientId && !!this.parsedStartTime() && this.durationMinutes > 0;
   }
 
-  protected async onPatientQueryChange(value: string): Promise<void> {
+  protected async onPatientQueryChange(value: string | PatientSummary): Promise<void> {
+    if (typeof value !== 'string') return;
     this.selectedPatientId = null;
-    this.patientResults.set(value.trim() ? await this.patientsService.search(value) : []);
+    if (!value.trim()) {
+      this.patientResults.set([]);
+      return;
+    }
+    try {
+      this.patientResults.set(await this.patientsService.search(value));
+    } catch (error) {
+      console.error('Failed to search patients', error);
+      this.patientResults.set([]);
+    }
   }
+
+  protected displayPatientOption = (patient: PatientSummary | string | null): string => {
+    if (!patient) return '';
+    return typeof patient === 'string' ? patient : patient.fullName;
+  };
 
   protected onPatientSelected(event: MatAutocompleteSelectedEvent): void {
     const patient = event.option.value as PatientSummary;
@@ -262,11 +291,11 @@ export class AppointmentFormComponent implements OnInit {
     this.patientResults.set([]);
   }
 
-  protected onStartTimeChange(_value: string): void {
+  protected onStartTimeChange(): void {
     this.loadDayAppointments();
   }
 
-  protected onDurationChange(_value: number): void {
+  protected onDurationChange(): void {
     this.recomputeOverlap();
   }
 
@@ -316,6 +345,7 @@ export class AppointmentFormComponent implements OnInit {
 
   async delete(): Promise<void> {
     if (!this.data.appointment) return;
+    if (!confirm(this.transloco.translate('appointments.form.confirmDelete'))) return;
     this.saving.set(true);
     try {
       await this.appointmentService.delete(this.data.appointment.id);

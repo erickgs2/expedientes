@@ -4,7 +4,7 @@ import { MatButtonToggleModule, MatButtonToggleChange } from '@angular/material/
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AppointmentSummary } from '@expedientes/shared-types';
+import type { Appointment, AppointmentSummary } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { AppointmentService } from './appointment.service';
@@ -99,72 +99,85 @@ function isSameDay(a: Date, b: Date): boolean {
       </div>
     </div>
 
-    @if (viewMode() === 'month') {
-      <div class="month-list">
-        @for (day of monthDays(); track day.date.getTime()) {
-          <div class="month-day-row">
-            <div class="month-day-label">
-              {{ day.label }}
-              @if (auth.hasPermission('appointments', 'create')) {
-                <button mat-icon-button (click)="openCreate(monthDefaultTime(day.date))" [attr.aria-label]="'appointments.new' | transloco">
-                  <mat-icon>add</mat-icon>
-                </button>
-              }
-            </div>
-            <div class="month-day-items">
-              @for (appt of day.items; track appt.id) {
-                <button
-                  type="button"
-                  class="appt-chip"
-                  [class.status-cancelled]="appt.status === 'CANCELLED'"
-                  [class.status-no-show]="appt.status === 'NO_SHOW'"
-                  (click)="onAppointmentClick($event, appt)"
-                >
-                  {{ formatTime(appt.startTime) }} — {{ appt.patientName }}
-                  @if (appt.treatmentTypeNames.length > 0) {
-                    <span class="chip-types">({{ appt.treatmentTypeNames.join(', ') }})</span>
-                  }
-                </button>
-              } @empty {
-                <span class="no-appts">{{ 'appointments.noneThisDay' | transloco }}</span>
-              }
-            </div>
-          </div>
-        }
-      </div>
+    @if (loading()) {
+      <p>{{ 'common.loading' | transloco }}</p>
+    } @else if (loadFailed()) {
+      <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
-      <div class="week-header">
-        <div class="axis-spacer"></div>
-        @for (col of dayColumns(); track col.date.getTime()) {
-          <div class="day-header-cell">{{ col.label }}</div>
-        }
-      </div>
-      <div class="time-grid">
-        <div class="time-axis" [style.height.px]="gridHeight">
-          @for (hour of hourMarks; track hour) {
-            <div class="hour-label" [style.top.px]="hourTop(hour)">{{ hour }}:00</div>
-          }
-        </div>
-        <div class="day-columns">
-          @for (col of dayColumns(); track col.date.getTime()) {
-            <div class="day-column" [style.height.px]="gridHeight" (click)="onColumnClick($event, col.date)">
-              @for (positioned of col.items; track positioned.appointment.id) {
-                <button
-                  type="button"
-                  class="appt-block"
-                  [class.status-cancelled]="positioned.appointment.status === 'CANCELLED'"
-                  [class.status-no-show]="positioned.appointment.status === 'NO_SHOW'"
-                  [style.top.px]="positioned.top"
-                  [style.height.px]="positioned.height"
-                  (click)="onAppointmentClick($event, positioned.appointment)"
-                >
-                  {{ formatTime(positioned.appointment.startTime) }} {{ positioned.appointment.patientName }}
-                </button>
-              }
+      @if (viewMode() === 'month') {
+        <div class="month-list">
+          @for (day of monthDays(); track day.date.getTime()) {
+            <div class="month-day-row">
+              <div class="month-day-label">
+                {{ day.label }}
+                @if (auth.hasPermission('appointments', 'create')) {
+                  <button mat-icon-button (click)="openCreate(monthDefaultTime(day.date))" [attr.aria-label]="'appointments.new' | transloco">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                }
+              </div>
+              <div class="month-day-items">
+                @for (appt of day.items; track appt.id) {
+                  <button
+                    type="button"
+                    class="appt-chip"
+                    [class.status-cancelled]="appt.status === 'CANCELLED'"
+                    [class.status-no-show]="appt.status === 'NO_SHOW'"
+                    (click)="onAppointmentClick($event, appt)"
+                  >
+                    {{ formatTime(appt.startTime) }} — {{ appt.patientName }}
+                    @if (appt.treatmentTypeNames.length > 0) {
+                      <span class="chip-types">({{ appt.treatmentTypeNames.join(', ') }})</span>
+                    }
+                  </button>
+                } @empty {
+                  <span class="no-appts">{{ 'appointments.noneThisDay' | transloco }}</span>
+                }
+              </div>
             </div>
           }
         </div>
-      </div>
+      } @else {
+        <div class="week-header">
+          <div class="axis-spacer"></div>
+          @for (col of dayColumns(); track col.date.getTime()) {
+            <div class="day-header-cell">{{ col.label }}</div>
+          }
+        </div>
+        <div class="time-grid">
+          <div class="time-axis" [style.height.px]="gridHeight">
+            @for (hour of hourMarks; track hour) {
+              <div class="hour-label" [style.top.px]="hourTop(hour)">{{ hour }}:00</div>
+            }
+          </div>
+          <div class="day-columns">
+            @for (col of dayColumns(); track col.date.getTime()) {
+              <div
+                class="day-column"
+                role="button"
+                tabindex="0"
+                [style.height.px]="gridHeight"
+                (click)="onColumnClick($event, col.date)"
+                (keydown.enter)="onColumnKeydown(col.date)"
+              >
+                @for (positioned of col.items; track positioned.appointment.id) {
+                  <button
+                    type="button"
+                    class="appt-block"
+                    [class.status-cancelled]="positioned.appointment.status === 'CANCELLED'"
+                    [class.status-no-show]="positioned.appointment.status === 'NO_SHOW'"
+                    [style.top.px]="positioned.top"
+                    [style.height.px]="positioned.height"
+                    (click)="onAppointmentClick($event, positioned.appointment)"
+                  >
+                    {{ formatTime(positioned.appointment.startTime) }} {{ positioned.appointment.patientName }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
     }
   `,
   styles: [
@@ -296,6 +309,8 @@ export class AppointmentCalendarComponent implements OnInit {
   protected readonly viewMode = signal<ViewMode>('week');
   protected readonly referenceDate = signal<Date>(new Date());
   protected readonly appointments = signal<AppointmentSummary[]>([]);
+  protected readonly loading = signal(true);
+  protected readonly loadFailed = signal(false);
 
   protected readonly hourMarks = Array.from(
     { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
@@ -427,7 +442,16 @@ export class AppointmentCalendarComponent implements OnInit {
   }
 
   private async refresh(): Promise<void> {
-    this.appointments.set(await this.appointmentService.list(this.rangeStart(), this.rangeEnd()));
+    this.loading.set(true);
+    this.loadFailed.set(false);
+    try {
+      this.appointments.set(await this.appointmentService.list(this.rangeStart(), this.rangeEnd()));
+    } catch (error) {
+      console.error('Failed to load appointments', error);
+      this.loadFailed.set(true);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   protected onViewModeChange(event: MatButtonToggleChange): void {
@@ -469,6 +493,13 @@ export class AppointmentCalendarComponent implements OnInit {
     this.openCreate(startTime);
   }
 
+  protected onColumnKeydown(date: Date): void {
+    if (!this.auth.hasPermission('appointments', 'create')) return;
+    const startTime = new Date(date);
+    startTime.setHours(DAY_START_HOUR, 0, 0, 0);
+    this.openCreate(startTime);
+  }
+
   protected onAppointmentClick(event: MouseEvent, appointment: AppointmentSummary): void {
     event.stopPropagation();
     if (!this.auth.hasPermission('appointments', 'edit')) return;
@@ -485,7 +516,13 @@ export class AppointmentCalendarComponent implements OnInit {
   }
 
   protected async openEdit(id: string): Promise<void> {
-    const appointment = await this.appointmentService.get(id);
+    let appointment: Appointment;
+    try {
+      appointment = await this.appointmentService.get(id);
+    } catch (error) {
+      console.error('Failed to load appointment', error);
+      return;
+    }
     const ref = this.dialog.open(AppointmentFormComponent, {
       data: { appointment } as AppointmentFormDialogData,
     });

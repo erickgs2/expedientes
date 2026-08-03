@@ -226,7 +226,8 @@
       "treatmentTypes": "Planned treatments",
       "notes": "Notes",
       "status": "Status",
-      "overlapWarning": "This appointment overlaps with"
+      "overlapWarning": "This appointment overlaps with",
+      "confirmDelete": "Delete this appointment? This action cannot be undone."
     },
     "status": {
       "SCHEDULED": "Scheduled",
