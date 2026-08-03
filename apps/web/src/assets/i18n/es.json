@@ -8,7 +8,8 @@
       "patients": "Pacientes",
       "users": "Usuarios",
       "roles": "Roles",
-      "treatments": "Tratamientos"
+      "treatments": "Tratamientos",
+      "calendar": "Calendario"
     }
   },
   "common": {
@@ -70,6 +71,7 @@
   },
   "historiaClinica": {
     "title": "Historia clínica",
+    "scheduleAppointment": "Agendar cita",
     "sections": {
       "personalInfo": "Información del paciente",
       "medicalInfo": "Información médica",

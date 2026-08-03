@@ -12,12 +12,17 @@ import {
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { AllergyOption } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from './historia-clinica.service';
+import {
+  AppointmentFormComponent,
+  type AppointmentFormDialogData,
+} from '../appointments/appointment-form.component';
 
 @Component({
   selector: 'app-historia-clinica-form',
@@ -33,6 +38,7 @@ import { HistoriaClinicaService } from './historia-clinica.service';
     MatChipsModule,
     MatAutocompleteModule,
     MatIconModule,
+    MatDialogModule,
     RouterLink,
     TranslocoModule,
     HasPermissionDirective,
@@ -51,6 +57,14 @@ import { HistoriaClinicaService } from './historia-clinica.service';
       <a *appHasPermission="'treatments:view'" mat-button routerLink="/treatments">{{
         'historiaClinica.viewTreatments' | transloco
       }}</a>
+      <button
+        *appHasPermission="'appointments:create'"
+        mat-button
+        type="button"
+        (click)="openAppointmentDialog()"
+      >
+        {{ 'historiaClinica.scheduleAppointment' | transloco }}
+      </button>
       <form [formGroup]="form" (ngSubmit)="save()">
         <mat-expansion-panel [expanded]="true">
           <mat-expansion-panel-header>
@@ -220,6 +234,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
   private readonly historiaClinicaService = inject(HistoriaClinicaService);
   private readonly activePatient = inject(ActivePatientStore);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -337,6 +352,18 @@ export class HistoriaClinicaFormComponent implements OnInit {
 
   protected removeAllergy(name: string): void {
     this.allergyNames.update((names) => names.filter((n) => n !== name));
+  }
+
+  protected openAppointmentDialog(): void {
+    const patient = this.patient();
+    if (!patient) return;
+    this.dialog.open(AppointmentFormComponent, {
+      data: {
+        appointment: null,
+        initialPatientId: patient.id,
+        initialPatientName: patient.fullName,
+      } as AppointmentFormDialogData,
+    });
   }
 
   async save(): Promise<void> {

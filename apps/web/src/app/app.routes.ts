@@ -88,4 +88,12 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./treatments/treatment-photo.component').then((m) => m.TreatmentPhotoComponent),
   },
+  {
+    path: 'calendar',
+    canActivate: [authGuard, permissionGuard('appointments', 'view')],
+    loadComponent: () =>
+      import('./appointments/appointment-calendar.component').then(
+        (m) => m.AppointmentCalendarComponent
+      ),
+  },
 ];

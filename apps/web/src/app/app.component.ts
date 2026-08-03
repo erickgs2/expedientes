@@ -39,6 +39,9 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
           <a *appHasPermission="'treatments:view'" mat-button routerLink="/admin/treatments">
             {{ 'shell.nav.treatments' | transloco }}
           </a>
+          <a *appHasPermission="'appointments:view'" mat-button routerLink="/calendar">
+            {{ 'shell.nav.calendar' | transloco }}
+          </a>
         </nav>
       }
       <span class="spacer"></span>
