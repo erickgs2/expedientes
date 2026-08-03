@@ -198,7 +198,14 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    **Resolved 2026-08-03 by the photo reuse mini-cycle above** — including the timeline itself,
    which turned out to need its own (light) touch after all: not the coupling this note warned
    about, but a home of its own once it started aggregating both modules' data.
-5. **Appointment management** — scheduling + WhatsApp notifications
+5. **Appointment management** — scheduling + WhatsApp notifications. Decomposed (2026-08-03) into
+   two ordered sub-projects, each with its own brainstorm → spec → plan → cycle:
+   1. **Appointment core** — CRUD, calendar UI (day/week/month), status tracking (Scheduled,
+      Confirmed, Completed, Cancelled, No-show), linking an appointment to planned treatment(s).
+   2. **WhatsApp notifications** — booking confirmation + automatic reminder before the
+      appointment, built on top of working appointments. Isolated into its own sub-project because
+      it introduces two things nothing else in this app has yet: a real external API integration
+      (WhatsApp Business API, via Meta or Twilio) and a scheduled/background reminder mechanism.
 6. **Exportar** — PDF export, selectable modules
 7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
 
