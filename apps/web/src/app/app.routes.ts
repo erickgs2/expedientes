@@ -82,4 +82,10 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./treatments/treatment-diagram.component').then((m) => m.TreatmentDiagramComponent),
   },
+  {
+    path: 'treatments/items/:itemId/photos',
+    canActivate: [authGuard, permissionGuard('treatments', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./treatments/treatment-photo.component').then((m) => m.TreatmentPhotoComponent),
+  },
 ];
