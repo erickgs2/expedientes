@@ -213,6 +213,16 @@ model TreatmentItem {
   treatmentTypeId String
   treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id])
   notes           String?
+  consent         Consent?
 
   @@unique([treatmentId, treatmentTypeId])
+}
+
+model Consent {
+  id                 String        @id @default(uuid())
+  treatmentItemId    String        @unique
+  treatmentItem      TreatmentItem @relation(fields: [treatmentItemId], references: [id])
+  consentText        String
+  signatureImagePath String
+  signedAt           DateTime      @default(now())
 }

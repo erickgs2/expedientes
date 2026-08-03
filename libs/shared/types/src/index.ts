@@ -6,3 +6,4 @@ export * from './lib/historia-clinica.js';
 export * from './lib/valoracion.js';
 export * from './lib/photo.js';
 export * from './lib/treatment.js';
+export * from './lib/consent.js';

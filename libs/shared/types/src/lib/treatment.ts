@@ -27,6 +27,7 @@ export interface TreatmentItem {
   treatmentTypeId: string;
   treatmentTypeName: string;
   notes: string | null;
+  hasConsent: boolean;
 }
 
 /** A treatment visit with its full item detail — returned by the get and item-update endpoints. */
