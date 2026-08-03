@@ -102,7 +102,8 @@
     },
     "notApplicable": "Not applicable",
     "allergyPlaceholder": "Type and press Enter to add",
-    "viewValoraciones": "View assessments"
+    "viewValoraciones": "View assessments",
+    "viewTreatments": "View treatments"
   },
   "valoracion": {
     "listTitle": "Assessments",
@@ -170,9 +171,18 @@
     "name": "Name",
     "consentTemplate": "Consent template",
     "active": "Active",
+    "inactiveBadge": "Inactive",
     "form": {
       "newTitle": "New treatment",
       "editTitle": "Edit treatment"
     }
+  },
+  "treatments": {
+    "listTitle": "Treatments",
+    "new": "New treatment",
+    "empty": "No treatments recorded",
+    "noItems": "No treatments selected",
+    "detailTitle": "Treatment",
+    "notes": "Notes"
   }
 }

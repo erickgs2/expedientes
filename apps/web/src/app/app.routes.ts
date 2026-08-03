@@ -58,4 +58,16 @@ export const appRoutes: Routes = [
         (m) => m.PhotoTimelineComponent
       ),
   },
+  {
+    path: 'treatments',
+    canActivate: [authGuard, permissionGuard('treatments', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./treatments/treatment-list.component').then((m) => m.TreatmentListComponent),
+  },
+  {
+    path: 'treatments/:id',
+    canActivate: [authGuard, permissionGuard('treatments', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./treatments/treatment-detail.component').then((m) => m.TreatmentDetailComponent),
+  },
 ];

@@ -102,7 +102,8 @@
     },
     "notApplicable": "No aplica",
     "allergyPlaceholder": "Escribe y presiona Enter para agregar",
-    "viewValoraciones": "Ver valoraciones"
+    "viewValoraciones": "Ver valoraciones",
+    "viewTreatments": "Ver tratamientos"
   },
   "valoracion": {
     "listTitle": "Valoraciones",
@@ -170,9 +171,18 @@
     "name": "Nombre",
     "consentTemplate": "Plantilla de consentimiento",
     "active": "Activo",
+    "inactiveBadge": "Inactivo",
     "form": {
       "newTitle": "Nuevo tratamiento",
       "editTitle": "Editar tratamiento"
     }
+  },
+  "treatments": {
+    "listTitle": "Tratamientos",
+    "new": "Nuevo tratamiento",
+    "empty": "No hay tratamientos registrados",
+    "noItems": "Sin tratamientos seleccionados",
+    "detailTitle": "Tratamiento",
+    "notes": "Notas"
   }
 }
