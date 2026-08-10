@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <rect width="2732" height="2732" fill="#e11d48"/>
+  <g transform="translate(854 1000) scale(1)" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 340 C462 400 448 470 512 540 C576 470 562 400 512 340 Z"/>
+    <path d="M400 430 C380 510 420 580 505 595 C505 520 470 460 400 430 Z"/>
+    <path d="M624 430 C644 510 604 580 519 595 C519 520 554 460 624 430 Z"/>
+    <path d="M370 590 C420 660 480 690 512 690 C544 690 604 660 654 590"/>
+  </g>
+  <text x="1366" y="1840" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="150" font-weight="600" fill="#ffffff">Expedientes</text>
+</svg>
