@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Expedientes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        font-family: Roboto, 'Helvetica Neue', sans-serif;
+        background: #fafafa;
+        color: #1c1b1f;
+        text-align: center;
+        padding: 24px calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom))
+          calc(24px + env(safe-area-inset-left));
+      }
+      h1 { font-size: 1.25rem; margin: 0; }
+      p { margin: 0; color: #49454f; }
+      button {
+        margin-top: 12px;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 24px;
+        background: #e11d48;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>No se pudo conectar al servidor</h1>
+    <p>Verifica que el dispositivo tenga conexión a la red de la clínica.</p>
+    <p>Si el problema continúa, cierra la aplicación y vuelve a abrirla.</p>
+    <button onclick="history.back()">Reintentar</button>
+  </body>
+</html>
