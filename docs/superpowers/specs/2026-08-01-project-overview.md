@@ -296,7 +296,24 @@ Each item below gets its own brainstorm → spec → plan → implementation cyc
    rather than building a new `export:create`-gated data endpoint just to preserve the original
    claim. If a genuinely view-less "export only" role is ever needed, that endpoint is the way to
    get there.
-7. **Ionic/Capacitor packaging** — installable iOS/Android builds of the finished app
+7. **Ionic/Capacitor packaging** — ✅ complete (2026-08-10). Spec:
+   `2026-08-10-capacitor-packaging-design.md`. A remote-URL Capacitor shell at `apps/mobile/`:
+   the native app loads the deployed web app from `EXPEDIENTES_SERVER_URL` (config throws when
+   unset, so a mis-pointed app cannot be built silently), keeping cookie auth and relative `/api`
+   URLs unchanged and letting web deployments update installed devices instantly. Committed
+   `android/` + `ios/` projects; cleartext enabled for the LAN-http phase; generated lotus
+   icon/splash branding from committed SVG sources; Spanish fallback page whose retry navigates
+   to a server URL baked into `www/server-url.js` at sync time; safe-area CSS in the web shell
+   (top/bottom/left/right insets, browser no-op verified). Distribution is direct install (APK
+   sideload / Xcode-to-device); operator playbook in `apps/mobile/README.md`. **Security
+   hardening from the final review:** WebView remote debugging force-disabled
+   (`webContentsDebuggingEnabled: false` — a debug APK would otherwise expose the authenticated
+   session over USB), `android:allowBackup="false"` (Auto Backup would copy the session-cookie
+   store off-device), and the README steers operators to signed release APKs. **Design note
+   (deferred):** cleartext is currently a blanket allowance — when the clinic adds TLS, scope it
+   to the server host via `network_security_config.xml` (parked in the final review). Nothing
+   has been verified on physical devices/emulators in this environment; the README's Android
+   Studio/Xcode build-and-install flows are the first thing to exercise on real hardware.
 
 ## Requirements captured for future modules (not yet designed in detail)
 
