@@ -141,6 +141,8 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         top: 0;
         z-index: 100;
         gap: 4px;
+        padding-top: env(safe-area-inset-top);
+        height: calc(var(--mat-toolbar-standard-height, 64px) + env(safe-area-inset-top));
       }
       .brand {
         display: flex;
@@ -184,6 +186,7 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         max-width: 1080px;
         margin: 0 auto;
         padding: 24px;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
       }
       @media (max-width: 599px) {
         .page-content {
