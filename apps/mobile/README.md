@@ -49,10 +49,10 @@ In Xcode: select the connected device, set a development team under
 Signing & Capabilities, then Run. The app stays installed on that device.
 (TestFlight is only needed if the clinic ever wants over-the-air installs.)
 
-Note: if the server URL is plain `http://` and iOS devices are in use, Safari's
-App Transport Security will block it; add an ATS exception in
-`ios/App/App/Info.plist` for the server host at that point. It is deliberately
-not pre-added.
+Note: iOS App Transport Security blocks plain-`http://` web content by default.
+Because the clinic runs iOS devices against the LAN URL, `ios/App/App/Info.plist`
+carries `NSAllowsArbitraryLoadsInWebContent` (scoped to webview content, added
+2026-08-10). Once the server is `https://`, this exception can be removed.
 
 ## Branding
 
