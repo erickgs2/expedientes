@@ -13,7 +13,7 @@
 - App id: `com.expedientes.app`; app name: `Expedientes` (spec: Branding).
 - Server URL comes from `process.env['EXPEDIENTES_SERVER_URL']` at Capacitor-command time; if unset, `capacitor.config.ts` **throws** with a clear message (spec: fail loudly, never build an app pointed nowhere).
 - `server.cleartext: true` plus `android:usesCleartextTraffic="true"` in the Android manifest (spec: LAN http support).
-- All Capacitor deps pinned at the workspace root `package.json`; `apps/mobile/` has **no** `package.json` and **no** Nx `project.json`.
+- All Capacitor deps pinned at the workspace root `package.json`. `apps/mobile/package.json` is a minimal private marker only — `{"name": "expedientes-mobile", "private": true}`, no dependencies — because the Capacitor CLI refuses to run without one in its cwd (user ruling 2026-08-10). No Nx `project.json`.
 - Generated `android/` and `ios/` projects are committed to git (Capacitor convention).
 - Angular app changes are limited to: `viewport-fit=cover` in `apps/web/src/index.html`, safe-area padding in `apps/web/src/app/app.component.ts` styles. Nothing else in `apps/web`.
 - User-facing fallback-page copy is Spanish.

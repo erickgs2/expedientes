@@ -55,6 +55,9 @@ Capacitor's CLI plus Android Studio / Xcode, not through `nx`. Contents:
   (they carry real, hand-edited config: cleartext manifest flag, icons, splash).
 - `assets/` — the two branding source images consumed by `@capacitor/assets`.
 - `README.md` — the operator playbook.
+- `package.json` — a minimal private marker (`name` + `private: true`, no dependencies): the
+  Capacitor CLI refuses to run without one in its working directory. It does not make
+  `apps/mobile` an Nx build target.
 
 Dependencies (`@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, `@capacitor/ios`, dev-only
 `@capacitor/assets`) are pinned at the workspace root like the rest of the toolchain.
