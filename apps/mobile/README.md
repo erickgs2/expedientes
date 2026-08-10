@@ -31,9 +31,11 @@ npx cap sync android
 npx cap open android    # opens Android Studio
 ```
 
-In Android Studio: Build > Generate Signed App Bundle / APK > APK (a debug APK
-via Build > Build APK works fine for internal use). Copy the APK to each device
-and open it to install (enable "install from unknown sources" when prompted).
+In Android Studio: Build > Generate Signed App Bundle / APK > APK, using a
+release keystore. Copy the APK to each device and open it to install (enable
+"install from unknown sources" when prompted). A debug APK (Build > Build APK)
+is for troubleshooting only — it enables WebView inspection over the
+authenticated session, so it must not be handed to clinic staff.
 
 ## Build & install — iOS
 
@@ -54,9 +56,13 @@ not pre-added.
 
 ## Branding
 
-Sources live in `assets/` (`icon.svg`, `icon-foreground.svg`, `splash.svg`,
-rasterized to the sibling PNGs). To change branding: edit the SVGs, re-rasterize
-the PNGs at the same sizes with `rsvg-convert` (1024² icons, 2732² splash) — do not use qlmanage, it silently flattens transparency to white, then:
+Sources live in `assets/` (`icon.svg`, `icon-foreground.svg`, `splash.svg`),
+rasterized to sibling PNGs: `icon.svg` → `icon-only.png`, `icon-foreground.svg`
+→ `icon-foreground.png`, and `splash.svg` → both `splash.png` and
+`splash-dark.png` (a byte-identical copy of `splash.png` is required by
+`@capacitor/assets`). To change branding: edit the SVGs, then re-rasterize the
+PNGs at the same sizes with `rsvg-convert` (1024² for icons, 2732² for splash).
+Do not use `qlmanage` — it silently flattens transparency to white. Then:
 
 ```bash
 npx capacitor-assets generate --android --ios \
@@ -69,5 +75,6 @@ npx cap sync
 ## When the server is unreachable
 
 The app shows a static "No se pudo conectar al servidor" page (`www/index.html`)
-where supported; Reintentar retries the last navigation, and closing/reopening
-the app always retries the server URL.
+where supported; Reintentar navigates directly to the configured server URL
+(baked into `www/server-url.js` at sync time), and closing/reopening the app
+always retries the server URL.

@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { CapacitorConfig } from '@capacitor/cli';
 
 // The native app is a remote-URL shell: it loads the clinic's deployed web app
@@ -11,10 +13,22 @@ if (!serverUrl) {
   );
 }
 
+// Bake the server URL into the web assets at sync time (before the CLI copies
+// www/ into each native project) so the offline fallback page's retry button
+// can navigate directly to it, even on iOS where a provisional navigation
+// failure leaves no history entry for history.back() to use.
+writeFileSync(
+  join(__dirname, 'www', 'server-url.js'),
+  `window.EXPEDIENTES_SERVER_URL = ${JSON.stringify(serverUrl)};\n`
+);
+
 const config: CapacitorConfig = {
   appId: 'com.expedientes.app',
   appName: 'Expedientes',
   webDir: 'www',
+  android: {
+    webContentsDebuggingEnabled: false,
+  },
   server: {
     url: serverUrl,
     // The clinic server may be reached over plain http on the LAN until a TLS
