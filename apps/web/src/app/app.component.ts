@@ -191,6 +191,7 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
       @media (max-width: 599px) {
         .page-content {
           padding: 16px;
+          padding-bottom: calc(16px + env(safe-area-inset-bottom));
         }
       }
     `,
