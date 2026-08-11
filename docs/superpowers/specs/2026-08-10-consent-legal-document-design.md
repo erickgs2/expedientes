@@ -25,8 +25,8 @@ In scope:
 - `TreatmentType` consent template split into named sections: description (required), risks,
   alternatives, aftercare, contraindications (all optional).
 - `Consent` rewritten to snapshot every printed value at signing time.
-- A shared, pure `buildConsentDocument` function in a new `libs/shared/consent-document` lib,
-  consumed by both the signing screen and the PDF renderer.
+- A pure `buildConsentDocument` function in `apps/api/src/lib/consent/`, whose output feeds both
+  the signing screen (over the API) and the PDF renderer.
 - Signing screen captures place, patient identification, and an optional witness name +
   signature, alongside the existing patient signature.
 - The record export renders each signed consent on its own `<Page>` with fixed header/footer and
@@ -137,7 +137,16 @@ from storage; that is a one-line manual cleanup of `storage/consents/` noted in 
 
 ### Shared document model
 
-New buildable lib `libs/shared/consent-document` — logic does not belong in a lib named `types`.
+`buildConsentDocument` lives in `apps/api/src/lib/consent/build-consent-document.ts`; the
+`ConsentBlock` union is declared in `libs/shared/types` so the Angular renderer can type the
+blocks it receives.
+
+The document is assembled **only on the server**. The signing screen does not build it — it
+renders a `ConsentBlock[]` returned by the API, both for the pre-signing preview and for an
+already-signed consent. This is a stronger guarantee than sharing the function would be: the text
+the patient reads on screen is produced by the exact code path that produces the archived PDF, so
+the two cannot drift even in principle. It also avoids standing up a new workspace lib with its
+own package, tsconfigs and jest config for a single function.
 
 ```ts
 export type ConsentBlock =
@@ -293,7 +302,7 @@ in its annex.
 Matching this repo's convention of unit-testing pure logic modules (`permissions.spec.ts`,
 `image-signature.spec.ts`) rather than routes or components:
 
-`libs/shared/consent-document/src/lib/build-consent-document.spec.ts` covers:
+`apps/api/src/lib/consent/build-consent-document.spec.ts` covers:
 - block ordering for a fully-populated document;
 - placeholder interpolation, including an unrecognized placeholder left intact;
 - optional sections omitted when blank or whitespace, rendered when present;
