@@ -26,14 +26,16 @@ export const POST = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'patients', 'create');
 
   const body = (await request.json()) as { fullName?: string; phone?: string; documentId?: string };
-  if (!body.fullName || !body.phone || !body.documentId) {
-    return apiError('INVALID_INPUT', 'fullName, phone, and documentId are required', 400);
+  if (!body.fullName || !body.phone) {
+    return apiError('INVALID_INPUT', 'fullName and phone are required', 400);
   }
 
   const patient = await createPatient({
     fullName: body.fullName,
     phone: body.phone,
-    documentId: body.documentId,
+    // The CURP is optional at registration. A blank one is stored as NULL rather than an empty
+    // string so "not recorded" stays distinguishable from "recorded as empty".
+    documentId: body.documentId?.trim() || null,
   });
 
   await writeAuditLogSafe({

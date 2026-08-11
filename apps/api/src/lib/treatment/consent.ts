@@ -49,7 +49,7 @@ export async function getTreatmentItemDetail(id: string) {
           doctorName: settings.doctorName,
           doctorLicense: settings.doctorLicense,
           patientName: patient.fullName,
-          patientIdentification: patient.documentId,
+          patientIdentification: patient.documentId ?? '',
           place: settings.defaultPlace,
           signedDate: localSigningDate(),
           declarationBefore: settings.declarationBefore,
@@ -88,7 +88,7 @@ export async function getTreatmentItemDetail(id: string) {
     treatmentTypeName: item.treatmentType.name,
     notes: item.notes,
     patientId: item.treatment.patientId,
-    patientDocumentId: patient.documentId,
+    patientDocumentId: patient.documentId ?? '',
     consentPreview,
     consentDocument,
     consent: item.consent

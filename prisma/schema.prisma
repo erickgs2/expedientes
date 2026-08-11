@@ -51,7 +51,7 @@ model Patient {
   id              String           @id @default(uuid())
   fullName        String
   phone           String
-  documentId      String
+  documentId      String?
   historiaClinica HistoriaClinica?
   valoraciones    Valoracion[]
   treatments      Treatment[]

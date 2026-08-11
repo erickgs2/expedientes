@@ -84,7 +84,7 @@
     "newPatient": "New patient",
     "fullName": "Full name",
     "phone": "Phone",
-    "documentId": "CURP (Mexican population registry ID)",
+    "documentId": "CURP (Mexican population registry ID) — optional",
     "create": "Create patient",
     "clearActive": "Clear active patient",
     "openRecord": "Open patient record",

@@ -64,7 +64,7 @@ import { ActivePatientStore } from './active-patient.store';
         <mat-list-item (click)="selectPatient(patient)" class="clickable">
           <mat-icon matListItemIcon>person</mat-icon>
           <span matListItemTitle>{{ patient.fullName }}</span>
-          <span matListItemLine>{{ patient.phone }} · {{ patient.documentId }}</span>
+          <span matListItemLine>{{ patient.phone }}{{ patient.documentId ? ' · ' + patient.documentId : '' }}</span>
         </mat-list-item>
       }
     </mat-list>
@@ -163,7 +163,7 @@ export class PatientSearchComponent {
   protected readonly createForm = this.fb.group({
     fullName: ['', Validators.required],
     phone: ['', Validators.required],
-    documentId: ['', Validators.required],
+    documentId: [''],
   });
 
   // Tracks the most recent search so a slower earlier response can't overwrite a newer one. This
@@ -205,7 +205,7 @@ export class PatientSearchComponent {
     const patient = await this.patientsService.create({
       fullName: value.fullName ?? '',
       phone: value.phone ?? '',
-      documentId: value.documentId ?? '',
+      documentId: value.documentId?.trim() || undefined,
     });
     this.activePatient.select(patient);
     this.createForm.reset();

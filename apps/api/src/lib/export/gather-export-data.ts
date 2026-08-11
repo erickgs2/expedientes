@@ -80,7 +80,7 @@ export interface ExportTreatment {
 }
 
 export interface ExportData {
-  patient: { fullName: string; phone: string; documentId: string };
+  patient: { fullName: string; phone: string; documentId: string | null };
   generatedAt: Date;
   historiaClinica: ExportHistoriaClinica | null;
   valoraciones: ExportValoracion[] | null;

@@ -84,7 +84,7 @@
     "newPatient": "Nuevo paciente",
     "fullName": "Nombre completo",
     "phone": "Teléfono",
-    "documentId": "Clave Única de Registro de Población (CURP)",
+    "documentId": "Clave Única de Registro de Población (CURP) — opcional",
     "create": "Crear paciente",
     "clearActive": "Quitar paciente activo",
     "openRecord": "Abrir expediente del paciente",

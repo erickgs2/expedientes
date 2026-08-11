@@ -24,7 +24,8 @@ export async function searchPatients(query: string) {
 export interface CreatePatientData {
   fullName: string;
   phone: string;
-  documentId: string;
+  /** Null when no CURP was recorded at registration. */
+  documentId: string | null;
 }
 
 export async function createPatient(data: CreatePatientData) {

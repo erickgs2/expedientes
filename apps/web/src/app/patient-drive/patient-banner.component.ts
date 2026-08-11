@@ -27,7 +27,9 @@ import { ActivePatientStore } from './active-patient.store';
         >
           <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>
           <span class="banner-name">{{ patient.fullName }}</span>
-          <span class="banner-meta">{{ patient.documentId }}</span>
+          @if (patient.documentId) {
+            <span class="banner-meta">{{ patient.documentId }}</span>
+          }
           <mat-icon class="banner-chevron" aria-hidden="true">chevron_right</mat-icon>
         </a>
         <span class="banner-spacer"></span>
