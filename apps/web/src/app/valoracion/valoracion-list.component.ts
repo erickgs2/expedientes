@@ -21,6 +21,10 @@ import { ValoracionService } from './valoracion.service';
     RouterLink,
   ],
   template: `
+    <a mat-button class="back-link" routerLink="/historia-clinica">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'common.backToHistoria' | transloco }}
+    </a>
     <div class="page-header">
       <h1>{{ 'valoracion.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <div class="page-actions">

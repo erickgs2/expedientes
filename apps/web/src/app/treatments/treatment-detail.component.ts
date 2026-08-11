@@ -5,6 +5,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { Treatment, TreatmentType } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
@@ -31,6 +32,7 @@ interface TreatmentItemForm {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     TranslocoModule,
     RouterLink,
   ],
@@ -40,6 +42,10 @@ interface TreatmentItemForm {
     } @else if (loadFailed()) {
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
+      <a mat-button class="back-link" routerLink="/treatments">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'common.back' | transloco }}
+      </a>
       <h1>{{ 'treatments.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <p>{{ 'valoracion.fields.fecha' | transloco }}: {{ fecha().substring(0, 10) }}</p>
       @for (item of items(); track item.treatmentTypeId) {

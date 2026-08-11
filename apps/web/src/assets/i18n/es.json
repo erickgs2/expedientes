@@ -23,7 +23,8 @@
     "delete": "Eliminar",
     "loading": "Cargando...",
     "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo.",
-    "back": "Volver"
+    "back": "Volver",
+    "backToHistoria": "Volver a historia clínica"
   },
   "auth": {
     "email": "Correo electrónico",

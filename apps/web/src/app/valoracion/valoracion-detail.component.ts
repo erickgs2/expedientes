@@ -1,9 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
@@ -22,6 +23,8 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
+    RouterLink,
     TranslocoModule,
     HasPermissionDirective,
     FacialDiagramViewsComponent,
@@ -36,6 +39,10 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
            that id has been validated against the active patient. -->
       <p class="load-error">{{ 'common.loadError' | transloco }}</p>
     } @else {
+      <a mat-button class="back-link" routerLink="/valoracion">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'common.back' | transloco }}
+      </a>
       <h1>{{ 'valoracion.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <form [formGroup]="form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full-width">

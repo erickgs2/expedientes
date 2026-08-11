@@ -99,8 +99,11 @@ const JPEG_QUALITY = 0.9;
       .oval-guide {
         position: absolute;
         top: 12%;
-        left: 25%;
-        width: 50%;
+        /* left keeps the oval centred: (100 - width) / 2. border-box so the 3px border counts
+           inside that width, otherwise it pushes the oval off-centre to the right. */
+        box-sizing: border-box;
+        left: 15%;
+        width: 70%;
         height: 76%;
         border-radius: 50%;
         border: 3px solid rgba(255, 255, 255, 0.9);

@@ -23,7 +23,8 @@
     "delete": "Delete",
     "loading": "Loading...",
     "loadError": "Couldn't load this record. Please try again.",
-    "back": "Back"
+    "back": "Back",
+    "backToHistoria": "Back to clinical history"
   },
   "auth": {
     "email": "Email",

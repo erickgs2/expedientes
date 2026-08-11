@@ -125,6 +125,11 @@ h3 {
   }
 }
 
+// Up-navigation link sitting above a page title.
+.back-link {
+  margin-bottom: 8px;
+}
+
 // Friendly centered message for lists with no content yet.
 .empty-state {
   display: flex;
