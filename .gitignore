@@ -78,3 +78,6 @@ storage/
 
 # Local TLS material for the dev server (private keys — never commit)
 apps/web/.certs/
+
+# ssh files
+.ssh/
