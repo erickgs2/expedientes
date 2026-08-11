@@ -231,6 +231,7 @@ model Consent {
   treatmentItemId           String        @unique
   treatmentItem             TreatmentItem @relation(fields: [treatmentItemId], references: [id])
   place                     String
+  signedDateSnapshot        String
   patientNameSnapshot       String
   patientIdentification     String
   clinicNameSnapshot        String

@@ -1,4 +1,4 @@
-import { buildConsentDocument, interpolate, type ConsentDocumentInput } from './build-consent-document';
+import { buildConsentDocument, interpolate, localSigningDate, type ConsentDocumentInput } from './build-consent-document';
 
 const LABELS = {
   title: 'CONSENTIMIENTO INFORMADO',
@@ -25,7 +25,7 @@ function input(overrides: Partial<ConsentDocumentInput> = {}): ConsentDocumentIn
     patientName: 'JUAN PEREZ',
     patientIdentification: 'INE 1234',
     place: 'Culiacan',
-    signedAt: '2026-08-10T15:04:05.000Z',
+    signedDate: '2026-08-10',
     declarationBefore: 'YO {{patientName}} AUTORIZO A {{doctorTitle}} {{doctorName}}.',
     declarationAfter: 'DECLARO HABER SIDO INFORMADO.',
     sections: [{ key: 'description', body: 'Aplicacion de toxina botulinica.' }],
@@ -46,6 +46,23 @@ describe('interpolate', () => {
 
   it('replaces every occurrence of the same placeholder', () => {
     expect(interpolate('{{a}} y {{a}}', { a: 'X' })).toBe('X y X');
+  });
+});
+
+describe('localSigningDate', () => {
+  it('formats the date in YYYY-MM-DD format', () => {
+    const fixedDate = new Date(2026, 7, 10, 19, 30); // August 10, 2026 at 7:30 PM local
+    expect(localSigningDate(fixedDate)).toBe('2026-08-10');
+  });
+
+  it('zero-pads single-digit month', () => {
+    const fixedDate = new Date(2026, 0, 5, 10, 0); // January 5, 2026 at 10:00 AM local
+    expect(localSigningDate(fixedDate)).toBe('2026-01-05');
+  });
+
+  it('zero-pads single-digit day', () => {
+    const fixedDate = new Date(2026, 11, 3, 10, 0); // December 3, 2026 at 10:00 AM local
+    expect(localSigningDate(fixedDate)).toBe('2026-12-03');
   });
 });
 
@@ -86,6 +103,26 @@ describe('buildConsentDocument', () => {
     expect(blocks[9]).toEqual({ kind: 'paragraph', text: 'Riesgos.' });
   });
 
+  it('emits sections in canonical order regardless of input order', () => {
+    const blocks = buildConsentDocument(
+      input({
+        sections: [
+          { key: 'aftercare', body: 'Cuidados.' },
+          { key: 'description', body: 'Descripcion.' },
+          { key: 'risks', body: 'Riesgos.' },
+        ],
+      })
+    );
+    const headingTexts = blocks
+      .filter((b) => b.kind === 'sectionHeading')
+      .map((b) => b.text);
+    expect(headingTexts).toEqual([
+      'PROCEDIMIENTO',
+      'RIESGOS Y COMPLICACIONES',
+      'CUIDADOS POSTERIORES',
+    ]);
+  });
+
   it('omits a section whose body is blank or whitespace', () => {
     const blocks = buildConsentDocument(
       input({
@@ -96,6 +133,7 @@ describe('buildConsentDocument', () => {
       })
     );
     expect(blocks.some((b) => b.kind === 'sectionHeading' && b.text === 'RIESGOS Y COMPLICACIONES')).toBe(false);
+    expect(blocks.some((b) => b.kind === 'paragraph' && b.text === 'Riesgos.')).toBe(false);
   });
 
   it('omits the witness signature block when there is no witness', () => {
@@ -113,6 +151,8 @@ describe('buildConsentDocument', () => {
       caption: 'TESTIGO',
       subCaption: 'LUIS SOTO',
     });
+    const roles = blocks.filter((b) => b.kind === 'signatureBlock').map((b) => b.role);
+    expect(roles).toEqual(['patient', 'witness', 'doctor']);
   });
 
   it('captions the doctor block with title, name and licence', () => {

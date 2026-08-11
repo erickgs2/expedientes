@@ -18,8 +18,8 @@ export interface ConsentDocumentInput {
   patientName: string;
   patientIdentification: string;
   place: string;
-  /** ISO timestamp; only the date part is printed. */
-  signedAt: string;
+  /** Calendar date in `YYYY-MM-DD`, already resolved in the clinic's local timezone at signing. */
+  signedDate: string;
   declarationBefore: string;
   declarationAfter: string;
   sections: ConsentSection[];
@@ -49,6 +49,19 @@ export function interpolate(text: string, values: Record<string, string>): strin
   );
 }
 
+/**
+ * The calendar date, in the server's own timezone, that a consent signed *now* should print as its
+ * FECHA. The API server runs at the clinic, so its local date is the clinic's date; taking the UTC
+ * date instead would print tomorrow for anything signed after early evening. The result is stored
+ * on the Consent row and never recomputed, so a signed consent's printed date can never drift.
+ */
+export function localSigningDate(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function buildConsentDocument(input: ConsentDocumentInput): ConsentBlock[] {
   const l = input.labels;
   const values: Record<string, string> = {
@@ -62,7 +75,7 @@ export function buildConsentDocument(input: ConsentDocumentInput): ConsentBlock[
   const blocks: ConsentBlock[] = [
     { kind: 'title', text: l.title },
     { kind: 'fieldLine', label: l.place, value: input.place },
-    { kind: 'fieldLine', label: l.date, value: input.signedAt.substring(0, 10) },
+    { kind: 'fieldLine', label: l.date, value: input.signedDate },
     { kind: 'fieldLine', label: l.patient, value: input.patientName },
     { kind: 'fieldLine', label: l.identifiesWith, value: input.patientIdentification },
     { kind: 'paragraph', text: interpolate(input.declarationBefore, values) },
