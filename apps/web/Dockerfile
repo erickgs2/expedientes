@@ -1,4 +1,6 @@
-FROM node:20-alpine AS build
+# Node 22 on Debian: parts of the Nx toolchain declare `node >=22.13.0`, and the Angular build is
+# the memory peak of a Pi deploy — not somewhere to also be fighting musl quirks.
+FROM node:22-bookworm-slim AS build
 WORKDIR /workspace
 COPY . .
 RUN npm ci
