@@ -138,7 +138,9 @@
       "photos": "photos in total",
       "upcoming": "Upcoming appointments",
       "next": "Next:",
-      "noneScheduled": "No upcoming appointments"
+      "noneScheduled": "No upcoming appointments",
+      "valoraciones": "Assessments",
+      "treatments": "Treatments"
     }
   },
   "valoracion": {

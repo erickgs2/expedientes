@@ -57,7 +57,7 @@ import {
           [attr.aria-label]="'historiaClinica.summary.title' | transloco"
         >
           <div *appHasPermission="'valoracion:view'" class="summary-widget">
-            <span class="summary-label">{{ 'historiaClinica.viewValoraciones' | transloco }}</span>
+            <span class="summary-label">{{ 'historiaClinica.summary.valoraciones' | transloco }}</span>
             <span class="summary-value">{{ stats.valoraciones.count }}</span>
             <span class="summary-meta">
               @if (stats.valoraciones.lastDate; as last) {
@@ -75,7 +75,7 @@ import {
           </div>
 
           <div *appHasPermission="'treatments:view'" class="summary-widget">
-            <span class="summary-label">{{ 'historiaClinica.viewTreatments' | transloco }}</span>
+            <span class="summary-label">{{ 'historiaClinica.summary.treatments' | transloco }}</span>
             <span class="summary-value">{{ stats.treatments.count }}</span>
             <span class="summary-meta">
               @if (stats.treatments.lastDate; as last) {
