@@ -21,3 +21,24 @@ export interface TreatmentItemDetail {
   consent: Consent | null;
   diagrams: DiagramViewRecord[];
 }
+
+export type ConsentSectionKey =
+  | 'description'
+  | 'risks'
+  | 'alternatives'
+  | 'aftercare'
+  | 'contraindications';
+
+export interface ConsentSection {
+  key: ConsentSectionKey;
+  body: string;
+}
+
+export type ConsentSignatureRole = 'patient' | 'witness' | 'doctor';
+
+export type ConsentBlock =
+  | { kind: 'title'; text: string }
+  | { kind: 'fieldLine'; label: string; value: string }
+  | { kind: 'paragraph'; text: string }
+  | { kind: 'sectionHeading'; text: string }
+  | { kind: 'signatureBlock'; role: ConsentSignatureRole; caption: string; subCaption?: string };
