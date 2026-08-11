@@ -531,22 +531,31 @@ export class HistoriaClinicaFormComponent implements OnInit {
   }
 
   /**
-   * `YYYY-MM-DD` in the viewer's own timezone. `fecha` is a real timestamp, not a plain date, so
-   * slicing its UTC string would show tomorrow for anything recorded after early evening here.
+   * `dd-MM-yyyy` in the viewer's own timezone. Built from local getters rather than slicing the ISO
+   * string, which is UTC: `fecha` and `startTime` are timestamps, so a UTC slice shows tomorrow for
+   * anything recorded or scheduled after early evening here.
    */
   protected formatDate(iso: string): string {
-    return this.formatDateTime(iso).substring(0, 10);
+    const { day, month, year } = this.localParts(iso);
+    return `${day}-${month}-${year}`;
   }
 
-  /**
-   * `YYYY-MM-DD HH:mm` in the viewer's own timezone. Built from local getters rather than slicing
-   * the ISO string, which is UTC and would show the wrong hour — and the wrong day for an
-   * appointment early or late enough in the day.
-   */
+  /** `dd-MM-yyyy HH:mm`, same timezone reasoning as `formatDate`. */
   protected formatDateTime(iso: string): string {
+    const { day, month, year, hours, minutes } = this.localParts(iso);
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  }
+
+  private localParts(iso: string) {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return {
+      day: pad(d.getDate()),
+      month: pad(d.getMonth() + 1),
+      year: String(d.getFullYear()),
+      hours: pad(d.getHours()),
+      minutes: pad(d.getMinutes()),
+    };
   }
 
   async save(): Promise<void> {
