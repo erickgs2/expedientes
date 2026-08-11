@@ -59,6 +59,12 @@ RUN mkdir -p /data/storage && chown -R node:node /data/storage
 # The official Node images ship a built-in unprivileged `node` user (uid 1000); the standalone
 # server needs no root privileges and listens on 3000, so run as it rather than root.
 USER node
+# Next's standalone server binds to $HOSTNAME, and Docker sets HOSTNAME to the container id — so
+# without this it listens on the container's own IP only and nothing inside the container can reach
+# it on localhost. nginx still worked (it connects to `api:3000`), which made this look like a
+# healthy deploy with a failing health check rather than a binding problem.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 EXPOSE 3000
 CMD ["node", "apps/api/server.js"]
 

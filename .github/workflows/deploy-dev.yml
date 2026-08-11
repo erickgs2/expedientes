@@ -78,10 +78,11 @@ jobs:
       - name: Smoke check
         run: |
           set -euo pipefail
-          # Checked from inside the compose network, so this tests the app rather than DuckDNS or
-          # the certificate. Retried, because the API takes a moment to accept connections.
+          # Probed from the web container rather than from inside api itself, so this exercises the
+          # same path nginx uses to reach the API — a server listening only on its own interface
+          # would pass a localhost check inside its own container while still being unreachable.
           for i in $(seq 1 15); do
-            if $COMPOSE exec -T api node -e "fetch('http://localhost:3000/api/hello').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+            if $COMPOSE exec -T web wget -q -O /dev/null http://api:3000/api/hello; then
               echo "API healthy"
               exit 0
             fi
