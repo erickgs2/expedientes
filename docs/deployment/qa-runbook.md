@@ -88,12 +88,13 @@ them; it sets `IMAGE_TAG` and nothing else.
 
 ```bash
 IMAGE_REPO=ghcr.io/erickgs2/expedientes
-IMAGE_TAG=placeholder            # rewritten by every deploy
+# rewritten by every deploy
+IMAGE_TAG=placeholder
 QA_DOMAIN=qa.example.com
 ACME_EMAIL=you@example.com
-JWT_SECRET=<openssl rand -base64 48>
+JWT_SECRET=<openssl rand -hex 32>
 POSTGRES_USER=expedientes
-POSTGRES_PASSWORD=<openssl rand -base64 32>
+POSTGRES_PASSWORD=<openssl rand -hex 32>
 STORAGE_S3_BUCKET=your-bucket
 AWS_REGION=mx-central-1
 SEED_ADMIN_EMAIL=you@example.com
@@ -103,6 +104,9 @@ SEED_ADMIN_PASSWORD=<a real password, not the default>
 ```bash
 chmod 600 /opt/expedientes/.env
 ```
+
+Generate secrets as hex and keep comments on their own line: a `$` in a value is interpolated by
+compose and silently blanked, and a trailing `# comment` can end up inside an unquoted value.
 
 Point `QA_DOMAIN`'s DNS A record at the instance's public IP **before the first deploy** — Caddy
 cannot obtain a certificate until it resolves, and repeated failures hit Let's Encrypt's rate limit.

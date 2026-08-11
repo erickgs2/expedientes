@@ -186,16 +186,40 @@ sudo mkdir -p /opt/expedientes && sudo chown $USER /opt/expedientes
 nano /opt/expedientes/.env
 ```
 
+Two rules for this file, both of which cause silent, confusing failures when broken:
+
+- **No inline comments.** Compose's `.env` parser is inconsistent about stripping a trailing
+  `# comment` from an unquoted value, so it can end up *inside* the value. Put comments on their
+  own line.
+- **Generate secrets as hex.** A `$` in a value is interpolated by compose as a variable reference
+  and silently replaced with a blank string — you get `The "Foo" variable is not set` and a password
+  that is not the one you typed. `openssl rand -hex 32` avoids `$`, `@` and everything else that
+  compose or a connection string would misread.
+
 ```bash
 APP_DOMAIN=miclinica.duckdns.org
 ACME_EMAIL=you@example.com
-DUCKDNS_SUBDOMAIN=miclinica          # the label only, not the full hostname
+# the subdomain label only, not the full hostname
+DUCKDNS_SUBDOMAIN=miclinica
 DUCKDNS_TOKEN=<from duckdns.org>
-JWT_SECRET=<openssl rand -base64 48>
+JWT_SECRET=<openssl rand -hex 32>
 POSTGRES_USER=expedientes
-POSTGRES_PASSWORD=<openssl rand -base64 32>
+POSTGRES_PASSWORD=<openssl rand -hex 32>
 SEED_ADMIN_EMAIL=you@example.com
 SEED_ADMIN_PASSWORD=<a real password, not the default>
+```
+
+Nothing else belongs here. `DATABASE_URL`, `STORAGE_ROOT` and `POSTGRES_DB` are set by the compose
+file itself — copying them from your local `.env` is inert but misleading, and a `DATABASE_URL`
+pointing at `localhost` is wrong inside a container regardless.
+
+If you change `POSTGRES_PASSWORD` after the stack has run once, drop the database volume too. The
+password is baked in when Postgres first initialises, so the container will otherwise reject the new
+one:
+
+```bash
+docker ps -aq --filter "label=com.docker.compose.project=expedientes" | xargs -r docker rm -f
+docker volume rm expedientes_db_data
 ```
 
 ```bash
