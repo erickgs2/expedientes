@@ -10,3 +10,4 @@ export * from './lib/diagram.js';
 export * from './lib/consent.js';
 export * from './lib/treatment-photo.js';
 export * from './lib/appointment.js';
+export * from './lib/clinic-settings.js';

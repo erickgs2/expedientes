@@ -5,7 +5,8 @@ export type PermissionModule =
   | 'treatments'
   | 'appointments'
   | 'export'
-  | 'rbac-admin';
+  | 'rbac-admin'
+  | 'clinic-settings';
 
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete';
 
