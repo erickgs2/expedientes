@@ -15,7 +15,7 @@
 ## Global Constraints
 
 - Run every task through nx with npm: `npm exec nx <target> <project>`. Never call `tsc`, `jest` or `next` directly.
-- Test command: `npm exec nx test api`. Typecheck: `npm exec nx typecheck api`. Web build: `npm exec nx build web`.
+- Test command: `npm exec nx test api` — the whole suite runs in about 3 seconds, so always run all of it rather than filtering to one file. Typecheck: `npm exec nx typecheck api`. Web build: `npm exec nx build web`.
 - `treatments` has **no** `delete` action in the seeded permission set. Product mutations use `treatments:edit`, matching the existing treatment-item photo delete route at `apps/api/src/app/api/treatment-items/[id]/photos/[photoId]/route.ts:14`.
 - Photo uploads reuse the existing validation: `content-length` early-out at 10MB, authoritative post-read bounds of 1KB–10MB, and `isJpeg(buffer)` from `apps/api/src/lib/storage/image-signature.ts`. Do not write a new upload path.
 - All user-facing strings go through Transloco with keys added to **both** `apps/web/src/assets/i18n/es.json` and `apps/web/src/assets/i18n/en.json`. PDF strings go in `apps/api/src/lib/export/pdf-labels.ts` under both `es` and `en`.
@@ -127,7 +127,7 @@ describe('normalizeExpiryToMonthEnd', () => {
 
 - [ ] **Step 4: Run the test to verify it fails**
 
-Run: `npm exec nx test api -- product-expiry`
+Run: `npm exec nx test api`
 Expected: FAIL — `Cannot find module './product-expiry'`.
 
 - [ ] **Step 5: Write the implementation**
@@ -163,7 +163,7 @@ export function normalizeExpiryToMonthEnd(value: string): Date | null {
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `npm exec nx test api -- product-expiry`
+Run: `npm exec nx test api`
 Expected: PASS, 8 tests.
 
 - [ ] **Step 7: Commit**

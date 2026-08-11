@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Run every task through nx with npm: `npm exec nx <target> <project>`. Never call `tsc`, `jest` or `next` directly.
-- Test command for API unit tests: `npm exec nx test api`.
+- Test command for API unit tests: `npm exec nx test api` — the whole suite runs in about 3 seconds, so always run all of it rather than filtering to one file.
 - Typecheck command: `npm exec nx typecheck api` and `npm exec nx build web`.
 - The client **never** sends consent document text. The server re-reads `ClinicSettings` and `TreatmentType` and builds every snapshot field itself. This rule already exists at `apps/api/src/app/api/treatment-items/[id]/consent/route.ts:40-42` and must survive this change.
 - All signature uploads reuse the existing validation: `content-length` early-out at 10MB, authoritative post-read bounds of 1KB–10MB, and `isJpeg(buffer)` magic-byte verification from `apps/api/src/lib/storage/image-signature.ts`. Do not write a new upload path.
@@ -358,7 +358,7 @@ describe('buildConsentDocument', () => {
 
 - [ ] **Step 2b: Run the test to verify it fails**
 
-Run: `npm exec nx test api -- build-consent-document`
+Run: `npm exec nx test api`
 Expected: FAIL — `Cannot find module './build-consent-document'`.
 
 - [ ] **Step 3: Write the implementation**
@@ -468,7 +468,7 @@ export function buildConsentDocument(input: ConsentDocumentInput): ConsentBlock[
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npm exec nx test api -- build-consent-document`
+Run: `npm exec nx test api`
 Expected: PASS, 11 tests.
 
 - [ ] **Step 5: Commit**
