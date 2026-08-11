@@ -35,7 +35,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # `clean: false` keeps node_modules between deploys. The default `git clean -ffdx` deletes
+      # it, forcing a full npm ci on a Pi every time. Tracked files are still reset to the commit.
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       # No actions/setup-node: the runner uses the Pi's installed Node rather than downloading an
       # x64 toolchain. Confirm the version rather than assume it — a mismatch shows up here instead
@@ -56,8 +60,10 @@ jobs:
       - name: Test
         run: npx nx test api
 
+      # `--profile tools` matters: without it compose silently skips the profiled `migrate`
+      # service, and the deploy then runs migrations from a stale image built weeks ago.
       - name: Build images
-        run: $COMPOSE build
+        run: $COMPOSE --profile tools build
 
       - name: Migrate and restart
         run: |

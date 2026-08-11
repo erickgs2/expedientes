@@ -7,8 +7,15 @@ WORKDIR /workspace
 # openssl is what Prisma probes for; ca-certificates is needed for the HTTPS calls the app makes.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/mobile/package.json apps/mobile/
+COPY libs/shared/types/package.json libs/shared/types/
+# Only the manifests so far: this layer, and the install below, stay cached across every commit
+# that does not change a dependency. Copying the source first would rebuild npm ci every time.
+# The cache mount keeps npm's package cache warm between builds too.
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
-RUN npm ci
 RUN npx prisma generate
 RUN npx nx build api
 

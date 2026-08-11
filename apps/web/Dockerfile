@@ -2,8 +2,15 @@
 # the memory peak of a Pi deploy — not somewhere to also be fighting musl quirks.
 FROM node:22-bookworm-slim AS build
 WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/mobile/package.json apps/mobile/
+COPY libs/shared/types/package.json libs/shared/types/
+# Only the manifests so far: this layer, and the install below, stay cached across every commit
+# that does not change a dependency. Copying the source first would rebuild npm ci every time.
+# The cache mount keeps npm's package cache warm between builds too.
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
-RUN npm ci
 RUN npx nx build web --configuration=production
 
 FROM nginx:alpine
