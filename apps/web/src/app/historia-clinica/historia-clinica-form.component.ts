@@ -18,6 +18,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import type { AllergyOption } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
+import { PatientsService } from '../patient-drive/patients.service';
 import { HistoriaClinicaService } from './historia-clinica.service';
 import {
   AppointmentFormComponent,
@@ -78,6 +79,13 @@ import {
           <mat-expansion-panel-header>
             <mat-panel-title>{{ 'historiaClinica.sections.personalInfo' | transloco }}</mat-panel-title>
           </mat-expansion-panel-header>
+
+          <!-- Lives on the Patient record, not the clinical history, but this is where it gets
+               filled in: it is optional at registration, so most patients arrive without one. -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ 'patientDrive.curp' | transloco }}</mat-label>
+            <input matInput formControlName="documentId" />
+          </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>{{ 'historiaClinica.fields.ocupacion' | transloco }}</mat-label>
@@ -218,6 +226,7 @@ import {
           color="primary"
           type="submit"
           [disabled]="saving()"
+          class="mt-2"
         >
           {{ 'common.save' | transloco }}
         </button>
@@ -226,6 +235,9 @@ import {
   `,
   styles: [
     `
+    .mt-2 {
+      margin-top: 5px;
+    }
       .full-width {
         width: 100%;
       }
@@ -288,6 +300,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
   private readonly activePatient = inject(ActivePatientStore);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
+  private readonly patientsService = inject(PatientsService);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -299,6 +312,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
   protected allergyInput = '';
 
   protected readonly form = this.fb.group({
+    documentId: [''],
     ocupacion: [''],
     fechaNacimiento: [''],
     sexo: [''],
@@ -346,6 +360,11 @@ export class HistoriaClinicaFormComponent implements OnInit {
       this.loading.set(false);
       return;
     }
+
+    // Patched outside the try below on purpose: that block returns early when the patient has no
+    // clinical history yet, and the CURP lives on the patient record — a brand-new patient is
+    // exactly who still needs to have theirs filled in.
+    this.form.patchValue({ documentId: patient.documentId ?? '' });
 
     // `finally`, not a trailing `set(false)`: Angular does not await `ngOnInit`, so a rejected
     // load would otherwise leave the page stuck on "Cargando..." with no way forward. The error
@@ -446,12 +465,23 @@ export class HistoriaClinicaFormComponent implements OnInit {
       allergyNames: this.allergyNames(),
     };
 
+    const documentId = raw.documentId?.trim() ?? '';
+
     try {
       if (this.exists()) {
         await this.historiaClinicaService.update(patient.id, input);
       } else {
         await this.historiaClinicaService.create(patient.id, input);
         this.exists.set(true);
+      }
+
+      // The CURP belongs to the patient record, so it needs its own call. Only sent when it
+      // actually changed, to avoid a pointless write and audit entry on every save of this form.
+      if (documentId !== (patient.documentId ?? '')) {
+        const updated = await this.patientsService.updateDocumentId(patient.id, documentId);
+        // Re-select so the banner and anything else reading the active patient show the new value
+        // rather than the stale one this page was opened with.
+        this.activePatient.select(updated);
       }
     } finally {
       this.saving.set(false);

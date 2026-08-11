@@ -35,3 +35,12 @@ export async function createPatient(data: CreatePatientData) {
 export async function getPatientById(id: string) {
   return prisma.patient.findUnique({ where: { id } });
 }
+
+export interface UpdatePatientData {
+  /** `null` clears a previously recorded CURP; omitted leaves it untouched. */
+  documentId?: string | null;
+}
+
+export async function updatePatient(id: string, data: UpdatePatientData) {
+  return prisma.patient.update({ where: { id }, data });
+}
