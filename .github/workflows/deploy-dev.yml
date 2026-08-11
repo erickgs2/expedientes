@@ -26,6 +26,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, raspberrypi]
+    env:
+      # Every `docker compose` call needs this, `build` included: compose interpolates the whole
+      # file on any command, so the `${VAR:?...}` guards fire before a build would even start.
+      COMPOSE: docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env
     # A Pi builds Angular and Next much more slowly than a cloud runner; the default 360-minute cap
     # would let a wedged build sit for hours before anyone noticed.
     timeout-minutes: 60
@@ -53,8 +57,7 @@ jobs:
         run: npx nx test api
 
       - name: Build images
-        working-directory: ${{ github.workspace }}
-        run: docker compose -f docker-compose.pi.yml build
+        run: $COMPOSE build
 
       - name: Migrate and restart
         run: |
@@ -62,7 +65,6 @@ jobs:
           # The stack's secrets live in /opt/expedientes/.env on the Pi and never pass through
           # GitHub. --env-file points at it while the compose file comes from this checkout, so a
           # change to the stack ships with the code that expects it.
-          COMPOSE="docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env"
           $COMPOSE up -d db
           $COMPOSE --profile tools run --rm migrate
           $COMPOSE up -d --remove-orphans
@@ -70,7 +72,6 @@ jobs:
       - name: Smoke check
         run: |
           set -euo pipefail
-          COMPOSE="docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env"
           # Checked from inside the compose network, so this tests the app rather than DuckDNS or
           # the certificate. Retried, because the API takes a moment to accept connections.
           for i in $(seq 1 15); do
