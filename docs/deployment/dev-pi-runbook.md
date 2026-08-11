@@ -211,6 +211,17 @@ request from a stranger would otherwise run their code on your Pi.
 
 ## 9. Deploy
 
+**Nothing is cloned on the Pi.** These commands run on your development machine, in this repo. The
+runner checks the code out itself, into `~/actions-runner/_work/expedientes/expedientes`, and
+re-checks it out on every deploy — treat that directory as disposable and never edit it.
+
+`/opt/expedientes` holds only `.env`: no code, no compose file. The workflow reads it with
+`--env-file` while the compose file comes from the runner's checkout, which is what keeps the
+secrets off GitHub.
+
+Confirm the runner shows **Idle** under Settings → Actions → Runners first, or the workflow will
+queue with nothing to pick it up.
+
 ```bash
 git push -u origin main            # if the remote has nothing yet
 git switch -c dev && git push -u origin dev
