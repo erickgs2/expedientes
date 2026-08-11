@@ -222,6 +222,7 @@ model TreatmentItem {
   consent         Consent?
   diagrams        TreatmentItemDiagram[]
   photos          TreatmentItemPhoto[]
+  products        TreatmentItemProduct[]
 
   @@unique([treatmentId, treatmentTypeId])
 }
@@ -269,6 +270,22 @@ model TreatmentItemPhoto {
 
   @@index([treatmentItemId])
   @@index([patientId])
+}
+
+model TreatmentItemProduct {
+  id              String        @id @default(uuid())
+  treatmentItemId String
+  treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
+  patientId       String
+  brand           String
+  lotNumber       String
+  expiryDate      DateTime?
+  photoPath       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([treatmentItemId])
+  @@index([lotNumber])
 }
 
 enum AppointmentStatus {
