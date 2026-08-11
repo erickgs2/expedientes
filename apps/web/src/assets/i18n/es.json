@@ -89,7 +89,8 @@
     "clearActive": "Quitar paciente activo",
     "openRecord": "Abrir expediente del paciente",
     "continueWith": "Continuar con",
-    "curp": "Clave Única de Registro de Población (CURP)"
+    "curp": "Clave Única de Registro de Población (CURP)",
+    "selectPatientFirst": "Seleccione un paciente para abrir esa sección."
   },
   "historiaClinica": {
     "title": "Historia clínica",

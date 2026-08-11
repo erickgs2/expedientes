@@ -89,7 +89,8 @@
     "clearActive": "Clear active patient",
     "openRecord": "Open patient record",
     "continueWith": "Continue with",
-    "curp": "CURP (Mexican population registry ID)"
+    "curp": "CURP (Mexican population registry ID)",
+    "selectPatientFirst": "Select a patient to open that section."
   },
   "historiaClinica": {
     "title": "Clinical history",
