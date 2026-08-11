@@ -334,5 +334,14 @@ model ClinicSettings {
   clinicLogoPath      String?
   declarationBefore   String
   declarationAfter    String
+
+  // WhatsApp appointment notifications (Meta Cloud API). Null/blank leaves the feature dormant.
+  // `whatsappAccessToken` is a write-only secret: it is never returned by the settings API.
+  whatsappAccessToken          String?
+  whatsappPhoneNumberId        String?
+  whatsappConfirmationTemplate String?
+  whatsappReminderTemplate     String?
+  whatsappTemplateLanguage     String?
+
   updatedAt           DateTime @updatedAt
 }

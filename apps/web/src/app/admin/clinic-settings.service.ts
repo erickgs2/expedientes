@@ -16,7 +16,10 @@ export class ClinicSettingsService {
   save(
     input: ClinicSettingsInput,
     signature: Blob | null,
-    logo: File | null
+    logo: File | null,
+    /** Blank leaves the stored token alone; `clearAccessToken` removes it. */
+    accessToken = '',
+    clearAccessToken = false
   ): Promise<ClinicSettings> {
     const formData = new FormData();
     for (const [key, value] of Object.entries(input)) {
@@ -26,6 +29,8 @@ export class ClinicSettingsService {
     // Sent under its original filename so the server can tell a PNG logo from a JPEG one; it still
     // verifies the actual bytes rather than trusting the name.
     if (logo) formData.append('clinicLogo', logo, logo.name);
+    if (accessToken.trim()) formData.append('whatsappAccessToken', accessToken.trim());
+    if (clearAccessToken) formData.append('whatsappAccessTokenClear', 'true');
     return firstValueFrom(
       this.http.put<{ clinicSettings: ClinicSettings }>('/api/clinic-settings', formData)
     ).then((r) => r.clinicSettings);

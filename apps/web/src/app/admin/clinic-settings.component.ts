@@ -119,6 +119,58 @@ import { ClinicSettingsService } from './clinic-settings.service';
         }
         <app-signature-pad #signaturePad [disabled]="saving() || !canEdit"></app-signature-pad>
 
+        <h2>{{ 'clinicSettings.whatsapp.title' | transloco }}</h2>
+        <p class="hint">{{ 'clinicSettings.whatsapp.help' | transloco }}</p>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'clinicSettings.whatsapp.phoneNumberId' | transloco }}</mat-label>
+          <input matInput formControlName="whatsappPhoneNumberId" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'clinicSettings.whatsapp.accessToken' | transloco }}</mat-label>
+          <input
+            matInput
+            type="password"
+            autocomplete="off"
+            formControlName="whatsappAccessToken"
+            [placeholder]="
+              (currentSettings()?.whatsappAccessTokenSet
+                ? 'clinicSettings.whatsapp.tokenStored'
+                : 'clinicSettings.whatsapp.tokenMissing'
+              ) | transloco
+            "
+          />
+          <mat-hint>{{ 'clinicSettings.whatsapp.tokenHint' | transloco }}</mat-hint>
+        </mat-form-field>
+
+        @if (currentSettings()?.whatsappAccessTokenSet && canEdit) {
+          <div class="restore-row">
+            <button mat-stroked-button type="button" (click)="clearAccessToken()">
+              <mat-icon>key_off</mat-icon>
+              {{ 'clinicSettings.whatsapp.clearToken' | transloco }}
+            </button>
+            @if (clearingAccessToken()) {
+              <span class="hint">{{ 'clinicSettings.whatsapp.clearPending' | transloco }}</span>
+            }
+          </div>
+        }
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'clinicSettings.whatsapp.confirmationTemplate' | transloco }}</mat-label>
+          <input matInput formControlName="whatsappConfirmationTemplate" placeholder="appointment_confirmation" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'clinicSettings.whatsapp.reminderTemplate' | transloco }}</mat-label>
+          <input matInput formControlName="whatsappReminderTemplate" placeholder="appointment_reminder" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'clinicSettings.whatsapp.templateLanguage' | transloco }}</mat-label>
+          <input matInput formControlName="whatsappTemplateLanguage" placeholder="es_MX" />
+        </mat-form-field>
+
         <button
           mat-flat-button
           color="primary"
@@ -203,6 +255,8 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
   // Either the stored logo's served URL or an object URL for a file picked but not yet saved, so
   // the preview always shows what pressing Guardar would produce.
   protected readonly logoPreviewUrl = signal<string | null>(null);
+  protected readonly currentSettings = signal<ClinicSettings | null>(null);
+  protected readonly clearingAccessToken = signal(false);
   private pendingLogo: File | null = null;
   private pendingLogoObjectUrl: string | null = null;
   // Plain field, not a signal: matches the pattern used by ConsentSignComponent/TreatmentDetailComponent
@@ -220,6 +274,11 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
     doctorTitle: ['', Validators.required],
     doctorName: ['', Validators.required],
     doctorLicense: ['', Validators.required],
+    whatsappPhoneNumberId: [''],
+    whatsappAccessToken: [''],
+    whatsappConfirmationTemplate: [''],
+    whatsappReminderTemplate: [''],
+    whatsappTemplateLanguage: [''],
     declarationBefore: ['', Validators.required],
     declarationAfter: ['', Validators.required],
   });
@@ -238,6 +297,8 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
   }
 
   private applySettings(settings: ClinicSettings | null): void {
+    this.currentSettings.set(settings);
+    this.clearingAccessToken.set(false);
     this.currentSignaturePath.set(settings?.doctorSignaturePath ?? null);
     // A file picked but not yet saved wins over the stored one, so reloading settings mid-edit
     // doesn't silently discard the user's pending choice.
@@ -251,6 +312,13 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
       doctorTitle: settings?.doctorTitle ?? '',
       doctorName: settings?.doctorName ?? '',
       doctorLicense: settings?.doctorLicense ?? '',
+      whatsappPhoneNumberId: settings?.whatsappPhoneNumberId ?? '',
+      // Never populated: the token is write-only, so the field stays blank and an untouched save
+      // leaves whatever is stored alone.
+      whatsappAccessToken: '',
+      whatsappConfirmationTemplate: settings?.whatsappConfirmationTemplate ?? '',
+      whatsappReminderTemplate: settings?.whatsappReminderTemplate ?? '',
+      whatsappTemplateLanguage: settings?.whatsappTemplateLanguage ?? '',
       declarationBefore: settings?.declarationBefore ?? '',
       declarationAfter: settings?.declarationAfter ?? '',
     });
@@ -258,6 +326,16 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
 
   protected signatureUrl(path: string): string {
     return `/api/files/${path}`;
+  }
+
+  /**
+   * Arms removal of the stored token; it is only actually cleared when the form is saved, so this
+   * follows the same "nothing happens until Guardar" rule as every other field here.
+   */
+  protected clearAccessToken(): void {
+    this.clearingAccessToken.set(true);
+    this.form.patchValue({ whatsappAccessToken: '' });
+    this.form.markAsDirty();
   }
 
   protected onLogoSelected(event: Event): void {
@@ -306,13 +384,23 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
         doctorTitle: raw.doctorTitle ?? '',
         doctorName: raw.doctorName ?? '',
         doctorLicense: raw.doctorLicense ?? '',
+        whatsappPhoneNumberId: raw.whatsappPhoneNumberId ?? '',
+        whatsappConfirmationTemplate: raw.whatsappConfirmationTemplate ?? '',
+        whatsappReminderTemplate: raw.whatsappReminderTemplate ?? '',
+        whatsappTemplateLanguage: raw.whatsappTemplateLanguage ?? '',
         declarationBefore: raw.declarationBefore ?? '',
         declarationAfter: raw.declarationAfter ?? '',
       };
       const signature = this.signaturePad.hasStrokes()
         ? await this.signaturePad.toJpegBlob()
         : null;
-      const settings = await this.clinicSettingsService.save(input, signature, this.pendingLogo);
+      const settings = await this.clinicSettingsService.save(
+        input,
+        signature,
+        this.pendingLogo,
+        raw.whatsappAccessToken ?? '',
+        this.clearingAccessToken()
+      );
       // Clear the pending file first so `applySettings` adopts the stored logo's URL, then release
       // the object URL the preview was using.
       this.pendingLogo = null;

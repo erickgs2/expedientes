@@ -241,7 +241,21 @@
     "noLogo": "Aún no se ha cargado un logotipo.",
     "uploadLogo": "Cargar logotipo",
     "replaceLogo": "Reemplazar logotipo",
-    "identity": "Datos del médico"
+    "identity": "Datos del médico",
+    "whatsapp": {
+      "title": "Notificaciones por WhatsApp",
+      "help": "Se envía una confirmación al agendar y un recordatorio 2 horas antes. Las plantillas se crean y aprueban en Meta Business Manager; aquí solo se indican sus nombres.",
+      "phoneNumberId": "ID del número de teléfono (Meta)",
+      "accessToken": "Token de acceso",
+      "tokenStored": "Token guardado — deje vacío para conservarlo",
+      "tokenMissing": "Sin token — las notificaciones están desactivadas",
+      "tokenHint": "Por seguridad el token nunca se muestra. Escriba uno nuevo solo si desea reemplazarlo.",
+      "clearToken": "Eliminar token",
+      "clearPending": "Se eliminará al guardar.",
+      "confirmationTemplate": "Plantilla de confirmación",
+      "reminderTemplate": "Plantilla de recordatorio",
+      "templateLanguage": "Idioma de la plantilla"
+    }
   },
   "treatments": {
     "listTitle": "Tratamientos",

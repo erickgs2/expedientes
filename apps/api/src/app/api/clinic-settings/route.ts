@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getClinicSettings,
+  toPublicClinicSettings,
   upsertClinicSettings,
   type ClinicSettingsUpdate,
 } from '../../../lib/clinic/clinic-settings';
@@ -15,6 +16,7 @@ const MAX_SIGNATURE_BYTES = 10 * 1024 * 1024;
 const MIN_SIGNATURE_BYTES = 1024;
 const MAX_FIELD_LENGTH = 200;
 const MAX_DECLARATION_LENGTH = 20000;
+const MAX_TOKEN_LENGTH = 1000;
 
 const TEXT_FIELDS = ['defaultPlace', 'doctorTitle', 'doctorName', 'doctorLicense'] as const;
 
@@ -24,12 +26,20 @@ const TEXT_FIELDS = ['defaultPlace', 'doctorTitle', 'doctorName', 'doctorLicense
  * the `{{clinicName}}` declaration placeholder and the `clinicNameSnapshot` frozen onto consents
  * signed while the field existed. An omitted key keeps whatever is already stored.
  */
-const OPTIONAL_TEXT_FIELDS = ['clinicName'] as const;
+const OPTIONAL_TEXT_FIELDS = [
+  'clinicName',
+  'whatsappPhoneNumberId',
+  'whatsappConfirmationTemplate',
+  'whatsappReminderTemplate',
+  'whatsappTemplateLanguage',
+] as const;
 
 export const GET = withApiErrors(async (request: NextRequest) => {
   await requireAuth(request, 'clinic-settings', 'view');
   const settings = await getClinicSettings();
-  return NextResponse.json({ clinicSettings: settings });
+  return NextResponse.json({
+    clinicSettings: settings ? toPublicClinicSettings(settings) : null,
+  });
 });
 
 export const PUT = withApiErrors(async (request: NextRequest) => {
@@ -99,6 +109,29 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
   if (values.clinicName !== undefined) {
     data.clinicName = values.clinicName;
   }
+  for (const field of [
+    'whatsappPhoneNumberId',
+    'whatsappConfirmationTemplate',
+    'whatsappReminderTemplate',
+    'whatsappTemplateLanguage',
+  ] as const) {
+    if (values[field] !== undefined) {
+      data[field] = values[field] || null;
+    }
+  }
+
+  // Write-only. The form cannot show the stored token, so it submits an empty field whenever the
+  // user isn't deliberately changing it — treating that as "clear the token" would silently switch
+  // notifications off on every unrelated save. Clearing is explicit, via `whatsappAccessTokenClear`.
+  const accessToken = formData.get('whatsappAccessToken');
+  if (typeof accessToken === 'string' && accessToken.trim()) {
+    if (accessToken.trim().length > MAX_TOKEN_LENGTH) {
+      return apiError('INVALID_INPUT', 'whatsappAccessToken is too long', 400);
+    }
+    data.whatsappAccessToken = accessToken.trim();
+  } else if (formData.get('whatsappAccessTokenClear') === 'true') {
+    data.whatsappAccessToken = null;
+  }
 
   // The logo is the export's letterhead, printed at the top of every page. PNG is accepted
   // alongside JPEG because a logo usually needs a transparent background, which JPEG cannot carry.
@@ -129,5 +162,6 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
     entityId: clinicSettings.id,
   });
 
-  return NextResponse.json({ clinicSettings });
+  // Same projection as GET: the save response must not hand the token back either.
+  return NextResponse.json({ clinicSettings: toPublicClinicSettings(clinicSettings) });
 });

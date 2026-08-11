@@ -17,6 +17,24 @@ export interface ClinicSettingsUpdate {
   declarationAfter: string;
   doctorSignaturePath?: string;
   clinicLogoPath?: string;
+  whatsappAccessToken?: string | null;
+  whatsappPhoneNumberId?: string | null;
+  whatsappConfirmationTemplate?: string | null;
+  whatsappReminderTemplate?: string | null;
+  whatsappTemplateLanguage?: string | null;
+}
+
+/**
+ * The settings as the API hands them out: identical to the stored row minus the WhatsApp access
+ * token, which is write-only. A read endpoint must never echo a credential back — anyone who can
+ * open the settings screen could otherwise copy the clinic's Meta token out of a network response.
+ * `whatsappAccessTokenSet` tells the UI whether one is stored without revealing it.
+ */
+export function toPublicClinicSettings<T extends { whatsappAccessToken: string | null }>(
+  settings: T
+): Omit<T, 'whatsappAccessToken'> & { whatsappAccessTokenSet: boolean } {
+  const { whatsappAccessToken, ...rest } = settings;
+  return { ...rest, whatsappAccessTokenSet: Boolean(whatsappAccessToken?.trim()) };
 }
 
 export function getClinicSettings() {

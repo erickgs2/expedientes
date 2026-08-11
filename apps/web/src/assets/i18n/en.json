@@ -241,7 +241,21 @@
     "noLogo": "No logo uploaded yet.",
     "uploadLogo": "Upload logo",
     "replaceLogo": "Replace logo",
-    "identity": "Doctor details"
+    "identity": "Doctor details",
+    "whatsapp": {
+      "title": "WhatsApp notifications",
+      "help": "A confirmation is sent on booking and a reminder 2 hours before. Templates are created and approved in Meta Business Manager; only their names go here.",
+      "phoneNumberId": "Phone number ID (Meta)",
+      "accessToken": "Access token",
+      "tokenStored": "Token stored — leave blank to keep it",
+      "tokenMissing": "No token — notifications are off",
+      "tokenHint": "The token is never displayed. Enter a new one only to replace it.",
+      "clearToken": "Remove token",
+      "clearPending": "Will be removed on save.",
+      "confirmationTemplate": "Confirmation template",
+      "reminderTemplate": "Reminder template",
+      "templateLanguage": "Template language"
+    }
   },
   "treatments": {
     "listTitle": "Treatments",

@@ -1,6 +1,7 @@
 import { prisma } from '../prisma/client';
 import { writeAuditLogSafe } from '../audit/audit-log';
 import { sendTemplateMessage, isWhatsAppConfigured } from './whatsapp-client';
+import { resolveWhatsAppConfig } from './whatsapp-config';
 import { toWhatsAppNumber } from './phone';
 
 const REMINDER_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -48,7 +49,7 @@ async function sendAppointmentMessage(
   }
   if (!appointment) return false;
 
-  if (!isWhatsAppConfigured()) {
+  if (!(await isWhatsAppConfigured())) {
     await writeAuditLogSafe({
       userId: 'system',
       action: 'create',
@@ -107,8 +108,14 @@ async function sendAppointmentMessage(
  * throws, so a WhatsApp failure can never fail the appointment-creation request that calls this.
  */
 export async function sendConfirmation(appointmentId: string): Promise<void> {
-  const templateName = process.env['WHATSAPP_CONFIRMATION_TEMPLATE'] || 'appointment_confirmation';
-  await sendAppointmentMessage(appointmentId, templateName, 'confirmation');
+  const config = await resolveWhatsAppConfig();
+  // No config means notifications are off; `sendAppointmentMessage` still runs so the skip is
+  // recorded in the audit log with a `not_configured` reason, exactly as before.
+  await sendAppointmentMessage(
+    appointmentId,
+    config?.confirmationTemplate ?? '',
+    'confirmation'
+  );
 }
 
 /**
@@ -119,7 +126,8 @@ export async function sendConfirmation(appointmentId: string): Promise<void> {
  * retry-count field needed.
  */
 export async function runReminderSweep(): Promise<void> {
-  const templateName = process.env['WHATSAPP_REMINDER_TEMPLATE'] || 'appointment_reminder';
+  const config = await resolveWhatsAppConfig();
+  const templateName = config?.reminderTemplate ?? '';
   const now = new Date();
   const due = await prisma.appointment.findMany({
     where: {
