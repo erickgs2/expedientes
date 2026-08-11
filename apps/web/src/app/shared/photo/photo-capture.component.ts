@@ -11,18 +11,25 @@ import { CameraCaptureComponent } from './camera-capture.component';
   imports: [MatButtonToggleModule, TranslocoModule, CameraCaptureComponent],
   template: `
     <div class="photo-capture">
-      <!-- Shown alongside the camera in both its idle and active states, so the tag is picked
-           once and applies whichever way the next photo is captured (live view or the
-           native-camera fallback). -->
-      <mat-button-toggle-group class="tag-group" [value]="tag()" [hideSingleSelectionIndicator]="true">
-        <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
-          {{ 'valoracion.photos.before' | transloco }}
-        </mat-button-toggle>
-        <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
-          {{ 'valoracion.photos.after' | transloco }}
-        </mat-button-toggle>
-      </mat-button-toggle-group>
-      <app-camera-capture [busy]="uploading()" (captured)="onCaptured($event)" />
+      <!-- Only while the camera panel is up, matching the pre-extraction behaviour: an idle
+           "add photos" screen should not carry a stray tag selector. Shown in both the live and
+           review steps, since the native-camera fallback skips the live step entirely and this is
+           the only place its user can pick a tag. -->
+      @if (camera.active()) {
+        <mat-button-toggle-group
+          class="tag-group"
+          [value]="tag()"
+          [hideSingleSelectionIndicator]="true"
+        >
+          <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
+            {{ 'valoracion.photos.before' | transloco }}
+          </mat-button-toggle>
+          <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
+            {{ 'valoracion.photos.after' | transloco }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      }
+      <app-camera-capture #camera [busy]="uploading()" (captured)="onCaptured($event)" />
     </div>
   `,
   styles: [

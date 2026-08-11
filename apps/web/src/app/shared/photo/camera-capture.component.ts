@@ -257,7 +257,9 @@ export class CameraCaptureComponent implements OnDestroy {
   @Input() busy = false;
   readonly captured = output<Blob>();
 
-  protected readonly active = signal(false);
+  // Public so a host can mirror the camera's open/closed state in its own chrome — the photo
+  // wrapper uses it to show the BEFORE/AFTER toggle only while the camera panel is up.
+  readonly active = signal(false);
   protected readonly reviewing = signal(false);
   protected readonly cameraError = signal(false);
   protected reviewImageUrl: string | null = null;
@@ -428,7 +430,15 @@ export class CameraCaptureComponent implements OnDestroy {
   protected useCapturedPhoto(): void {
     if (!this.reviewBlob) return;
     this.captured.emit(this.reviewBlob);
-    this.closeCamera();
+    this.discardReview();
+    this.reviewing.set(false);
+    // Return to the live view rather than closing, so a series of photos can be taken without
+    // reopening the camera between each one — clinicians shoot several angles in a row. With no
+    // stream the photo came from the device's camera app and there is no live view to return to,
+    // so close out instead, the same way `retake` handles that case.
+    if (!this.stream) {
+      this.active.set(false);
+    }
   }
 
   private discardReview(): void {
