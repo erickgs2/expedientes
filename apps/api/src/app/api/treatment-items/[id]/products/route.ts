@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createProduct, listProducts } from '../../../../../lib/treatment/treatment-product';
-import { getTreatmentItemDetail } from '../../../../../lib/treatment/consent';
+import {
+  createProduct,
+  getTreatmentItemPatientId,
+  listProducts,
+} from '../../../../../lib/treatment/treatment-product';
 import {
   InvalidExpiryError,
   normalizeExpiryToMonthEnd,
@@ -21,8 +24,8 @@ export const GET = withApiErrors(
     const userId = await requireAuth(request, 'treatments', 'view');
     const { id } = await params;
 
-    const item = await getTreatmentItemDetail(id);
-    if (!item) return apiError('NOT_FOUND', 'Treatment item not found', 404);
+    const patientId = await getTreatmentItemPatientId(id);
+    if (!patientId) return apiError('NOT_FOUND', 'Treatment item not found', 404);
 
     const products = await listProducts(id);
 
@@ -31,7 +34,7 @@ export const GET = withApiErrors(
       action: 'view',
       entity: 'TreatmentItemProductList',
       entityId: id,
-      patientId: item.patientId,
+      patientId,
     });
 
     return NextResponse.json({ products });
@@ -50,8 +53,8 @@ export const POST = withApiErrors(
       return apiError('INVALID_INPUT', 'Photo is too large', 413);
     }
 
-    const item = await getTreatmentItemDetail(id);
-    if (!item) return apiError('NOT_FOUND', 'Treatment item not found', 404);
+    const patientId = await getTreatmentItemPatientId(id);
+    if (!patientId) return apiError('NOT_FOUND', 'Treatment item not found', 404);
 
     const formData = await request.formData();
     const brand = formData.get('brand');
@@ -99,10 +102,10 @@ export const POST = withApiErrors(
       if (!isJpeg(buffer)) {
         return apiError('INVALID_INPUT', 'File must be a JPEG image', 400);
       }
-      photoPath = await saveFile(buffer, 'treatment-products', item.patientId, 'product.jpg');
+      photoPath = await saveFile(buffer, 'treatment-products', patientId, 'product.jpg');
     }
 
-    const product = await createProduct(id, item.patientId, {
+    const product = await createProduct(id, patientId, {
       brand: brand.trim(),
       lotNumber: lotNumber.trim(),
       expiryDate: normalizedExpiry,
@@ -114,7 +117,7 @@ export const POST = withApiErrors(
       action: 'create',
       entity: 'TreatmentItemProduct',
       entityId: product.id,
-      patientId: item.patientId,
+      patientId,
     });
 
     return NextResponse.json({ product }, { status: 201 });

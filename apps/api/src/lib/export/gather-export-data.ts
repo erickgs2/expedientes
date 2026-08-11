@@ -4,6 +4,7 @@ import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
 import { getTreatmentItemDetail } from '../treatment/consent';
+import { listProducts } from '../treatment/treatment-product';
 import { getClinicSettings } from '../clinic/clinic-settings';
 
 export interface ExportModulesSelection {
@@ -57,6 +58,7 @@ export interface ExportTreatmentItem {
   treatmentTypeName: string;
   notes: string | null;
   diagrams: ExportDiagramRef[];
+  products: Array<{ brand: string; lotNumber: string; expiryDate: string | null }>;
   consent: {
     blocks: ConsentBlock[];
     /**
@@ -155,6 +157,11 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
             diagrams: (detail?.diagrams ?? []).map((d) => ({
               view: d.view,
               imageKey: `diagram_treatmentItem_${item.id}_${d.view}`,
+            })),
+            products: (await listProducts(item.id)).map((p) => ({
+              brand: p.brand,
+              lotNumber: p.lotNumber,
+              expiryDate: p.expiryDate ? p.expiryDate.toISOString() : null,
             })),
             consent,
           };

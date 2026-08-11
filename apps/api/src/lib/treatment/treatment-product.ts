@@ -14,6 +14,21 @@ export function listProducts(treatmentItemId: string) {
   });
 }
 
+/**
+ * Resolves a treatment item's `patientId`, or `null` if the item doesn't exist. The product routes
+ * only need this one field to authorize/scope their writes, but `getTreatmentItemDetail` also
+ * queries clinic settings and assembles the full consent document block list — expensive work every
+ * product list/create/update/delete call would otherwise pay for and immediately discard. Use this
+ * targeted lookup instead in that path.
+ */
+export async function getTreatmentItemPatientId(id: string): Promise<string | null> {
+  const item = await prisma.treatmentItem.findUnique({
+    where: { id },
+    select: { treatment: { select: { patientId: true } } },
+  });
+  return item?.treatment.patientId ?? null;
+}
+
 export function getProduct(id: string) {
   return prisma.treatmentItemProduct.findUnique({ where: { id } });
 }

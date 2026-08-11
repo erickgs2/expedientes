@@ -35,6 +35,8 @@ const styles = StyleSheet.create({
   itemTitle: { fontWeight: 'bold' },
   diagramRow: { flexDirection: 'row', marginTop: 6, marginBottom: 6 },
   diagramImage: { width: 130, height: 162, marginRight: 8 },
+  productRow: { flexDirection: 'row', marginBottom: 2 },
+  productCell: { flex: 1 },
 });
 
 function Field({ label, value }: { label: string; value: string | null }) {
@@ -178,6 +180,25 @@ function TreatmentItemBlock({
       <Text style={styles.itemTitle}>{item.treatmentTypeName}</Text>
       <Field label={l.notes} value={item.notes} />
       <DiagramImages diagrams={item.diagrams} diagramImages={diagramImages} />
+      {item.products.length > 0 && (
+        <View>
+          <Text style={styles.subsectionTitle}>{l.products}</Text>
+          <View style={styles.productRow}>
+            <Text style={[styles.productCell, styles.itemTitle]}>{l.productBrand}</Text>
+            <Text style={[styles.productCell, styles.itemTitle]}>{l.productLot}</Text>
+            <Text style={[styles.productCell, styles.itemTitle]}>{l.productExpiry}</Text>
+          </View>
+          {item.products.map((p, i) => (
+            <View key={i} style={styles.productRow}>
+              <Text style={styles.productCell}>{p.brand}</Text>
+              <Text style={styles.productCell}>{p.lotNumber}</Text>
+              <Text style={styles.productCell}>
+                {p.expiryDate ? p.expiryDate.substring(0, 7) : '—'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
       {item.consent && (
         <Field
           label={l.consentSignedOn}

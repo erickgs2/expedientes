@@ -39,6 +39,10 @@ export interface PdfLabels {
     consentSignedOn: string;
     consentAnnexRef: string;
     consentPageOf: string;
+    products: string;
+    productBrand: string;
+    productLot: string;
+    productExpiry: string;
   };
 }
 
@@ -84,6 +88,10 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       consentSignedOn: 'Consentimiento firmado el',
       consentAnnexRef: 'ver anexo',
       consentPageOf: 'Página {{n}} de {{total}}',
+      products: 'Productos utilizados',
+      productBrand: 'Marca',
+      productLot: 'Lote',
+      productExpiry: 'Caducidad',
     },
   },
   en: {
@@ -127,6 +135,10 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       consentSignedOn: 'Consent signed on',
       consentAnnexRef: 'see annex',
       consentPageOf: 'Page {{n}} of {{total}}',
+      products: 'Products used',
+      productBrand: 'Brand',
+      productLot: 'Lot',
+      productExpiry: 'Expiry',
     },
   },
 };
