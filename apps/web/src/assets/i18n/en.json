@@ -10,6 +10,7 @@
       "users": "Users",
       "roles": "Roles",
       "treatments": "Treatments",
+      "clinicSettings": "Clinic details",
       "calendar": "Calendar",
       "export": "Export"
     }
@@ -195,7 +196,12 @@
     "title": "Treatment catalog",
     "new": "New treatment",
     "name": "Name",
-    "consentTemplate": "Consent template",
+    "consentDescription": "Procedure description",
+    "consentRisks": "Risks and complications",
+    "consentAlternatives": "Treatment alternatives",
+    "consentAftercare": "Aftercare",
+    "consentContraindications": "Contraindications",
+    "optionalHint": "Optional — omitted from the consent when left blank",
     "active": "Active",
     "inactiveBadge": "Inactive",
     "form": {

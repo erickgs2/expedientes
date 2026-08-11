@@ -10,6 +10,7 @@
       "users": "Usuarios",
       "roles": "Roles",
       "treatments": "Tratamientos",
+      "clinicSettings": "Datos de la clínica",
       "calendar": "Calendario",
       "export": "Exportar"
     }
@@ -195,7 +196,12 @@
     "title": "Catálogo de tratamientos",
     "new": "Nuevo tratamiento",
     "name": "Nombre",
-    "consentTemplate": "Plantilla de consentimiento",
+    "consentDescription": "Descripción del procedimiento",
+    "consentRisks": "Riesgos y complicaciones",
+    "consentAlternatives": "Alternativas de tratamiento",
+    "consentAftercare": "Cuidados posteriores",
+    "consentContraindications": "Contraindicaciones",
+    "optionalHint": "Opcional — se omite del consentimiento si se deja vacío",
     "active": "Activo",
     "inactiveBadge": "Inactivo",
     "form": {

@@ -61,6 +61,14 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
             {{ 'shell.nav.treatments' | transloco }}
           </a>
           <a
+            *appHasPermission="'clinic-settings:view'"
+            mat-button
+            routerLink="/admin/clinic"
+            routerLinkActive="active-link"
+          >
+            {{ 'shell.nav.clinicSettings' | transloco }}
+          </a>
+          <a
             *appHasPermission="'appointments:view'"
             mat-button
             routerLink="/calendar"
@@ -100,6 +108,9 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
           </a>
           <a *appHasPermission="'treatments:view'" mat-menu-item routerLink="/admin/treatments">
             <mat-icon>medical_services</mat-icon>{{ 'shell.nav.treatments' | transloco }}
+          </a>
+          <a *appHasPermission="'clinic-settings:view'" mat-menu-item routerLink="/admin/clinic">
+            <mat-icon>business</mat-icon>{{ 'shell.nav.clinicSettings' | transloco }}
           </a>
           <a *appHasPermission="'appointments:view'" mat-menu-item routerLink="/calendar">
             <mat-icon>calendar_month</mat-icon>{{ 'shell.nav.calendar' | transloco }}

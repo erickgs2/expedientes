@@ -12,22 +12,35 @@ export const PATCH = withApiErrors(
 
     const body = (await request.json()) as {
       name?: string;
-      consentTemplate?: string;
+      consentDescription?: string;
+      consentRisks?: string | null;
+      consentAlternatives?: string | null;
+      consentAftercare?: string | null;
+      consentContraindications?: string | null;
       active?: boolean;
     };
 
     if (body.name !== undefined && !body.name) {
       return apiError('INVALID_INPUT', 'name cannot be empty', 400);
     }
-    if (body.consentTemplate !== undefined && !body.consentTemplate) {
-      return apiError('INVALID_INPUT', 'consentTemplate cannot be empty', 400);
+    if (body.consentDescription !== undefined && !body.consentDescription) {
+      return apiError('INVALID_INPUT', 'consentDescription cannot be empty', 400);
     }
+
+    // An empty string on an optional section is normalized to `null` so a cleared textarea
+    // removes the section rather than emitting a blank heading on the generated consent.
+    const normalizeOptional = (value: string | null | undefined) =>
+      value !== undefined ? value || null : undefined;
 
     // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which
     // `withApiErrors` already maps to a 404 — see apps/api/src/lib/http/with-api-errors.ts.
     const treatmentType = await updateTreatmentType(id, {
       name: body.name,
-      consentTemplate: body.consentTemplate,
+      consentDescription: body.consentDescription,
+      consentRisks: normalizeOptional(body.consentRisks),
+      consentAlternatives: normalizeOptional(body.consentAlternatives),
+      consentAftercare: normalizeOptional(body.consentAftercare),
+      consentContraindications: normalizeOptional(body.consentContraindications),
       active: body.active,
     });
 

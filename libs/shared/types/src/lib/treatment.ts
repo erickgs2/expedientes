@@ -1,7 +1,11 @@
 export interface TreatmentType {
   id: string;
   name: string;
-  consentTemplate: string;
+  consentDescription: string;
+  consentRisks: string | null;
+  consentAlternatives: string | null;
+  consentAftercare: string | null;
+  consentContraindications: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -9,7 +13,11 @@ export interface TreatmentType {
 
 export interface TreatmentTypeUpdateInput {
   name?: string;
-  consentTemplate?: string;
+  consentDescription?: string;
+  consentRisks?: string | null;
+  consentAlternatives?: string | null;
+  consentAftercare?: string | null;
+  consentContraindications?: string | null;
   active?: boolean;
 }
 

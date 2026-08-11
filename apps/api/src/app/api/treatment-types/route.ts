@@ -16,11 +16,26 @@ export const GET = withApiErrors(async (request: NextRequest) => {
 export const POST = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'treatments', 'create');
 
-  const body = (await request.json()) as { name?: string; consentTemplate?: string };
+  const body = (await request.json()) as {
+    name?: string;
+    consentDescription?: string;
+    consentRisks?: string | null;
+    consentAlternatives?: string | null;
+    consentAftercare?: string | null;
+    consentContraindications?: string | null;
+  };
   if (!body.name) return apiError('INVALID_INPUT', 'name is required', 400);
-  if (!body.consentTemplate) return apiError('INVALID_INPUT', 'consentTemplate is required', 400);
+  if (!body.consentDescription) {
+    return apiError('INVALID_INPUT', 'consentDescription is required', 400);
+  }
 
-  const treatmentType = await createTreatmentType(body.name, body.consentTemplate);
+  const treatmentType = await createTreatmentType(body.name, {
+    consentDescription: body.consentDescription,
+    consentRisks: body.consentRisks ?? null,
+    consentAlternatives: body.consentAlternatives ?? null,
+    consentAftercare: body.consentAftercare ?? null,
+    consentContraindications: body.consentContraindications ?? null,
+  });
 
   await writeAuditLogSafe({
     userId,

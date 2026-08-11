@@ -37,8 +37,28 @@ export interface TreatmentTypeFormDialogData {
           <input matInput formControlName="name" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'treatmentCatalog.consentTemplate' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentTemplate" rows="8"></textarea>
+          <mat-label>{{ 'treatmentCatalog.consentDescription' | transloco }}</mat-label>
+          <textarea matInput formControlName="consentDescription" rows="8"></textarea>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'treatmentCatalog.consentRisks' | transloco }}</mat-label>
+          <textarea matInput formControlName="consentRisks" rows="4"></textarea>
+          <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'treatmentCatalog.consentAlternatives' | transloco }}</mat-label>
+          <textarea matInput formControlName="consentAlternatives" rows="4"></textarea>
+          <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'treatmentCatalog.consentAftercare' | transloco }}</mat-label>
+          <textarea matInput formControlName="consentAftercare" rows="4"></textarea>
+          <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'treatmentCatalog.consentContraindications' | transloco }}</mat-label>
+          <textarea matInput formControlName="consentContraindications" rows="4"></textarea>
+          <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
         </mat-form-field>
       </form>
     </mat-dialog-content>
@@ -70,7 +90,11 @@ export class TreatmentTypeFormDialogComponent {
 
   protected readonly form = this.fb.group({
     name: [this.data.treatmentType?.name ?? '', Validators.required],
-    consentTemplate: [this.data.treatmentType?.consentTemplate ?? '', Validators.required],
+    consentDescription: [this.data.treatmentType?.consentDescription ?? '', Validators.required],
+    consentRisks: [this.data.treatmentType?.consentRisks ?? ''],
+    consentAlternatives: [this.data.treatmentType?.consentAlternatives ?? ''],
+    consentAftercare: [this.data.treatmentType?.consentAftercare ?? ''],
+    consentContraindications: [this.data.treatmentType?.consentContraindications ?? ''],
   });
 
   async save(): Promise<void> {
@@ -81,10 +105,20 @@ export class TreatmentTypeFormDialogComponent {
       if (this.data.treatmentType) {
         await this.treatmentTypesService.update(this.data.treatmentType.id, {
           name: raw.name ?? undefined,
-          consentTemplate: raw.consentTemplate ?? undefined,
+          consentDescription: raw.consentDescription ?? undefined,
+          consentRisks: raw.consentRisks || null,
+          consentAlternatives: raw.consentAlternatives || null,
+          consentAftercare: raw.consentAftercare || null,
+          consentContraindications: raw.consentContraindications || null,
         });
       } else {
-        await this.treatmentTypesService.create(raw.name ?? '', raw.consentTemplate ?? '');
+        await this.treatmentTypesService.create(raw.name ?? '', {
+          consentDescription: raw.consentDescription ?? '',
+          consentRisks: raw.consentRisks || null,
+          consentAlternatives: raw.consentAlternatives || null,
+          consentAftercare: raw.consentAftercare || null,
+          consentContraindications: raw.consentContraindications || null,
+        });
       }
       this.dialogRef.close(true);
     } finally {
