@@ -66,14 +66,37 @@ when the lease changes.
 
 ## 3. Swap — skip only on 8 GB
 
+An OOM kill partway through the Angular build is the most likely first failure without this.
+
+Check what the image already gave you:
+
 ```bash
-sudo dphys-swapfile swapoff
-sudo sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
-sudo dphys-swapfile setup && sudo dphys-swapfile swapon
+swapon --show
+free -h
+zramctl 2>/dev/null
+```
+
+If `swapon --show` prints nothing, add a 2 GB swapfile:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 free -h        # expect ~2 GB of swap
 ```
 
-An OOM kill partway through the Angular build is the most likely first failure without this.
+This is deliberately the plain-Linux route rather than `dphys-swapfile`, which recent Pi OS Lite
+images do not always ship — `sudo apt install -y dphys-swapfile` if you prefer its config file, but
+the swapfile above needs no package and survives image changes.
+
+If `zramctl` showed a device, that is compressed swap held **in RAM**. It eases general memory
+pressure but does not help a build that needs more memory than the board has, since it competes for
+the same 4 GB. Add the disk swapfile as well.
+
+On an SD card, 2 GB of active swap on every build is slow and wears the card — one more reason to
+boot from an SSD over USB3.
 
 ## 4. Docker
 
