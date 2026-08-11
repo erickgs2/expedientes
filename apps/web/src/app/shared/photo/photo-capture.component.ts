@@ -9,6 +9,8 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { PhotoRecord, PhotoTag } from '@expedientes/shared-types';
 import type { PhotoDataSource } from './photo-data-source';
@@ -19,7 +21,13 @@ const JPEG_QUALITY = 0.9;
 @Component({
   selector: 'app-photo-capture',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslocoModule,
+  ],
   template: `
     <div class="photo-capture">
       <!-- Always in the DOM (never inside a branch): openCamera() clicks it from the button
@@ -34,68 +42,110 @@ const JPEG_QUALITY = 0.9;
         (change)="onFileSelected($event)"
       />
       @if (!active()) {
-        <button mat-flat-button color="primary" type="button" (click)="openCamera()">
-          {{ 'valoracion.photos.addPhotos' | transloco }}
+        <button class="add-photos" type="button" (click)="openCamera()">
+          <mat-icon aria-hidden="true">photo_camera</mat-icon>
+          <span>{{ 'valoracion.photos.addPhotos' | transloco }}</span>
         </button>
         @if (cameraError()) {
-          <p class="camera-error">{{ 'valoracion.photos.cameraError' | transloco }}</p>
+          <p class="camera-error" role="alert">{{ 'valoracion.photos.cameraError' | transloco }}</p>
         }
       } @else {
-        <div class="camera-view">
+        <div class="capture-panel">
+          <div class="camera-view">
+            @if (!reviewing()) {
+              <video #videoEl autoplay playsinline muted></video>
+              <div class="oval-guide"></div>
+            } @else {
+              <img [src]="reviewImageUrl" alt="" class="review-image" />
+            }
+            <!-- Close sits on the frame itself, the way a camera screen behaves, instead of
+                 competing with the primary action in a row of look-alike buttons below. -->
+            <button
+              class="frame-close"
+              type="button"
+              [disabled]="uploading()"
+              [attr.aria-label]="'valoracion.photos.closeCamera' | transloco"
+              (click)="closeCamera()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <!-- Shown in both the live and review steps: the fallback path (native camera) skips
+               the live step entirely, so this is the only place its user can pick a tag. -->
+          <mat-button-toggle-group class="tag-group" [value]="tag()" [hideSingleSelectionIndicator]="true">
+            <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
+              {{ 'valoracion.photos.before' | transloco }}
+            </mat-button-toggle>
+            <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
+              {{ 'valoracion.photos.after' | transloco }}
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+
           @if (!reviewing()) {
-            <video #videoEl autoplay playsinline muted></video>
-            <div class="oval-guide"></div>
+            <!-- A shutter, not a labelled button: one unmistakable primary target, thumb-sized. -->
+            <button
+              class="shutter"
+              type="button"
+              [attr.aria-label]="'valoracion.photos.capture' | transloco"
+              (click)="capture()"
+            >
+              <span class="shutter-inner"></span>
+            </button>
           } @else {
-            <img [src]="reviewImageUrl" alt="" class="review-image" />
+            <div class="review-actions">
+              <button
+                class="review-secondary"
+                type="button"
+                [disabled]="uploading()"
+                (click)="retake()"
+              >
+                <mat-icon aria-hidden="true">refresh</mat-icon>
+                <span>{{ 'valoracion.photos.retake' | transloco }}</span>
+              </button>
+              <button
+                class="review-primary"
+                type="button"
+                [disabled]="uploading()"
+                (click)="usePhoto()"
+              >
+                @if (uploading()) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  <mat-icon aria-hidden="true">check</mat-icon>
+                }
+                <span>{{ 'valoracion.photos.usePhoto' | transloco }}</span>
+              </button>
+            </div>
           }
         </div>
-
-        <!-- Shown in both the live and review steps: the fallback path (native camera) skips the
-             live step entirely, so this is the only place its user can pick a tag. -->
-        <mat-button-toggle-group [value]="tag()">
-          <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
-            {{ 'valoracion.photos.before' | transloco }}
-          </mat-button-toggle>
-          <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
-            {{ 'valoracion.photos.after' | transloco }}
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-
-        @if (!reviewing()) {
-          <div class="camera-actions">
-            <button mat-stroked-button type="button" (click)="closeCamera()">
-              {{ 'valoracion.photos.closeCamera' | transloco }}
-            </button>
-            <button mat-flat-button color="primary" type="button" (click)="capture()">
-              {{ 'valoracion.photos.capture' | transloco }}
-            </button>
-          </div>
-        } @else {
-          <div class="camera-actions">
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="uploading()"
-              (click)="retake()"
-            >
-              {{ 'valoracion.photos.retake' | transloco }}
-            </button>
-            <button
-              mat-flat-button
-              color="primary"
-              type="button"
-              [disabled]="uploading()"
-              (click)="usePhoto()"
-            >
-              {{ 'valoracion.photos.usePhoto' | transloco }}
-            </button>
-          </div>
-        }
       }
     </div>
   `,
   styles: [
     `
+      .add-photos {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 20px;
+        border: none;
+        border-radius: 999px;
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        appearance: none;
+      }
+      .capture-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 480px;
+      }
       .camera-view {
         position: relative;
         width: 100%;
@@ -103,6 +153,90 @@ const JPEG_QUALITY = 0.9;
         aspect-ratio: 3 / 4;
         background: #000;
         overflow: hidden;
+        border-radius: 16px;
+      }
+      .frame-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        cursor: pointer;
+        appearance: none;
+      }
+      .tag-group {
+        width: 100%;
+        max-width: 320px;
+      }
+      .tag-group mat-button-toggle {
+        flex: 1;
+      }
+      /* Round shutter with a ring, mirroring the platform camera so the primary action is
+         unmistakable and comfortably thumb-sized. */
+      .shutter {
+        width: 68px;
+        height: 68px;
+        padding: 0;
+        border: 3px solid var(--mat-sys-primary);
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 150ms ease-out;
+      }
+      .shutter:active {
+        transform: scale(0.92);
+      }
+      .shutter-inner {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--mat-sys-primary);
+      }
+      .review-actions {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        max-width: 320px;
+      }
+      .review-secondary,
+      .review-primary {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        border-radius: 999px;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        appearance: none;
+      }
+      .review-secondary {
+        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        background: transparent;
+        color: var(--mat-sys-on-surface);
+      }
+      .review-primary {
+        border: none;
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+      }
+      .review-secondary:disabled,
+      .review-primary:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
       .camera-view video,
       .camera-view .review-image {

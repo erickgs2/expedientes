@@ -103,21 +103,31 @@ interface TreatmentItemForm {
               </p>
             }
             @if (item.itemId) {
-              @if (item.hasConsent) {
-                <a mat-button [routerLink]="['/treatments/items', item.itemId, 'consent']">
-                  {{ 'treatments.viewConsent' | transloco }}
+              <div class="item-actions">
+                @if (item.hasConsent) {
+                  <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'consent']">
+                    <mat-icon aria-hidden="true">task</mat-icon>
+                    <span>{{ 'treatments.viewConsent' | transloco }}</span>
+                  </a>
+                } @else if (canEdit) {
+                  <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'consent']">
+                    <mat-icon aria-hidden="true">draw</mat-icon>
+                    <span>{{ 'treatments.signConsent' | transloco }}</span>
+                  </a>
+                }
+                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'diagram']">
+                  <mat-icon aria-hidden="true">face</mat-icon>
+                  <span>{{
+                    (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco
+                  }}</span>
                 </a>
-              } @else if (canEdit) {
-                <a mat-button [routerLink]="['/treatments/items', item.itemId, 'consent']">
-                  {{ 'treatments.signConsent' | transloco }}
+                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'photos']">
+                  <mat-icon aria-hidden="true">photo_camera</mat-icon>
+                  <span>{{
+                    (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco
+                  }}</span>
                 </a>
-              }
-              <a mat-button [routerLink]="['/treatments/items', item.itemId, 'diagram']">
-                {{ (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco }}
-              </a>
-              <a mat-button [routerLink]="['/treatments/items', item.itemId, 'photos']">
-                {{ (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco }}
-              </a>
+              </div>
             }
           }
         </div>
@@ -133,8 +143,46 @@ interface TreatmentItemForm {
   `,
   styles: [
     `
+      /* Each selected treatment is its own card, so its notes and actions read as belonging to
+         it rather than running together with the next treatment down the page. */
       .item-row {
         margin-bottom: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 12px;
+      }
+      /* Chips rather than bare text links: they read as tappable and keep a comfortable touch
+         target when they wrap on a phone. */
+      .item-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .item-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 999px;
+        background: var(--mat-sys-surface-container-low, transparent);
+        color: var(--mat-sys-on-surface);
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: background-color 150ms ease-out, border-color 150ms ease-out;
+      }
+      .item-action:hover {
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        border-color: var(--mat-sys-primary);
+      }
+      .item-action mat-icon {
+        color: var(--mat-sys-primary);
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
       }
       .full-width {
         width: 100%;

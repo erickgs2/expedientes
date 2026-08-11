@@ -34,28 +34,40 @@ import { TreatmentTypeFormDialogComponent } from './treatment-type-form-dialog.c
         <mat-icon>add</mat-icon> {{ 'treatmentCatalog.new' | transloco }}
       </button>
     </div>
-    <mat-list>
+    <!--
+      Deliberately not mat-list-item: its matListItemTitle slot is a single line that ellipsises,
+      which truncated longer treatment names. This row lets the name wrap and keeps the controls
+      on their own line when space runs out.
+    -->
+    <div class="type-list">
       @for (type of treatmentTypes(); track type.id) {
-        <mat-list-item>
-          <span matListItemTitle>{{ type.name }}</span>
-          <mat-slide-toggle
-            *appHasPermission="'treatments:edit'"
-            [checked]="type.active"
-            (change)="toggleActive(type, $event)"
-          >
-            {{ 'treatmentCatalog.active' | transloco }}
-          </mat-slide-toggle>
-          <button
-            *appHasPermission="'treatments:edit'"
-            mat-icon-button
-            (click)="openEdit(type)"
-            [attr.aria-label]="'common.edit' | transloco"
-          >
-            <mat-icon>edit</mat-icon>
-          </button>
-        </mat-list-item>
+        <div class="type-row">
+          <span class="type-name">{{ type.name }}</span>
+          <div class="type-controls">
+            <mat-slide-toggle
+              *appHasPermission="'treatments:edit'"
+              [checked]="type.active"
+              (change)="toggleActive(type, $event)"
+            >
+              {{ 'treatmentCatalog.active' | transloco }}
+            </mat-slide-toggle>
+            <button
+              *appHasPermission="'treatments:edit'"
+              mat-icon-button
+              (click)="openEdit(type)"
+              [attr.aria-label]="'common.edit' | transloco"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>medical_services</mat-icon>
+          <p>{{ 'treatments.empty' | transloco }}</p>
+        </div>
       }
-    </mat-list>
+    </div>
   `,
   styles: [
     `
@@ -64,6 +76,32 @@ import { TreatmentTypeFormDialogComponent } from './treatment-type-form-dialog.c
         justify-content: space-between;
         align-items: center;
         padding: 0 0 16px;
+      }
+      .type-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .type-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 12px 4px;
+        border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+      }
+      .type-name {
+        flex: 1 1 200px;
+        min-width: 0;
+        font-weight: 500;
+        /* Wrap rather than ellipsise, and break a single very long word instead of overflowing. */
+        overflow-wrap: anywhere;
+      }
+      .type-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
       }
     `,
   ],

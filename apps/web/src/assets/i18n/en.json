@@ -60,6 +60,21 @@
         "editTitle": "Edit role",
         "name": "Name"
       }
+    },
+    "permissionModules": {
+      "patients": "Patients",
+      "historia-clinica": "Clinical history",
+      "valoracion": "Assessments",
+      "treatments": "Treatments",
+      "appointments": "Appointments",
+      "export": "Export",
+      "rbac-admin": "User administration"
+    },
+    "permissionActions": {
+      "view": "View",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete"
     }
   },
   "patientDrive": {

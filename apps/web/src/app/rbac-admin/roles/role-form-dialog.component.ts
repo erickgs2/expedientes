@@ -5,7 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { AdminPermission, AdminRoleDetail, RolesService } from './roles.service';
 
 export interface RoleFormDialogData {
@@ -36,21 +36,32 @@ export interface RoleFormDialogData {
           <input matInput formControlName="name" />
         </mat-form-field>
       </form>
-      <!-- Module and action names below are the canonical permission identifiers
-           (patients:view, and so on), not UI chrome, so they are deliberately not translated. -->
+      <!-- Modules and actions are shown with translated labels, with the canonical identifier
+           (patients:view, and so on) kept alongside the module name so an admin can still tell
+           exactly which permission a checkbox grants. -->
       <div class="matrix">
         @for (module of modules; track module) {
-          <div class="module-row">
-            <strong>{{ module }}</strong>
-            @for (permission of permissionsByModule(module); track permission.id) {
-              <mat-checkbox
-                [checked]="selected.has(permission.id)"
-                (change)="toggle(permission.id)"
-              >
-                {{ permission.action }}
-              </mat-checkbox>
-            }
-          </div>
+          <section class="module-card">
+            <header class="module-header">
+              <span class="module-title">
+                <span class="module-name">{{ moduleLabel(module) }}</span>
+                <span class="module-id">{{ module }}</span>
+              </span>
+              <span class="module-count" [class.none]="selectedCount(module) === 0">
+                {{ selectedCount(module) }}/{{ permissionsByModule(module).length }}
+              </span>
+            </header>
+            <div class="module-actions">
+              @for (permission of permissionsByModule(module); track permission.id) {
+                <mat-checkbox
+                  [checked]="selected.has(permission.id)"
+                  (change)="toggle(permission.id)"
+                >
+                  {{ actionLabel(permission.action) }}
+                </mat-checkbox>
+              }
+            </div>
+          </section>
         }
       </div>
     </mat-dialog-content>
@@ -66,11 +77,57 @@ export interface RoleFormDialogData {
       .full-width {
         width: 100%;
       }
-      .module-row {
+      /* One card per module instead of a single wrapping row of checkboxes: the actions stay
+         grouped under their module on a phone, and the counter shows at a glance which modules
+         the role actually grants. */
+      .matrix {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .module-card {
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .module-header {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 12px;
-        padding: 4px 0;
+        margin-bottom: 4px;
+      }
+      .module-title {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .module-name {
+        font-weight: 600;
+      }
+      /* The canonical identifier stays visible under the translated name so an admin can still
+         map a checkbox to the exact permission it grants. */
+      .module-id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .module-count {
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--mat-sys-primary-container, #ffd9dd);
+        color: var(--mat-sys-on-primary-container, inherit);
+      }
+      .module-count.none {
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.06));
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .module-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+        gap: 4px 12px;
       }
     `,
   ],
@@ -79,6 +136,7 @@ export class RoleFormDialogComponent {
   protected readonly dialogRef = inject(MatDialogRef<RoleFormDialogComponent>);
   private readonly rolesService = inject(RolesService);
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
   protected readonly saving = signal(false);
 
   // `data` must be a field injected before any field initializer that reads it (`modules`,
@@ -101,6 +159,30 @@ export class RoleFormDialogComponent {
 
   protected permissionsByModule(module: string): AdminPermission[] {
     return this.data.permissions.filter((p) => p.module === module);
+  }
+
+  /**
+   * Display label for a permission module/action. Falls back to the canonical identifier when a
+   * translation is missing, so a permission added to the seed without a matching i18n key shows
+   * as `newmodule` rather than as a raw `rbacAdmin.permissionModules.newmodule` key path.
+   */
+  protected moduleLabel(module: string): string {
+    return this.translateOrRaw('rbacAdmin.permissionModules', module);
+  }
+
+  protected actionLabel(action: string): string {
+    return this.translateOrRaw('rbacAdmin.permissionActions', action);
+  }
+
+  private translateOrRaw(prefix: string, value: string): string {
+    const key = `${prefix}.${value}`;
+    const translated = this.transloco.translate(key);
+    return translated === key ? value : translated;
+  }
+
+  /** How many of this module's actions the role currently grants, for the header counter. */
+  protected selectedCount(module: string): number {
+    return this.permissionsByModule(module).filter((p) => this.selected.has(p.id)).length;
   }
 
   protected toggle(permissionId: string): void {
