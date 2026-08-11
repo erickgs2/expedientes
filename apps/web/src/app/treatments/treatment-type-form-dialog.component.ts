@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { TreatmentType } from '@expedientes/shared-types';
+import { CONSENT_SECTION_EXAMPLES } from '@expedientes/shared-types';
 import { TreatmentTypesService } from './treatment-types.service';
 
 export interface TreatmentTypeFormDialogData {
@@ -38,26 +39,51 @@ export interface TreatmentTypeFormDialogData {
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'treatmentCatalog.consentDescription' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentDescription" rows="8"></textarea>
+          <textarea
+            matInput
+            formControlName="consentDescription"
+            rows="8"
+            [placeholder]="examples.description"
+          ></textarea>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'treatmentCatalog.consentRisks' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentRisks" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="consentRisks"
+            rows="4"
+            [placeholder]="examples.risks"
+          ></textarea>
           <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'treatmentCatalog.consentAlternatives' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentAlternatives" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="consentAlternatives"
+            rows="4"
+            [placeholder]="examples.alternatives"
+          ></textarea>
           <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'treatmentCatalog.consentAftercare' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentAftercare" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="consentAftercare"
+            rows="4"
+            [placeholder]="examples.aftercare"
+          ></textarea>
           <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'treatmentCatalog.consentContraindications' | transloco }}</mat-label>
-          <textarea matInput formControlName="consentContraindications" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="consentContraindications"
+            rows="4"
+            [placeholder]="examples.contraindications"
+          ></textarea>
           <mat-hint>{{ 'treatmentCatalog.optionalHint' | transloco }}</mat-hint>
         </mat-form-field>
       </form>
@@ -87,6 +113,11 @@ export class TreatmentTypeFormDialogComponent {
   // this project's established MAT_DIALOG_DATA field-ordering convention; see
   // RoleFormDialogComponent for the production-build-only TS2729 error this avoids.
   protected readonly data = inject<TreatmentTypeFormDialogData>(MAT_DIALOG_DATA);
+
+  // Worked examples shown as placeholder text. They are never saved — each section's real content
+  // is specific to the procedure — but they show the depth of detail expected, which is what makes
+  // the risks and alternatives sections carry legal weight rather than read as boilerplate.
+  protected readonly examples = CONSENT_SECTION_EXAMPLES;
 
   protected readonly form = this.fb.group({
     name: [this.data.treatmentType?.name ?? '', Validators.required],

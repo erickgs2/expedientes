@@ -222,7 +222,9 @@
     "currentSignature": "Current signature",
     "replaceSignature": "Replace signature",
     "placeholderHelp": "You can use the placeholders patientName, doctorTitle, doctorName, doctorLicense and clinicName inside double curly braces.",
-    "saved": "Settings saved"
+    "saved": "Settings saved",
+    "restoreSuggested": "Restore suggested text",
+    "restoreSuggestedHelp": "Replaces both declarations with the reference wording. Nothing is stored until you press Save, and already-signed consents are unaffected."
   },
   "treatments": {
     "listTitle": "Treatments",

@@ -222,7 +222,9 @@
     "currentSignature": "Firma actual",
     "replaceSignature": "Reemplazar firma",
     "placeholderHelp": "Puede usar los marcadores patientName, doctorTitle, doctorName, doctorLicense y clinicName entre llaves dobles.",
-    "saved": "Datos guardados"
+    "saved": "Datos guardados",
+    "restoreSuggested": "Restaurar texto sugerido",
+    "restoreSuggestedHelp": "Reemplaza ambas declaraciones con el texto de referencia. No se guarda hasta que presione Guardar, y no afecta a los consentimientos ya firmados."
   },
   "treatments": {
     "listTitle": "Tratamientos",

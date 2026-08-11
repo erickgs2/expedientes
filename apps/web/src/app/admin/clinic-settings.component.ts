@@ -3,9 +3,14 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import type { ClinicSettings, ClinicSettingsInput } from '@expedientes/shared-types';
+import {
+  DEFAULT_DECLARATION_AFTER,
+  DEFAULT_DECLARATION_BEFORE,
+} from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
 import { SignaturePadComponent } from '../shared/signature-pad/signature-pad.component';
 import { ClinicSettingsService } from './clinic-settings.service';
@@ -18,6 +23,7 @@ import { ClinicSettingsService } from './clinic-settings.service';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     TranslocoModule,
     SignaturePadComponent,
   ],
@@ -51,13 +57,32 @@ import { ClinicSettingsService } from './clinic-settings.service';
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'clinicSettings.declarationBefore' | transloco }}</mat-label>
-          <textarea matInput formControlName="declarationBefore" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="declarationBefore"
+            rows="6"
+            [placeholder]="defaultDeclarationBefore"
+          ></textarea>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'clinicSettings.declarationAfter' | transloco }}</mat-label>
-          <textarea matInput formControlName="declarationAfter" rows="4"></textarea>
+          <textarea
+            matInput
+            formControlName="declarationAfter"
+            rows="10"
+            [placeholder]="defaultDeclarationAfter"
+          ></textarea>
         </mat-form-field>
         <p class="hint">{{ 'clinicSettings.placeholderHelp' | transloco }}</p>
+        @if (canEdit) {
+          <div class="restore-row">
+            <button mat-stroked-button type="button" (click)="restoreSuggestedDeclarations()">
+              <mat-icon>restart_alt</mat-icon>
+              {{ 'clinicSettings.restoreSuggested' | transloco }}
+            </button>
+            <span class="hint">{{ 'clinicSettings.restoreSuggestedHelp' | transloco }}</span>
+          </div>
+        }
 
         <h2>{{ 'clinicSettings.doctorSignature' | transloco }}</h2>
         @if (currentSignaturePath(); as path) {
@@ -91,6 +116,18 @@ import { ClinicSettingsService } from './clinic-settings.service';
         margin: -8px 0 16px;
         color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
       }
+      .restore-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .restore-row .hint {
+        margin: 0;
+        flex: 1;
+        min-width: 220px;
+      }
       .signature-image {
         max-width: 600px;
         display: block;
@@ -123,6 +160,11 @@ export class ClinicSettingsComponent implements OnInit {
   // for the same read-only-vs-editable split — permissions don't change mid-session, so a one-time
   // check in ngOnInit is sufficient.
   protected canEdit = false;
+
+  // Shown as the textareas' placeholder text, so an empty field teaches the expected wording and
+  // the `{{...}}` markers instead of leaving the user to invent legal boilerplate from scratch.
+  protected readonly defaultDeclarationBefore = DEFAULT_DECLARATION_BEFORE;
+  protected readonly defaultDeclarationAfter = DEFAULT_DECLARATION_AFTER;
 
   protected readonly form = this.fb.group({
     clinicName: ['', Validators.required],
@@ -162,6 +204,19 @@ export class ClinicSettingsComponent implements OnInit {
 
   protected signatureUrl(path: string): string {
     return `/api/files/${path}`;
+  }
+
+  /**
+   * Puts the reference wording back into both declaration fields. Only fills the form — nothing is
+   * stored until Guardar, so this is recoverable by navigating away, and it never touches a consent
+   * that has already been signed.
+   */
+  protected restoreSuggestedDeclarations(): void {
+    this.form.patchValue({
+      declarationBefore: DEFAULT_DECLARATION_BEFORE,
+      declarationAfter: DEFAULT_DECLARATION_AFTER,
+    });
+    this.form.markAsDirty();
   }
 
   protected async save(): Promise<void> {
