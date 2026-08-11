@@ -1,0 +1,120 @@
+# Dev stack for a Raspberry Pi on a home network, reached through a DuckDNS hostname.
+#
+# Differences from the QA stack, all consequences of where it runs:
+#   * Images are BUILT here, not pulled. The Pi is arm64; cross-building for it on GitHub's amd64
+#     runners means QEMU emulation, which turns a 3-minute npm build into a 30-minute one. The
+#     deploy workflow runs on a self-hosted runner on the Pi itself, so building locally is both
+#     native and free.
+#   * Uploads stay on a local volume rather than S3 — this is a throwaway dev environment, and the
+#     S3 path is already covered by QA. Set STORAGE_S3_BUCKET and AWS_REGION to test that instead;
+#     the app switches driver with no schema change.
+#   * A duckdns service keeps the hostname pointed at the home connection's changing IP.
+#
+# Required environment, in a .env file beside this one on the Pi:
+#   APP_DOMAIN         e.g. miclinica.duckdns.org
+#   ACME_EMAIL         address Let's Encrypt sends expiry warnings to
+#   DUCKDNS_SUBDOMAIN  just the label — `miclinica`, not the full hostname
+#   DUCKDNS_TOKEN      from the DuckDNS account page
+#   JWT_SECRET         signing key for session tokens
+#   POSTGRES_USER / POSTGRES_PASSWORD
+#   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD
+#
+# The router must forward ports 80 and 443 to the Pi. Port 80 is not optional: Caddy answers the
+# ACME challenge there, so closing it breaks certificate renewal about every 60 days.
+
+services:
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: unless-stopped
+    environment:
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAIN:?DUCKDNS_SUBDOMAIN must be set}
+      TOKEN: ${DUCKDNS_TOKEN:?DUCKDNS_TOKEN must be set}
+      LOG_FILE: 'false'
+    # No ports: it only makes outbound calls to update the record.
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: expedientes
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      STORAGE_ROOT: /data/storage
+      # Leave unset for local-disk storage; set both to exercise the S3 driver instead.
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_CONFIRMATION_TEMPLATE: ${WHATSAPP_CONFIRMATION_TEMPLATE:-appointment_confirmation}
+      WHATSAPP_REMINDER_TEMPLATE: ${WHATSAPP_REMINDER_TEMPLATE:-appointment_reminder}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_MX}
+    volumes:
+      - storage_data:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set}
+    command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ['tools']
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    # Not published: only Caddy reaches it. Exposing it would serve the app over plain HTTP too,
+    # where the browser refuses to keep the `secure` session cookie.
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN must be set}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  db_data:
+  storage_data:
+  caddy_data:
+  caddy_config:

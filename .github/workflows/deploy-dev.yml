@@ -1,0 +1,91 @@
+name: Deploy dev (Raspberry Pi)
+
+# Pushing to `dev` deploys to the Raspberry Pi on the home network.
+#
+# This runs on a SELF-HOSTED runner on the Pi itself rather than SSHing in from GitHub, for two
+# reasons that both matter here:
+#   * The Pi sits behind a home router. A self-hosted runner polls outbound, so no inbound SSH port
+#     has to be forwarded and no key for the home network is stored in GitHub.
+#   * The Pi is arm64. Building on it is native; cross-building on GitHub's amd64 runners means
+#     QEMU emulation, which makes an npm build roughly ten times slower.
+#
+# Setting the runner up is documented in docs/deployment/dev-pi-runbook.md. It must carry the
+# labels `self-hosted` and `raspberrypi`.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  # Two overlapping deploys would race `docker compose up` against the same stack. Queue rather
+  # than cancel: cancelling between the migration and the restart would leave a migrated database
+  # serving the old containers.
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, raspberrypi]
+    # A Pi builds Angular and Next much more slowly than a cloud runner; the default 360-minute cap
+    # would let a wedged build sit for hours before anyone noticed.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No actions/setup-node: the runner uses the Pi's installed Node rather than downloading an
+      # x64 toolchain. Confirm the version rather than assume it — a mismatch shows up here instead
+      # of as a confusing build failure later.
+      - name: Show toolchain
+        run: |
+          node --version
+          docker --version
+          docker compose version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Tests run before anything is rebuilt, so a red build never reaches the running stack.
+      - name: Test
+        run: npx nx test api
+
+      - name: Build images
+        working-directory: ${{ github.workspace }}
+        run: docker compose -f docker-compose.pi.yml build
+
+      - name: Migrate and restart
+        run: |
+          set -euo pipefail
+          # The stack's secrets live in /opt/expedientes/.env on the Pi and never pass through
+          # GitHub. --env-file points at it while the compose file comes from this checkout, so a
+          # change to the stack ships with the code that expects it.
+          COMPOSE="docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env"
+          $COMPOSE up -d db
+          $COMPOSE --profile tools run --rm migrate
+          $COMPOSE up -d --remove-orphans
+
+      - name: Smoke check
+        run: |
+          set -euo pipefail
+          COMPOSE="docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env"
+          # Checked from inside the compose network, so this tests the app rather than DuckDNS or
+          # the certificate. Retried, because the API takes a moment to accept connections.
+          for i in $(seq 1 15); do
+            if $COMPOSE exec -T api node -e "fetch('http://localhost:3000/api/hello').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              echo "API healthy"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "API did not become healthy" >&2
+          $COMPOSE logs --tail=50 api >&2
+          exit 1
+
+      # An SD card fills quickly, and a full disk is the most likely way this Pi breaks. `always()`
+      # so the cleanup still runs when the smoke check failed and left a half-built image behind.
+      - name: Prune old images
+        if: always()
+        run: docker image prune -f

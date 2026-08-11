@@ -92,7 +92,8 @@ services:
       - '80:80'
       - '443:443'
     environment:
-      QA_DOMAIN: ${QA_DOMAIN:?QA_DOMAIN must be set}
+      # The Caddyfile is shared with the Raspberry Pi stack, so it reads APP_DOMAIN.
+      APP_DOMAIN: ${QA_DOMAIN:?QA_DOMAIN must be set}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
