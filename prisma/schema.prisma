@@ -48,7 +48,7 @@ model RolePermission {
 }
 
 model Patient {
-  id              String            @id @default(uuid())
+  id              String           @id @default(uuid())
   fullName        String
   phone           String
   documentId      String
@@ -56,8 +56,8 @@ model Patient {
   valoraciones    Valoracion[]
   treatments      Treatment[]
   appointments    Appointment[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([fullName])
   @@index([phone])
@@ -79,9 +79,9 @@ model AuditLog {
 }
 
 model HistoriaClinica {
-  id        String   @id @default(uuid())
-  patientId String   @unique
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  id        String  @id @default(uuid())
+  patientId String  @unique
+  patient   Patient @relation(fields: [patientId], references: [id])
 
   fecha DateTime @default(now())
 
@@ -132,9 +132,9 @@ model HistoriaClinicaAllergy {
 }
 
 model Valoracion {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   patientId String
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  patient   Patient @relation(fields: [patientId], references: [id])
 
   fecha                 DateTime @default(now())
   queQuiereElPaciente   String?
@@ -186,14 +186,18 @@ model Photo {
 }
 
 model TreatmentType {
-  id              String                     @id @default(uuid())
-  name            String
-  consentTemplate String
-  active          Boolean                    @default(true)
-  items           TreatmentItem[]
-  appointments    AppointmentTreatmentType[]
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
+  id                       String                     @id @default(uuid())
+  name                     String
+  consentDescription       String
+  consentRisks             String?
+  consentAlternatives      String?
+  consentAftercare         String?
+  consentContraindications String?
+  active                   Boolean                    @default(true)
+  items                    TreatmentItem[]
+  appointments             AppointmentTreatmentType[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
 }
 
 model Treatment {
@@ -209,11 +213,11 @@ model Treatment {
 }
 
 model TreatmentItem {
-  id              String        @id @default(uuid())
+  id              String                 @id @default(uuid())
   treatmentId     String
-  treatment       Treatment     @relation(fields: [treatmentId], references: [id])
+  treatment       Treatment              @relation(fields: [treatmentId], references: [id])
   treatmentTypeId String
-  treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id])
+  treatmentType   TreatmentType          @relation(fields: [treatmentTypeId], references: [id])
   notes           String?
   consent         Consent?
   diagrams        TreatmentItemDiagram[]
@@ -223,12 +227,23 @@ model TreatmentItem {
 }
 
 model Consent {
-  id                 String        @id @default(uuid())
-  treatmentItemId    String        @unique
-  treatmentItem      TreatmentItem @relation(fields: [treatmentItemId], references: [id])
-  consentText        String
-  signatureImagePath String
-  signedAt           DateTime      @default(now())
+  id                        String        @id @default(uuid())
+  treatmentItemId           String        @unique
+  treatmentItem             TreatmentItem @relation(fields: [treatmentItemId], references: [id])
+  place                     String
+  patientNameSnapshot       String
+  patientIdentification     String
+  clinicNameSnapshot        String
+  doctorTitleSnapshot       String
+  doctorNameSnapshot        String
+  doctorLicenseSnapshot     String
+  declarationBeforeSnapshot String
+  declarationAfterSnapshot  String
+  sections                  Json
+  patientSignatureImagePath String
+  witnessName               String?
+  witnessSignatureImagePath String?
+  signedAt                  DateTime      @default(now())
 }
 
 model TreatmentItemDiagram {
@@ -288,4 +303,17 @@ model AppointmentTreatmentType {
   treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id])
 
   @@unique([appointmentId, treatmentTypeId])
+}
+
+model ClinicSettings {
+  id                  String   @id @default("singleton")
+  clinicName          String
+  defaultPlace        String
+  doctorTitle         String
+  doctorName          String
+  doctorLicense       String
+  doctorSignaturePath String?
+  declarationBefore   String
+  declarationAfter    String
+  updatedAt           DateTime @updatedAt
 }
