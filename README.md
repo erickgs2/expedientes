@@ -158,6 +158,17 @@ time:
 EXPEDIENTES_SERVER_URL=http://192.168.0.10 npx cap sync
 ```
 
+## Deployment
+
+| Environment | Target | Guide |
+|---|---|---|
+| `dev` | Raspberry Pi on a home network, DuckDNS hostname | [docs/deployment/dev-pi-runbook.md](docs/deployment/dev-pi-runbook.md) |
+| `qa` | EC2 instance, Postgres on the box, images in S3 | [docs/deployment/qa-runbook.md](docs/deployment/qa-runbook.md) |
+
+Both deploy automatically on a push to their branch. Both terminate TLS with Caddy, which is not
+optional: the session cookie is `secure` in production, so over plain HTTP a browser discards it and
+login fails with no visible error.
+
 ## Design documents
 
 Each feature was specified before it was built. `docs/superpowers/specs/` holds the designs and
