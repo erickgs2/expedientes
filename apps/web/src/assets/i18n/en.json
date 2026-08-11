@@ -125,6 +125,7 @@
     },
     "diagram": {
       "save": "Save diagram",
+      "view": "View",
       "deleteSelected": "Delete selected",
       "clearAll": "Clear all",
       "confirmClearAll": "Clear all annotations on the diagram? This cannot be undone.",

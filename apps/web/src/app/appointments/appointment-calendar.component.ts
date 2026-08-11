@@ -138,6 +138,7 @@ function isSameDay(a: Date, b: Date): boolean {
           }
         </div>
       } @else {
+        <div class="grid-scroll">
         <div class="week-header">
           <div class="axis-spacer"></div>
           @for (col of dayColumns(); track col.date.getTime()) {
@@ -177,6 +178,7 @@ function isSameDay(a: Date, b: Date): boolean {
             }
           </div>
         </div>
+        </div>
       }
     }
   `,
@@ -193,6 +195,7 @@ function isSameDay(a: Date, b: Date): boolean {
       .controls {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
       }
       .range-label {
@@ -210,6 +213,7 @@ function isSameDay(a: Date, b: Date): boolean {
       }
       .month-day-label {
         min-width: 180px;
+        flex-shrink: 0;
         font-weight: 500;
         text-transform: capitalize;
         display: flex;
@@ -237,6 +241,27 @@ function isSameDay(a: Date, b: Date): boolean {
       .no-appts {
         color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
         font-size: 13px;
+      }
+      /* Phones: stack each month row's date above its appointments rather than side by side,
+         so the 180px date column can't push the page wider than the viewport. */
+      @media (max-width: 599px) {
+        .month-day-row {
+          flex-direction: column;
+          gap: 4px;
+        }
+        .month-day-label {
+          min-width: 0;
+        }
+      }
+      /* Day/week time grids need real width per column; on narrow screens the grid scrolls
+         horizontally inside this container instead of stretching the whole page. */
+      .grid-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .grid-scroll > .week-header,
+      .grid-scroll > .time-grid {
+        min-width: 560px;
       }
       .week-header {
         display: flex;

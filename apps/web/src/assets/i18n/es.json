@@ -125,6 +125,7 @@
     },
     "diagram": {
       "save": "Guardar diagrama",
+      "view": "Ver",
       "deleteSelected": "Eliminar seleccionado",
       "clearAll": "Borrar todo",
       "confirmClearAll": "¿Borrar todas las anotaciones del diagrama? Esta acción no se puede deshacer.",

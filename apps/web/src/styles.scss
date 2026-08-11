@@ -156,6 +156,22 @@ table.mat-mdc-table {
   overflow: hidden;
 }
 
+// Horizontal-scroll wrapper for wide content (tables, grids) on narrow screens — the page body
+// itself must never scroll sideways.
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  > table {
+    min-width: 560px;
+  }
+}
+
+// Images never stretch their page horizontally.
+img {
+  max-width: 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

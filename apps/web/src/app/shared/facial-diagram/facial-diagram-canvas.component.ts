@@ -13,35 +13,38 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { Canvas, FabricImage, FabricObject, IText, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
 import type { DiagramView, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
 
-const CANVAS_WIDTH = 480;
-const CANVAS_HEIGHT = 600;
+export const CANVAS_WIDTH = 480;
+export const CANVAS_HEIGHT = 600;
 /**
- * Base images drawn under every diagram, per module: Valoración uses aesthetic line-art faces,
- * Treatments uses facial-muscle anatomy references (both match the clinic's paper forms).
+ * Base images drawn under every diagram — one shared set (the clinic's facial-muscle art) used by
+ * both Valoración and Treatments diagrams.
  */
-export const DIAGRAM_IMAGE_URLS: Record<'valoracion' | 'treatments', Record<DiagramView, string>> = {
-  valoracion: {
-    FRONT: '/assets/facial-diagram-placeholder.svg',
-    LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
-    RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',
-  },
-  treatments: {
-    FRONT: '/assets/treatment-diagram-front.svg',
-    LEFT_PROFILE: '/assets/treatment-diagram-left.svg',
-    RIGHT_PROFILE: '/assets/treatment-diagram-right.svg',
-  },
+export const DIAGRAM_IMAGE_URLS: Record<DiagramView, string> = {
+  FRONT: '/assets/facial-diagram-placeholder.svg',
+  LEFT_PROFILE: '/assets/facial-diagram-placeholder-left.svg',
+  RIGHT_PROFILE: '/assets/facial-diagram-placeholder-right.svg',
 };
 
-/** Resolves the base image for a module+view; any non-treatments module gets the Valoración art. */
-export function diagramImageUrl(module: PermissionModule, view: DiagramView): string {
-  const set = module === 'treatments' ? DIAGRAM_IMAGE_URLS.treatments : DIAGRAM_IMAGE_URLS.valoracion;
-  return set[view];
+/**
+ * Scales `background` to fit entirely inside the logical canvas and centers it — the artwork is
+ * square (1024×1024) while the canvas is 480×600, so without this it would sit top-aligned with
+ * dead space below.
+ */
+export function fitBackgroundToCanvas(background: FabricImage): void {
+  const scale = Math.min(CANVAS_WIDTH / background.width, CANVAS_HEIGHT / background.height);
+  background.scale(scale);
+  background.set({
+    left: (CANVAS_WIDTH - background.width * scale) / 2,
+    top: (CANVAS_HEIGHT - background.height * scale) / 2,
+  });
 }
 
 type DiagramTool = 'select' | 'pencil' | 'pin' | 'x' | 'star' | 'text';
@@ -154,9 +157,71 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
 @Component({
   selector: 'app-facial-diagram-canvas',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule],
+  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatTooltipModule, TranslocoModule],
   template: `
     <div class="diagram-container">
+      @if (canEdit) {
+        <div class="diagram-toolbar">
+          <mat-button-toggle-group class="tool-group" [value]="activeTool()" [hideSingleSelectionIndicator]="true">
+            @for (tool of toolDefs; track tool.id) {
+              <mat-button-toggle
+                [value]="tool.id"
+                (click)="setTool(tool.id)"
+                [matTooltip]="tool.labelKey | transloco"
+                [attr.aria-label]="tool.labelKey | transloco"
+              >
+                <mat-icon>{{ tool.icon }}</mat-icon>
+              </mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+          <div class="toolbar-actions">
+            <button
+              mat-icon-button
+              type="button"
+              (click)="deleteSelected()"
+              [matTooltip]="'valoracion.diagram.deleteSelected' | transloco"
+              [attr.aria-label]="'valoracion.diagram.deleteSelected' | transloco"
+            >
+              <mat-icon>backspace</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              (click)="clearAll()"
+              [matTooltip]="'valoracion.diagram.clearAll' | transloco"
+              [attr.aria-label]="'valoracion.diagram.clearAll' | transloco"
+            >
+              <mat-icon>delete_sweep</mat-icon>
+            </button>
+          </div>
+        </div>
+        @if (activeTool() === 'pencil') {
+          <div class="diagram-brush-options">
+            @for (color of drawColors; track color) {
+              <button
+                type="button"
+                class="color-swatch"
+                [style.background]="color"
+                [class.selected]="drawColor() === color"
+                [attr.aria-label]="colorLabel(color) | transloco"
+                (click)="setColor(color)"
+              ></button>
+            }
+            <span class="brush-divider"></span>
+            @for (width of drawWidths; track width) {
+              <button
+                type="button"
+                class="width-dot-button"
+                [class.selected]="drawWidth() === width"
+                [attr.aria-label]="width + 'px'"
+                (click)="setWidth(width)"
+              >
+                <span class="width-dot" [style.width.px]="width * 2 + 4" [style.height.px]="width * 2 + 4"></span>
+              </button>
+            }
+          </div>
+        }
+      }
       <div
         #canvasWrapper
         class="diagram-canvas-wrapper"
@@ -165,92 +230,89 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
       >
         <canvas #canvasEl [width]="canvasWidth" [height]="canvasHeight"></canvas>
       </div>
-      @if (canEdit) {
-        <div class="diagram-toolbar">
-          <mat-button-toggle-group [value]="activeTool()">
-            <mat-button-toggle value="select" (click)="setTool('select')">
-              {{ 'valoracion.diagram.tools.select' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="pencil" (click)="setTool('pencil')">
-              {{ 'valoracion.diagram.tools.pencil' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="pin" (click)="setTool('pin')">
-              {{ 'valoracion.diagram.tools.pin' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="x" (click)="setTool('x')">
-              {{ 'valoracion.diagram.tools.x' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="star" (click)="setTool('star')">
-              {{ 'valoracion.diagram.tools.star' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="text" (click)="setTool('text')">
-              {{ 'valoracion.diagram.tools.text' | transloco }}
-            </mat-button-toggle>
-          </mat-button-toggle-group>
-          @if (activeTool() === 'pencil') {
-            <div class="diagram-brush-options">
-              @for (color of drawColors; track color) {
-                <button
-                  type="button"
-                  class="color-swatch"
-                  [style.background]="color"
-                  [class.selected]="drawColor() === color"
-                  [attr.aria-label]="colorLabel(color) | transloco"
-                  (click)="setColor(color)"
-                ></button>
-              }
-              <mat-button-toggle-group [value]="drawWidth()">
-                @for (width of drawWidths; track width) {
-                  <mat-button-toggle [value]="width" (click)="setWidth(width)">
-                    {{ width }}px
-                  </mat-button-toggle>
-                }
-              </mat-button-toggle-group>
-            </div>
-          }
-        </div>
-        <div class="diagram-actions">
-          <button mat-stroked-button type="button" (click)="deleteSelected()">
-            {{ 'valoracion.diagram.deleteSelected' | transloco }}
-          </button>
-          <button mat-stroked-button type="button" (click)="clearAll()">
-            {{ 'valoracion.diagram.clearAll' | transloco }}
-          </button>
-        </div>
-      }
     </div>
   `,
   styles: [
     `
-      .diagram-canvas-wrapper {
-        display: inline-block;
-        border: 1px solid var(--mat-sys-outline-variant, #ccc);
-        outline: none;
-        touch-action: none;
-      }
-      .diagram-actions {
-        margin-top: 8px;
-      }
-      .diagram-toolbar {
-        margin-top: 8px;
+      .diagram-container {
         display: flex;
         flex-direction: column;
         gap: 8px;
+        align-items: center;
+      }
+      .diagram-canvas-wrapper {
+        display: inline-block;
+        border: 1px solid var(--mat-sys-outline-variant, #ccc);
+        border-radius: 8px;
+        overflow: hidden;
+        outline: none;
+        touch-action: none;
+        background: #ffffff;
+        overscroll-behavior: contain;
+      }
+      .diagram-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+      }
+      /* Stays right-aligned whether it sits inline with the tools or wraps to its own row. */
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
+      }
+      .tool-group mat-button-toggle {
+        --mat-standard-button-toggle-height: 44px;
       }
       .diagram-brush-options {
         display: flex;
         align-items: center;
-        gap: 8px;
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 100%;
+        padding: 4px 2px;
+      }
+      .brush-divider {
+        width: 1px;
+        height: 28px;
+        background: var(--mat-sys-outline-variant, #ccc);
       }
       .color-swatch {
-        width: 24px;
-        height: 24px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
-        border: 2px solid transparent;
+        border: 2px solid var(--mat-sys-outline-variant, #ccc);
         cursor: pointer;
+        padding: 0;
+        transition: transform 150ms ease-out, box-shadow 150ms ease-out;
       }
       .color-swatch.selected {
         border-color: var(--mat-sys-primary, #000);
+        box-shadow: 0 0 0 2px var(--mat-sys-primary, #000);
+        transform: scale(1.1);
+      }
+      .width-dot-button {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid transparent;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+      }
+      .width-dot-button.selected {
+        border-color: var(--mat-sys-primary, #000);
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.06));
+      }
+      .width-dot {
+        border-radius: 50%;
+        background: var(--mat-sys-on-surface, #000);
       }
     `,
   ],
@@ -280,6 +342,14 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
   protected readonly drawColors = DRAW_COLORS;
   protected readonly drawWidths = DRAW_WIDTHS;
+  protected readonly toolDefs: { id: DiagramTool; icon: string; labelKey: string }[] = [
+    { id: 'select', icon: 'near_me', labelKey: 'valoracion.diagram.tools.select' },
+    { id: 'pencil', icon: 'edit', labelKey: 'valoracion.diagram.tools.pencil' },
+    { id: 'pin', icon: 'place', labelKey: 'valoracion.diagram.tools.pin' },
+    { id: 'x', icon: 'close', labelKey: 'valoracion.diagram.tools.x' },
+    { id: 'star', icon: 'star', labelKey: 'valoracion.diagram.tools.star' },
+    { id: 'text', icon: 'text_fields', labelKey: 'valoracion.diagram.tools.text' },
+  ];
   protected readonly activeTool = signal<DiagramTool>('select');
   protected readonly drawColor = signal(DRAW_COLORS[0]);
   protected readonly drawWidth = signal(DRAW_WIDTHS[0]);
@@ -312,7 +382,23 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     this.canvas = new Canvas(this.canvasEl.nativeElement, {
       isDrawingMode: false,
       selection: this.canEdit,
+      // Explicit white: the artwork has a transparent background, and without this the page's
+      // dark-theme surface would show through behind it.
+      backgroundColor: '#ffffff',
     });
+
+    // Fit the fixed 480×600 logical canvas into whatever width the container offers (phone
+    // screens, dialogs). Zoom keeps pointer/scene coordinates and serialized data in logical
+    // 480×600 space, so drawings made at any display size stay compatible.
+    const availableWidth = this.canvasWrapper.nativeElement.parentElement?.clientWidth ?? 0;
+    const displayScale = availableWidth > 2 ? Math.min(1, (availableWidth - 2) / CANVAS_WIDTH) : 1;
+    if (displayScale < 1) {
+      this.canvas.setDimensions({
+        width: Math.floor(CANVAS_WIDTH * displayScale),
+        height: Math.floor(CANVAS_HEIGHT * displayScale),
+      });
+      this.canvas.setZoom(displayScale);
+    }
 
     this.canvas.freeDrawingBrush = new PencilBrush(this.canvas);
     this.applyBrushSettings();
@@ -346,10 +432,10 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     });
 
     try {
-      const background = await FabricImage.fromURL(diagramImageUrl(this.permissionModule, this.view));
+      const background = await FabricImage.fromURL(DIAGRAM_IMAGE_URLS[this.view]);
       if (this.destroyed) return;
       background.set({ selectable: false, evented: false });
-      background.scaleToWidth(this.canvasWidth);
+      fitBackgroundToCanvas(background);
       this.canvas.backgroundImage = background;
 
       if (this.initialDiagramData && Array.isArray(this.initialDiagramData['objects'])) {

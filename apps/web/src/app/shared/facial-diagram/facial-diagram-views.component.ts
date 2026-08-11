@@ -1,13 +1,17 @@
-import { Component, Input, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { DiagramView, DiagramViewRecord, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
-import { FacialDiagramCanvasComponent } from './facial-diagram-canvas.component';
+import { renderDiagramToBlob } from './diagram-render.util';
+import {
+  FacialDiagramEditDialogComponent,
+  type FacialDiagramEditDialogData,
+  type FacialDiagramEditDialogResult,
+} from './facial-diagram-edit-dialog.component';
 import type { DiagramDataSource, DiagramReferenceOption } from './diagram-data-source';
 
 const VIEW_ORDER: DiagramView[] = ['FRONT', 'LEFT_PROFILE', 'RIGHT_PROFILE'];
@@ -18,191 +22,168 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
   RIGHT_PROFILE: 'valoracion.diagram.views.rightProfile',
 };
 
+/**
+ * Shows a lightweight read-only preview per view (rendered to a PNG off-screen), with an
+ * Edit/View button that opens the interactive canvas in a large dialog. Drawing never happens
+ * inline — on phones the fixed-coordinate canvas needs the dialog's full width, and previews keep
+ * the page scrollable without touch/draw conflicts.
+ */
 @Component({
   selector: 'app-facial-diagram-views',
   standalone: true,
-  imports: [
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatCheckboxModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    TranslocoModule,
-    FacialDiagramCanvasComponent,
-  ],
+  imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslocoModule],
   template: `
     <div class="diagram-views">
-      <mat-button-toggle-group [value]="activeView()">
-        @for (view of viewOrder; track view) {
-          <mat-button-toggle [value]="view" (click)="activeView.set(view)">
-            {{ viewLabelKey(view) | transloco }}
-          </mat-button-toggle>
-        }
-      </mat-button-toggle-group>
-
-      @if (pastOptions().length > 0) {
-        <div class="diagram-reference">
-          <mat-checkbox [checked]="referenceEnabled()" (change)="toggleReference($event.checked)">
-            {{ 'valoracion.diagram.reference.toggle' | transloco }}
-          </mat-checkbox>
-          @if (referenceEnabled()) {
-            <mat-form-field appearance="outline" class="diagram-reference-select">
-              <mat-label>{{ 'valoracion.diagram.reference.pick' | transloco }}</mat-label>
-              <mat-select
-                [value]="selectedReferenceId()"
-                (selectionChange)="selectReference($event.value)"
-              >
-                @for (option of pastOptions(); track option.id) {
-                  <mat-option [value]="option.id">{{ option.label }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+      @for (view of viewOrder; track view) {
+        <div class="diagram-view-card">
+          <div class="diagram-view-header">
+            <span class="diagram-view-label">{{ viewLabelKey(view) | transloco }}</span>
+            <button mat-stroked-button type="button" (click)="openEditor(view)">
+              <mat-icon>{{ canEdit ? 'edit' : 'visibility' }}</mat-icon>
+              {{ (canEdit ? 'common.edit' : 'valoracion.diagram.view') | transloco }}
+            </button>
+          </div>
+          @if (previewUrls()[view]; as url) {
+            <img
+              class="diagram-preview"
+              [src]="url"
+              [alt]="viewLabelKey(view) | transloco"
+              (click)="openEditor(view)"
+            />
+          } @else {
+            <div class="diagram-preview diagram-preview-loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
           }
-        </div>
-      }
-
-      <div [hidden]="activeView() !== 'FRONT'">
-        <app-facial-diagram-canvas
-          #frontCanvas
-          [view]="'FRONT'"
-          [permissionModule]="permissionModule"
-          [initialDiagramData]="dataFor('FRONT')"
-          [referenceData]="referenceDataFor('FRONT')"
-        />
-      </div>
-      <div [hidden]="activeView() !== 'LEFT_PROFILE'">
-        <app-facial-diagram-canvas
-          #leftCanvas
-          [view]="'LEFT_PROFILE'"
-          [permissionModule]="permissionModule"
-          [initialDiagramData]="dataFor('LEFT_PROFILE')"
-          [referenceData]="referenceDataFor('LEFT_PROFILE')"
-        />
-      </div>
-      <div [hidden]="activeView() !== 'RIGHT_PROFILE'">
-        <app-facial-diagram-canvas
-          #rightCanvas
-          [view]="'RIGHT_PROFILE'"
-          [permissionModule]="permissionModule"
-          [initialDiagramData]="dataFor('RIGHT_PROFILE')"
-          [referenceData]="referenceDataFor('RIGHT_PROFILE')"
-        />
-      </div>
-
-      @if (canEdit) {
-        <div class="diagram-views-actions">
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            [disabled]="saving()"
-            (click)="save()"
-          >
-            {{ 'valoracion.diagram.save' | transloco }}
-          </button>
         </div>
       }
     </div>
   `,
   styles: [
     `
-      .diagram-views-actions {
-        margin-top: 8px;
+      .diagram-views {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
       }
-      .diagram-reference {
-        margin-top: 8px;
+      .diagram-view-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-width: 320px;
+      }
+      .diagram-view-header {
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+        gap: 8px;
       }
-      .diagram-reference-select {
-        width: 200px;
+      .diagram-view-label {
+        font-weight: 500;
+      }
+      .diagram-preview {
+        width: 100%;
+        aspect-ratio: 480 / 600;
+        object-fit: contain;
+        border: 1px solid var(--mat-sys-outline-variant, #ccc);
+        border-radius: 8px;
+        background: #ffffff;
+        cursor: pointer;
+        display: block;
+      }
+      .diagram-preview-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     `,
   ],
 })
-export class FacialDiagramViewsComponent implements OnInit {
+export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) dataSource!: DiagramDataSource;
   @Input({ required: true }) permissionModule!: PermissionModule;
   @Input() diagrams: DiagramViewRecord[] = [];
 
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly viewOrder = VIEW_ORDER;
-  protected readonly activeView = signal<DiagramView>('FRONT');
-  protected readonly saving = signal(false);
   protected canEdit = false;
 
-  protected readonly pastOptions = signal<DiagramReferenceOption[]>([]);
-  protected readonly referenceEnabled = signal(false);
-  protected readonly selectedReferenceId = signal<string | null>(null);
-  protected readonly referenceDiagrams = signal<DiagramViewRecord[]>([]);
+  protected readonly previewUrls = signal<Partial<Record<DiagramView, string>>>({});
+  private readonly pastOptions = signal<DiagramReferenceOption[]>([]);
 
-  private readonly frontCanvas = viewChild.required<FacialDiagramCanvasComponent>('frontCanvas');
-  private readonly leftCanvas = viewChild.required<FacialDiagramCanvasComponent>('leftCanvas');
-  private readonly rightCanvas = viewChild.required<FacialDiagramCanvasComponent>('rightCanvas');
+  /**
+   * Live copy of each view's data: starts from the `diagrams` input, then tracks in-session saves
+   * made through the edit dialog so previews and re-opened editors reflect the latest state
+   * without a page reload.
+   */
+  private currentData: Partial<Record<DiagramView, Record<string, unknown> | null>> = {};
 
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
+    void this.renderAllPreviews();
     this.pastOptions.set(await this.dataSource.listReferenceOptions());
   }
 
-  protected dataFor(view: DiagramView): Record<string, unknown> | null {
-    return this.diagrams.find((d) => d.view === view)?.data ?? null;
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['diagrams'] || changes['diagrams'].firstChange) return;
+    // A new diagrams input replaces any in-session state (e.g. the parent reloaded the record).
+    this.currentData = {};
+    void this.renderAllPreviews();
   }
 
-  protected referenceDataFor(view: DiagramView): Record<string, unknown> | null {
-    return this.referenceDiagrams().find((d) => d.view === view)?.data ?? null;
+  ngOnDestroy(): void {
+    Object.values(this.previewUrls()).forEach((url) => URL.revokeObjectURL(url));
   }
 
   protected viewLabelKey(view: DiagramView): string {
     return VIEW_LABEL_KEYS[view];
   }
 
-  protected toggleReference(checked: boolean): void {
-    this.referenceEnabled.set(checked);
-    if (!checked) {
-      this.selectedReferenceId.set(null);
-      this.referenceDiagrams.set([]);
-    }
+  private dataFor(view: DiagramView): Record<string, unknown> | null {
+    if (view in this.currentData) return this.currentData[view] ?? null;
+    return this.diagrams.find((d) => d.view === view)?.data ?? null;
   }
 
-  protected async selectReference(id: string | null): Promise<void> {
-    this.selectedReferenceId.set(id);
-    // Cleared *before* the await, not just on the `!id` path: while the fetch is in flight the
-    // picker already shows the newly-selected option, so leaving the previous option's overlay up
-    // would render one owner's annotations under another owner's label. The same clear is what a
-    // failed fetch (network error, deleted record) falls back to — the overlay then simply has
-    // nothing to show, as if no option were selected, instead of stale data from the wrong owner.
-    this.referenceDiagrams.set([]);
-    if (!id) return;
-    const views = await this.dataSource.getReferenceViews(id);
-    // Discard a stale response: if the user picked something else while this request was in
-    // flight, `selectedReferenceId()` will no longer match `id`, and applying this response now
-    // would silently show the wrong past owner's data as if it were the current selection.
-    if (this.selectedReferenceId() !== id) return;
-    this.referenceDiagrams.set(views);
+  private async renderAllPreviews(): Promise<void> {
+    await Promise.all(VIEW_ORDER.map((view) => this.renderPreview(view)));
   }
 
-  protected async save(): Promise<void> {
-    this.saving.set(true);
-    try {
-      const views: Record<string, Record<string, unknown> | null> = {};
-      // Only include a view's data if that view actually finished loading — a view whose canvas
-      // is still loading (or failed to load) is omitted entirely rather than sent as `null`, so its
-      // existing stored data is left untouched instead of being overwritten by an empty canvas.
-      if (this.frontCanvas().loaded()) {
-        views['front'] = this.frontCanvas().getSerializedData();
-      }
-      if (this.leftCanvas().loaded()) {
-        views['leftProfile'] = this.leftCanvas().getSerializedData();
-      }
-      if (this.rightCanvas().loaded()) {
-        views['rightProfile'] = this.rightCanvas().getSerializedData();
-      }
-      await this.dataSource.save(views);
-    } finally {
-      this.saving.set(false);
-    }
+  private async renderPreview(view: DiagramView): Promise<void> {
+    const blob = await renderDiagramToBlob(view, this.dataFor(view) ?? {});
+    if (!blob) return; // keep whatever preview (or spinner) is currently shown
+    const url = URL.createObjectURL(blob);
+    const previous = this.previewUrls()[view];
+    this.previewUrls.update((urls) => ({ ...urls, [view]: url }));
+    if (previous) URL.revokeObjectURL(previous);
+  }
+
+  protected openEditor(view: DiagramView): void {
+    const data: FacialDiagramEditDialogData = {
+      view,
+      viewLabelKey: VIEW_LABEL_KEYS[view],
+      permissionModule: this.permissionModule,
+      canEdit: this.canEdit,
+      initialData: this.dataFor(view),
+      dataSource: this.dataSource,
+      referenceOptions: this.pastOptions(),
+    };
+    const ref = this.dialog.open<
+      FacialDiagramEditDialogComponent,
+      FacialDiagramEditDialogData,
+      FacialDiagramEditDialogResult
+    >(FacialDiagramEditDialogComponent, {
+      data,
+      width: 'min(96vw, 640px)',
+      maxWidth: '96vw',
+      maxHeight: '95dvh',
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe((result) => {
+      if (!result?.saved) return;
+      this.currentData[view] = result.data;
+      void this.renderPreview(view);
+    });
   }
 }

@@ -31,6 +31,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
         <mat-icon>add</mat-icon> {{ 'rbacAdmin.users.new' | transloco }}
       </button>
     </div>
+    <div class="table-scroll">
     <table mat-table [dataSource]="users()" class="mat-elevation-z1">
       <ng-container matColumnDef="fullName">
         <th mat-header-cell *matHeaderCellDef>{{ 'rbacAdmin.users.name' | transloco }}</th>
@@ -66,6 +67,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
       <tr mat-header-row *matHeaderRowDef="columns"></tr>
       <tr mat-row *matRowDef="let row; columns: columns"></tr>
     </table>
+    </div>
   `,
   styles: [
     `
