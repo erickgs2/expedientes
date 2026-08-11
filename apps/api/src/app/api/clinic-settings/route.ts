@@ -5,7 +5,7 @@ import {
   type ClinicSettingsUpdate,
 } from '../../../lib/clinic/clinic-settings';
 import { saveFile } from '../../../lib/storage/file-storage';
-import { isJpeg } from '../../../lib/storage/image-signature';
+import { isJpeg, isPng } from '../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
 import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
@@ -16,13 +16,15 @@ const MIN_SIGNATURE_BYTES = 1024;
 const MAX_FIELD_LENGTH = 200;
 const MAX_DECLARATION_LENGTH = 20000;
 
-const TEXT_FIELDS = [
-  'clinicName',
-  'defaultPlace',
-  'doctorTitle',
-  'doctorName',
-  'doctorLicense',
-] as const;
+const TEXT_FIELDS = ['defaultPlace', 'doctorTitle', 'doctorName', 'doctorLicense'] as const;
+
+/**
+ * `clinicName` is no longer edited: the letterhead is the uploaded logo, so the settings screen has
+ * no name field to send. It stays accepted-but-optional rather than removed, because it still backs
+ * the `{{clinicName}}` declaration placeholder and the `clinicNameSnapshot` frozen onto consents
+ * signed while the field existed. An omitted key keeps whatever is already stored.
+ */
+const OPTIONAL_TEXT_FIELDS = ['clinicName'] as const;
 
 export const GET = withApiErrors(async (request: NextRequest) => {
   await requireAuth(request, 'clinic-settings', 'view');
@@ -50,6 +52,15 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
     }
     values[field] = trimmed;
   }
+  for (const field of OPTIONAL_TEXT_FIELDS) {
+    const raw = formData.get(field);
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (trimmed.length > MAX_FIELD_LENGTH) {
+      return apiError('INVALID_INPUT', `${field} is too long`, 400);
+    }
+    values[field] = trimmed;
+  }
   for (const field of ['declarationBefore', 'declarationAfter'] as const) {
     const raw = formData.get(field);
     if (typeof raw !== 'string' || !raw.trim()) {
@@ -62,7 +73,6 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
   }
 
   const data: ClinicSettingsUpdate = {
-    clinicName: values.clinicName,
     defaultPlace: values.defaultPlace,
     doctorTitle: values.doctorTitle,
     doctorName: values.doctorName,
@@ -84,6 +94,30 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
     // no patient, so it lives under a fixed `settings` bucket. Both segments are literals here, so
     // the path-traversal guard inside `saveFile` has nothing user-controlled to reject.
     data.doctorSignaturePath = await saveFile(buffer, 'clinic', 'settings', 'signature.jpg');
+  }
+
+  if (values.clinicName !== undefined) {
+    data.clinicName = values.clinicName;
+  }
+
+  // The logo is the export's letterhead, printed at the top of every page. PNG is accepted
+  // alongside JPEG because a logo usually needs a transparent background, which JPEG cannot carry.
+  const logo = formData.get('clinicLogo');
+  if (logo instanceof Blob) {
+    const buffer = Buffer.from(await logo.arrayBuffer());
+    if (buffer.length > MAX_SIGNATURE_BYTES || buffer.length < MIN_SIGNATURE_BYTES) {
+      return apiError('INVALID_INPUT', 'Logo is too large or too small', 400);
+    }
+    const png = isPng(buffer);
+    if (!png && !isJpeg(buffer)) {
+      return apiError('INVALID_INPUT', 'clinicLogo must be a PNG or JPEG image', 400);
+    }
+    data.clinicLogoPath = await saveFile(
+      buffer,
+      'clinic',
+      'settings',
+      png ? 'logo.png' : 'logo.jpg'
+    );
   }
 
   const clinicSettings = await upsertClinicSettings(data);

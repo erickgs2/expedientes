@@ -331,6 +331,7 @@ model ClinicSettings {
   doctorName          String
   doctorLicense       String
   doctorSignaturePath String?
+  clinicLogoPath      String?
   declarationBefore   String
   declarationAfter    String
   updatedAt           DateTime @updatedAt

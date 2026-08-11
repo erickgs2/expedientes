@@ -8,7 +8,7 @@ import { prisma } from '../prisma/client';
 export const CLINIC_SETTINGS_ID = 'singleton';
 
 export interface ClinicSettingsUpdate {
-  clinicName: string;
+  clinicName?: string;
   defaultPlace: string;
   doctorTitle: string;
   doctorName: string;
@@ -16,6 +16,7 @@ export interface ClinicSettingsUpdate {
   declarationBefore: string;
   declarationAfter: string;
   doctorSignaturePath?: string;
+  clinicLogoPath?: string;
 }
 
 export function getClinicSettings() {
@@ -26,7 +27,10 @@ export function upsertClinicSettings(data: ClinicSettingsUpdate) {
   return prisma.clinicSettings.upsert({
     where: { id: CLINIC_SETTINGS_ID },
     update: data,
-    create: { id: CLINIC_SETTINGS_ID, ...data },
+    // `clinicName` is optional on the way in (the settings screen no longer edits it — the export's
+    // letterhead is the uploaded logo) but the column is non-null, so a first-ever create needs a
+    // value. An update simply omits it and keeps whatever is stored.
+    create: { id: CLINIC_SETTINGS_ID, ...data, clinicName: data.clinicName ?? '' },
   });
 }
 

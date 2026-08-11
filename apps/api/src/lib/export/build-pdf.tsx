@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import type { ConsentSignatureRole } from '@expedientes/shared-types';
 import { resolveFilePath } from '../storage/file-storage';
+import { isPng } from '../storage/image-signature';
 import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 import { ConsentPage } from './consent-document-pdf';
@@ -9,7 +10,16 @@ import type { ExportData, ExportDiagramRef, ExportTreatment, ExportTreatmentItem
 import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica' },
+  // `paddingTop` leaves room for the fixed letterhead below, which sits outside the flow.
+  page: { padding: 40, paddingTop: 84, fontSize: 10, fontFamily: 'Helvetica' },
+  letterhead: {
+    position: 'absolute',
+    top: 24,
+    left: 40,
+    right: 40,
+    alignItems: 'center',
+  },
+  letterheadLogo: { height: 40, objectFit: 'contain' },
   title: { fontSize: 20, marginBottom: 4 },
   subtitle: { fontSize: 10, color: '#555555', marginBottom: 16 },
   patientInfo: { marginBottom: 24 },
@@ -295,6 +305,25 @@ export async function buildExportPdf(
     }
   }
 
+  // The letterhead prints on every page of the export, so it is read once here — like every other
+  // image, before the JSX tree exists, because react-pdf needs `src` data synchronously at render.
+  let clinicLogo: Buffer | undefined;
+  let clinicLogoFormat: 'png' | 'jpg' = 'png';
+  if (data.clinicLogoPath) {
+    try {
+      clinicLogo = await readFile(resolveFilePath(data.clinicLogoPath));
+      clinicLogoFormat = isPng(clinicLogo) ? 'png' : 'jpg';
+    } catch (error) {
+      console.error('Failed to read the clinic logo', error);
+    }
+  }
+
+  const letterhead = clinicLogo ? (
+    <View style={styles.letterhead} fixed>
+      <Image style={styles.letterheadLogo} src={{ data: clinicLogo, format: clinicLogoFormat }} />
+    </View>
+  ) : null;
+
   const consentPages =
     data.treatments?.flatMap((treatment) =>
       treatment.items
@@ -315,6 +344,8 @@ export async function buildExportPdf(
               blocks={item.consent.blocks}
               header={{
                 clinicName: data.clinicName,
+                logo: clinicLogo,
+                logoFormat: clinicLogoFormat,
                 title: CONSENT_LABELS.es.title,
                 treatmentTypeName: item.treatmentTypeName,
               }}
@@ -333,6 +364,7 @@ export async function buildExportPdf(
   const document = (
     <Document>
       <Page size="A4" style={styles.page} wrap>
+        {letterhead}
         <Text style={styles.title}>{data.patient.fullName}</Text>
         <Text style={styles.subtitle}>
           {labels.generatedOn} {data.generatedAt.toISOString().substring(0, 10)}

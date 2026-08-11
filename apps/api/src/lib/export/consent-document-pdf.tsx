@@ -15,6 +15,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   headerClinic: { fontSize: 10, fontWeight: 'bold' },
+  headerLogo: { height: 34, objectFit: 'contain', alignSelf: 'center', marginBottom: 2 },
   headerSubtitle: { fontSize: 9, color: '#555555', marginTop: 2 },
   footer: {
     position: 'absolute',
@@ -50,6 +51,9 @@ const styles = StyleSheet.create({
 
 export interface ConsentPageHeader {
   clinicName: string;
+  /** The clinic's letterhead image. When present it replaces the clinic-name text. */
+  logo?: Buffer;
+  logoFormat?: 'png' | 'jpg';
   title: string;
   treatmentTypeName: string;
 }
@@ -169,7 +173,14 @@ export function ConsentPage({ blocks, header, footer, signatures }: ConsentPageP
   return (
     <Page size="A4" style={styles.page} wrap>
       <View style={styles.header} fixed>
-        <Text style={styles.headerClinic}>{header.clinicName}</Text>
+        {header.logo ? (
+          <Image
+            style={styles.headerLogo}
+            src={{ data: header.logo, format: header.logoFormat ?? 'png' }}
+          />
+        ) : (
+          <Text style={styles.headerClinic}>{header.clinicName}</Text>
+        )}
         <Text style={styles.headerSubtitle}>
           {header.title} — {header.treatmentTypeName}
         </Text>

@@ -87,6 +87,7 @@ export interface ExportData {
   treatments: ExportTreatment[] | null;
   clinicName: string;
   doctorSignaturePath: string | null;
+  clinicLogoPath: string | null;
 }
 
 async function gatherHistoriaClinica(patientId: string): Promise<ExportHistoriaClinica | null> {
@@ -204,5 +205,6 @@ export async function gatherExportData(
     treatments,
     clinicName: settings?.clinicName ?? '',
     doctorSignaturePath: settings?.doctorSignaturePath ?? null,
+    clinicLogoPath: settings?.clinicLogoPath ?? null,
   };
 }

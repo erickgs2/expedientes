@@ -211,7 +211,6 @@
   },
   "clinicSettings": {
     "title": "Datos de la clínica",
-    "clinicName": "Nombre de la clínica",
     "defaultPlace": "Lugar predeterminado",
     "doctorTitle": "Título",
     "doctorName": "Nombre del médico",
@@ -224,7 +223,13 @@
     "placeholderHelp": "Puede usar los marcadores patientName, doctorTitle, doctorName, doctorLicense y clinicName entre llaves dobles.",
     "saved": "Datos guardados",
     "restoreSuggested": "Restaurar texto sugerido",
-    "restoreSuggestedHelp": "Reemplaza ambas declaraciones con el texto de referencia. No se guarda hasta que presione Guardar, y no afecta a los consentimientos ya firmados."
+    "restoreSuggestedHelp": "Reemplaza ambas declaraciones con el texto de referencia. No se guarda hasta que presione Guardar, y no afecta a los consentimientos ya firmados.",
+    "logo": "Logotipo de la clínica",
+    "logoHelp": "Se imprime en la parte superior de todas las páginas del expediente exportado. Use PNG con fondo transparente para el mejor resultado.",
+    "noLogo": "Aún no se ha cargado un logotipo.",
+    "uploadLogo": "Cargar logotipo",
+    "replaceLogo": "Reemplazar logotipo",
+    "identity": "Datos del médico"
   },
   "treatments": {
     "listTitle": "Tratamientos",

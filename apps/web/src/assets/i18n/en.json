@@ -211,7 +211,6 @@
   },
   "clinicSettings": {
     "title": "Clinic details",
-    "clinicName": "Clinic name",
     "defaultPlace": "Default place",
     "doctorTitle": "Title",
     "doctorName": "Doctor name",
@@ -224,7 +223,13 @@
     "placeholderHelp": "You can use the placeholders patientName, doctorTitle, doctorName, doctorLicense and clinicName inside double curly braces.",
     "saved": "Settings saved",
     "restoreSuggested": "Restore suggested text",
-    "restoreSuggestedHelp": "Replaces both declarations with the reference wording. Nothing is stored until you press Save, and already-signed consents are unaffected."
+    "restoreSuggestedHelp": "Replaces both declarations with the reference wording. Nothing is stored until you press Save, and already-signed consents are unaffected.",
+    "logo": "Clinic logo",
+    "logoHelp": "Printed at the top of every page of the exported record. A PNG with a transparent background works best.",
+    "noLogo": "No logo uploaded yet.",
+    "uploadLogo": "Upload logo",
+    "replaceLogo": "Replace logo",
+    "identity": "Doctor details"
   },
   "treatments": {
     "listTitle": "Treatments",

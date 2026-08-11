@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -35,10 +35,33 @@ import { ClinicSettingsService } from './clinic-settings.service';
     } @else {
       <h1>{{ 'clinicSettings.title' | transloco }}</h1>
       <form [formGroup]="form" (ngSubmit)="save()">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'clinicSettings.clinicName' | transloco }}</mat-label>
-          <input matInput formControlName="clinicName" />
-        </mat-form-field>
+        <h2 class="first-heading">{{ 'clinicSettings.logo' | transloco }}</h2>
+        <p class="hint">{{ 'clinicSettings.logoHelp' | transloco }}</p>
+        @if (logoPreviewUrl(); as preview) {
+          <img class="logo-image" [src]="preview" [alt]="'clinicSettings.logo' | transloco" />
+        } @else {
+          <p class="hint">{{ 'clinicSettings.noLogo' | transloco }}</p>
+        }
+        @if (canEdit) {
+          <input
+            #logoInput
+            type="file"
+            accept="image/png,image/jpeg"
+            class="visually-hidden"
+            (change)="onLogoSelected($event)"
+          />
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="saving()"
+            (click)="logoInput.click()"
+          >
+            <mat-icon>image</mat-icon>
+            {{ (logoPreviewUrl() ? 'clinicSettings.replaceLogo' : 'clinicSettings.uploadLogo') | transloco }}
+          </button>
+        }
+
+        <h2>{{ 'clinicSettings.identity' | transloco }}</h2>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'clinicSettings.defaultPlace' | transloco }}</mat-label>
           <input matInput formControlName="defaultPlace" />
@@ -134,6 +157,27 @@ import { ClinicSettingsService } from './clinic-settings.service';
         margin-bottom: 8px;
         border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
       }
+      .logo-image {
+        max-width: 320px;
+        max-height: 140px;
+        display: block;
+        margin-bottom: 8px;
+        /* Checkerboard so a transparent PNG reads as transparent rather than as a white block. */
+        background:
+          repeating-conic-gradient(rgba(0, 0, 0, 0.06) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+      h2.first-heading {
+        margin-top: 0;
+      }
       h2 {
         margin-top: 24px;
       }
@@ -143,7 +187,7 @@ import { ClinicSettingsService } from './clinic-settings.service';
     `,
   ],
 })
-export class ClinicSettingsComponent implements OnInit {
+export class ClinicSettingsComponent implements OnInit, OnDestroy {
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
@@ -156,6 +200,11 @@ export class ClinicSettingsComponent implements OnInit {
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
   protected readonly currentSignaturePath = signal<string | null>(null);
+  // Either the stored logo's served URL or an object URL for a file picked but not yet saved, so
+  // the preview always shows what pressing Guardar would produce.
+  protected readonly logoPreviewUrl = signal<string | null>(null);
+  private pendingLogo: File | null = null;
+  private pendingLogoObjectUrl: string | null = null;
   // Plain field, not a signal: matches the pattern used by ConsentSignComponent/TreatmentDetailComponent
   // for the same read-only-vs-editable split — permissions don't change mid-session, so a one-time
   // check in ngOnInit is sufficient.
@@ -167,7 +216,6 @@ export class ClinicSettingsComponent implements OnInit {
   protected readonly defaultDeclarationAfter = DEFAULT_DECLARATION_AFTER;
 
   protected readonly form = this.fb.group({
-    clinicName: ['', Validators.required],
     defaultPlace: ['', Validators.required],
     doctorTitle: ['', Validators.required],
     doctorName: ['', Validators.required],
@@ -191,8 +239,14 @@ export class ClinicSettingsComponent implements OnInit {
 
   private applySettings(settings: ClinicSettings | null): void {
     this.currentSignaturePath.set(settings?.doctorSignaturePath ?? null);
+    // A file picked but not yet saved wins over the stored one, so reloading settings mid-edit
+    // doesn't silently discard the user's pending choice.
+    if (!this.pendingLogo) {
+      this.logoPreviewUrl.set(
+        settings?.clinicLogoPath ? this.signatureUrl(settings.clinicLogoPath) : null
+      );
+    }
     this.form.patchValue({
-      clinicName: settings?.clinicName ?? '',
       defaultPlace: settings?.defaultPlace ?? '',
       doctorTitle: settings?.doctorTitle ?? '',
       doctorName: settings?.doctorName ?? '',
@@ -204,6 +258,29 @@ export class ClinicSettingsComponent implements OnInit {
 
   protected signatureUrl(path: string): string {
     return `/api/files/${path}`;
+  }
+
+  protected onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    // Clear the input's value so picking the same file twice in a row still fires `change`.
+    input.value = '';
+    if (!file) return;
+    this.releasePendingLogoUrl();
+    this.pendingLogo = file;
+    this.pendingLogoObjectUrl = URL.createObjectURL(file);
+    this.logoPreviewUrl.set(this.pendingLogoObjectUrl);
+  }
+
+  private releasePendingLogoUrl(): void {
+    if (this.pendingLogoObjectUrl) {
+      URL.revokeObjectURL(this.pendingLogoObjectUrl);
+      this.pendingLogoObjectUrl = null;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.releasePendingLogoUrl();
   }
 
   /**
@@ -225,7 +302,6 @@ export class ClinicSettingsComponent implements OnInit {
     try {
       const raw = this.form.getRawValue();
       const input: ClinicSettingsInput = {
-        clinicName: raw.clinicName ?? '',
         defaultPlace: raw.defaultPlace ?? '',
         doctorTitle: raw.doctorTitle ?? '',
         doctorName: raw.doctorName ?? '',
@@ -236,8 +312,12 @@ export class ClinicSettingsComponent implements OnInit {
       const signature = this.signaturePad.hasStrokes()
         ? await this.signaturePad.toJpegBlob()
         : null;
-      const settings = await this.clinicSettingsService.save(input, signature);
+      const settings = await this.clinicSettingsService.save(input, signature, this.pendingLogo);
+      // Clear the pending file first so `applySettings` adopts the stored logo's URL, then release
+      // the object URL the preview was using.
+      this.pendingLogo = null;
       this.applySettings(settings);
+      this.releasePendingLogoUrl();
       this.signaturePad.clear();
       this.snackBar.open(this.transloco.translate('clinicSettings.saved'), undefined, {
         duration: 3000,
