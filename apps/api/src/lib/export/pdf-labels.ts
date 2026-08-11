@@ -49,7 +49,7 @@ export interface PdfLabels {
 export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   es: {
     generatedOn: 'Generado el',
-    patientInfo: { phone: 'Teléfono', documentId: 'Documento de identidad' },
+    patientInfo: { phone: 'Teléfono', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Historia clínica',
       personalInfo: 'Información del paciente',
@@ -96,7 +96,7 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   },
   en: {
     generatedOn: 'Generated on',
-    patientInfo: { phone: 'Phone', documentId: 'Document ID' },
+    patientInfo: { phone: 'Phone', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Medical History',
       personalInfo: 'Patient information',

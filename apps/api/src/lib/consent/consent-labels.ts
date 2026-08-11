@@ -12,7 +12,7 @@ export const CONSENT_LABELS: Record<'es' | 'en', ConsentDocumentLabels> = {
     place: 'LUGAR',
     date: 'FECHA',
     patient: 'PACIENTE',
-    identifiesWith: 'SE IDENTIFICA CON',
+    identifiesWith: 'REGISTRO DE POBLACION (CURP)',
     sections: {
       description: 'PROCEDIMIENTO',
       risks: 'RIESGOS Y COMPLICACIONES',
@@ -31,7 +31,7 @@ export const CONSENT_LABELS: Record<'es' | 'en', ConsentDocumentLabels> = {
     place: 'PLACE',
     date: 'DATE',
     patient: 'PATIENT',
-    identifiesWith: 'IDENTIFIES WITH',
+    identifiesWith: 'POPULATION REGISTRY ID (CURP)',
     sections: {
       description: 'PROCEDURE',
       risks: 'RISKS AND COMPLICATIONS',
