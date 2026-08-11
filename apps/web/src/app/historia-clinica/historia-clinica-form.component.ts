@@ -125,7 +125,7 @@ import {
       <form [formGroup]="form" (ngSubmit)="save()">
         <!-- mat-accordion (multi=false by default) keeps a single section open at a time -->
         <mat-accordion>
-        <mat-expansion-panel [expanded]="true">
+        <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>{{ 'historiaClinica.sections.personalInfo' | transloco }}</mat-panel-title>
           </mat-expansion-panel-header>
