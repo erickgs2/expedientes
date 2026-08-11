@@ -22,6 +22,17 @@ const JPEG_QUALITY = 0.9;
   imports: [MatButtonModule, MatButtonToggleModule, TranslocoModule],
   template: `
     <div class="photo-capture">
+      <!-- Always in the DOM (never inside a branch): openCamera() clicks it from the button
+           below, which only renders while inactive. The capture attribute asks iOS/Android for
+           the camera app rather than the photo library. -->
+      <input
+        #fileInput
+        type="file"
+        accept="image/*"
+        capture="environment"
+        class="visually-hidden"
+        (change)="onFileSelected($event)"
+      />
       @if (!active()) {
         <button mat-flat-button color="primary" type="button" (click)="openCamera()">
           {{ 'valoracion.photos.addPhotos' | transloco }}
@@ -39,15 +50,18 @@ const JPEG_QUALITY = 0.9;
           }
         </div>
 
+        <!-- Shown in both the live and review steps: the fallback path (native camera) skips the
+             live step entirely, so this is the only place its user can pick a tag. -->
+        <mat-button-toggle-group [value]="tag()">
+          <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
+            {{ 'valoracion.photos.before' | transloco }}
+          </mat-button-toggle>
+          <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
+            {{ 'valoracion.photos.after' | transloco }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+
         @if (!reviewing()) {
-          <mat-button-toggle-group [value]="tag()">
-            <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
-              {{ 'valoracion.photos.before' | transloco }}
-            </mat-button-toggle>
-            <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
-              {{ 'valoracion.photos.after' | transloco }}
-            </mat-button-toggle>
-          </mat-button-toggle-group>
           <div class="camera-actions">
             <button mat-stroked-button type="button" (click)="closeCamera()">
               {{ 'valoracion.photos.closeCamera' | transloco }}
@@ -118,6 +132,13 @@ const JPEG_QUALITY = 0.9;
       .camera-error {
         color: var(--mat-sys-error, #b3261e);
       }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
     `,
   ],
 })
@@ -131,6 +152,8 @@ export class PhotoCaptureComponent implements OnDestroy {
   protected readonly uploading = signal(false);
   protected readonly cameraError = signal(false);
   protected reviewImageUrl: string | null = null;
+
+  @ViewChild('fileInput') private readonly fileInput?: ElementRef<HTMLInputElement>;
 
   private videoElement: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
@@ -162,9 +185,14 @@ export class PhotoCaptureComponent implements OnDestroy {
     if (this.active() || this.stream || this.requestingCamera) return;
     this.requestingCamera = true;
     this.cameraError.set(false);
+    // The live preview needs `navigator.mediaDevices`, which browsers only expose on a secure
+    // origin (https, or localhost). Inside the native shell this app is loaded over plain http
+    // from the clinic server, so it is undefined there — fall back to the device's own camera
+    // app through the file input. The oval guide only exists in the live preview, so it is
+    // unavailable on that path; moving the server to https brings it back with no code change.
     if (!navigator.mediaDevices?.getUserMedia) {
-      this.cameraError.set(true);
       this.requestingCamera = false;
+      this.fileInput?.nativeElement.click();
       return;
     }
     try {
@@ -230,6 +258,66 @@ export class PhotoCaptureComponent implements OnDestroy {
   protected retake(): void {
     this.discardReview();
     this.reviewing.set(false);
+    // No stream means this photo came from the device's camera app, so there is no live view to
+    // return to — close out and reopen it. Cancelling there lands back on "add photos" rather
+    // than on an empty preview.
+    if (!this.stream) {
+      this.active.set(false);
+      void this.openCamera();
+    }
+  }
+
+  /**
+   * Handles a photo coming back from the device's own camera app (the non-secure-origin
+   * fallback) and drops the user straight into the same review step the live path uses.
+   */
+  protected async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    // Cleared so picking the same file twice still fires `change`.
+    input.value = '';
+    if (!file) return;
+    const blob = await this.toJpegBlob(file);
+    if (!blob) {
+      this.cameraError.set(true);
+      return;
+    }
+    if (this.destroyed) return;
+    this.discardReview();
+    this.reviewBlob = blob;
+    this.reviewImageUrl = URL.createObjectURL(blob);
+    this.active.set(true);
+    this.reviewing.set(true);
+  }
+
+  /**
+   * Re-encodes a picked photo to a downscaled JPEG, matching what the live capture path
+   * produces. Always re-encodes rather than uploading the file untouched: iOS hands back HEIC
+   * for camera shots on many devices, which the upload endpoint rejects (it verifies JPEG magic
+   * bytes), and `imageOrientation: 'from-image'` bakes EXIF rotation into the pixels so a photo
+   * taken sideways is not stored sideways.
+   */
+  private async toJpegBlob(file: File): Promise<Blob | null> {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const scale = Math.min(1, MAX_CAPTURE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        bitmap.close();
+        return null;
+      }
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', JPEG_QUALITY);
+      });
+    } catch (error) {
+      console.error('Failed to process the selected photo', error);
+      return null;
+    }
   }
 
   protected async usePhoto(): Promise<void> {
