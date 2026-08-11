@@ -1,107 +1,165 @@
-# New Nx Repository
+# Expedientes
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Electronic patient records for an aesthetic medicine clinic: clinical history, facial assessments
+with annotated diagrams and photography, treatments with product traceability, legally structured
+informed consents, appointments with WhatsApp reminders, and a PDF export of the whole record.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+The interface is Spanish-first (English translations included). Consent documents always print in
+Spanish, whatever the interface language — a signed consent is an archived legal instrument, so it
+reproduces exactly as it was signed.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/docs/technologies/typescript/introduction?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-🚀 If you haven't connected to Nx Cloud yet, [complete your setup here](https://cloud.nx.app/get-started). Get faster builds with remote caching, distributed task execution, and self-healing CI. [See how your workspace can benefit](#nx-cloud).
-## Generate a library
+## Stack
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx run pkg1:build
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx run <project-name>:<target>
-```
-
-These targets are either [inferred automatically](https://nx.dev/docs/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/docs/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
+| | |
+|---|---|
+| Monorepo | [Nx](https://nx.dev) with npm workspaces |
+| Web | Angular 22, standalone components, signals, Angular Material, Transloco |
+| API | Next.js 16 route handlers |
+| Database | PostgreSQL via Prisma 5 |
+| PDF | `@react-pdf/renderer` |
+| Mobile | Capacitor shell (iOS/Android) pointing at the deployed web app |
+| Tests | Jest, over pure logic modules |
 
 ```
-npx nx release
+apps/
+  web/     Angular client
+  api/     Next.js API + PDF generation + notifications
+  mobile/  Capacitor wrapper
+libs/
+  shared/types/   types shared by web and api, plus the consent boilerplate
+prisma/    schema, migrations, seed
+docs/superpowers/  design specs and implementation plans per feature
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+## Getting started
 
-[Learn more about Nx release &raquo;](https://nx.dev/docs/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Requires Node 20+ and a reachable PostgreSQL instance. There is no Docker setup — Postgres runs
+natively.
 
-## Keep TypeScript project references up to date
-
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
-
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
-
-```sh
-npx nx sync
+```bash
+npm install
+cp .env.example .env        # then fill in DATABASE_URL, JWT_SECRET and the seed admin
+npx prisma migrate deploy
+npx prisma db seed
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+The seed creates the permission set, an Admin role holding all of it, the admin user from
+`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, and a blank `ClinicSettings` row carrying the reference
+consent wording.
 
-```sh
-npx nx sync:check
+**Change `SEED_ADMIN_PASSWORD` from the default before the app is reachable from anywhere but your
+own machine.**
+
+Run the two apps in separate terminals:
+
+```bash
+npx nx dev api      # http://localhost:3000
+npx nx serve web    # http://localhost:4200
 ```
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+### Everyday commands
 
-## Nx Cloud
-
-Nx Cloud ensures a [fast and scalable CI](https://nx.dev/nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/docs/features/ci-features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/docs/features/ci-features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/docs/features/ci-features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/docs/features/ci-features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Set up CI (non-Github Actions CI)
-
-**Note:** This is only required if your CI provider is not GitHub Actions.
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```bash
+npx nx test api          # the whole suite, ~3s
+npx nx build api         # also what typechecks the API — it has no separate typecheck target
+npx nx build web
+npx nx typecheck web
+npx nx lint web
 ```
 
-[Learn more about Nx on CI](https://nx.dev/docs/features/ci-features?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The `api` project only has `build` and `test` targets. `nx typecheck api` and `nx lint api` do not
+exist.
 
-## Install Nx Console
+## First-run configuration
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+Sign in as the admin and open **Datos de la clínica** (`/admin/clinic`). Until the doctor's name and
+cédula are filled in, **consent signing is deliberately blocked** — a consent without the treating
+physician's identity is exactly the defect the structured consent exists to prevent.
 
-[Install Nx Console &raquo;](https://nx.dev/docs/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Set there:
 
-## 🔗 Learn More
+- **Clinic logo** — printed centred at the top of every exported PDF page. PNG with a transparent
+  background works best.
+- **Doctor title, name and cédula**, and the default *lugar*.
+- **The two declaration paragraphs** — the fixed legal text wrapping each consent. Seeded with the
+  clinic's reference wording; *Restaurar texto sugerido* puts it back if edited away.
+- **The doctor's signature**, drawn once and stamped onto every consent in the export.
+- **WhatsApp notifications** (optional) — see below.
 
-- [Nx Documentation](https://nx.dev/docs)
-- [Crafting Your Workspace Tutorial](https://nx.dev/docs/getting-started/tutorials/crafting-your-workspace)
-- [Module Boundaries](https://nx.dev/docs/features/enforce-module-boundaries)
-- [Releasing Packages](https://nx.dev/docs/features/manage-releases)
-- [Nx Plugins](https://nx.dev/docs/concepts/nx-plugins)
-- [Nx Cloud](https://nx.dev/nx-cloud)
+Then create treatment types under **Catálogo de tratamientos** (`/admin/treatments`). Each carries
+five consent sections: procedure description (required), risks, alternatives, aftercare and
+contraindications. Every field shows a worked example as placeholder text.
 
-## 💬 Community
+## Environment
 
-Join the Nx community:
+```
+DATABASE_URL          PostgreSQL connection string
+JWT_SECRET            signing secret for session cookies
+STORAGE_ROOT          where uploads live (default ./storage, relative to apps/api)
+SEED_ADMIN_EMAIL      admin account created by the seed
+SEED_ADMIN_PASSWORD   its password — change from the default
+```
 
-- [Discord](https://go.nx.dev/community)
-- [X (Twitter)](https://twitter.com/nxdevtools)
-- [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [YouTube](https://www.youtube.com/@nxdevtools)
-- [Blog](https://nx.dev/blog)
+`.env` is git-ignored, as is the storage directory: **no uploaded photo, signature or logo is ever
+committed.**
+
+WhatsApp settings (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, the two template names and
+the template language) are also supported here, but the clinic settings screen is the better place —
+changing them there needs no redeploy, and stored values win over the environment. The environment
+remains useful for injecting the token from a secret manager instead of typing it into a form.
+
+## How the record fits together
+
+**Patient** → **Historia clínica** (one per patient: personal details, medical history, allergies,
+family history) → **Valoraciones** (assessment visits with annotated facial diagrams and
+before/after photography) → **Tratamientos** (each visit selects treatment types; each of those
+carries its own diagram, photos, products used, and consent).
+
+**Consents.** Signing snapshots every printed value onto the row — clinic and physician identity,
+both interpolated declarations, the catalog sections, the place, the patient's identification, and
+the signing date resolved in the clinic's local timezone. Editing settings or the catalog afterwards
+can never change what an already-signed consent says. Signing is one-time and irreversible.
+
+**Product traceability.** Each treatment item records the products used — brand (autocompleted from
+prior entries), lot number, expiry, and an optional photo of the packaging — so a recalled batch can
+be traced to the patients who received it. Expiry is normalised server-side to the end of the
+printed month, since packaging prints MM/YYYY.
+
+**Appointments** send a WhatsApp confirmation on booking and a reminder two hours before, via a
+sweep running every five minutes inside the API process. Templates must be authored and approved in
+Meta Business Manager; the app only references them by name. With no credentials configured the
+feature silently no-ops.
+
+**Export** produces one PDF: the record itself, then each signed consent as its own annex pages with
+a repeating letterhead and a true per-consent page counter. The four modules — historia clínica,
+valoración, tratamientos, consentimientos — are independently selectable, so consents can be
+exported alone.
+
+## Access control
+
+Every route is guarded by role-based permissions, checked on the server on every request rather than
+only in the UI. Modules: `patients`, `historia-clinica`, `valoracion`, `treatments`, `appointments`,
+`export`, `rbac-admin`, `clinic-settings`. Users and roles are managed under `/admin/users` and
+`/admin/roles`.
+
+`clinic-settings` is deliberately narrower than the rest: it governs the doctor's stored signature
+image, which is the one asset that could be used to fabricate a consent. Files served from the
+`clinic/` storage bucket require it too.
+
+Mutations write to an `AuditLog` carrying the acting user and the patient involved.
+
+## Mobile
+
+`apps/mobile` is a Capacitor shell that loads the deployed web app from a URL, so authentication
+cookies and relative `/api` paths behave exactly as in a browser. It needs the server URL at build
+time:
+
+```bash
+EXPEDIENTES_SERVER_URL=http://192.168.0.10 npx cap sync
+```
+
+## Design documents
+
+Each feature was specified before it was built. `docs/superpowers/specs/` holds the designs and
+`docs/superpowers/plans/` the implementation plans — useful for understanding *why* something works
+the way it does, particularly the consent immutability rules and the export's language handling.
