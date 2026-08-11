@@ -165,6 +165,11 @@ EXPEDIENTES_SERVER_URL=http://192.168.0.10 npx cap sync
 | `dev` | Raspberry Pi on a home network, DuckDNS hostname | [docs/deployment/dev-pi-runbook.md](docs/deployment/dev-pi-runbook.md) |
 | `qa` | EC2 instance, Postgres on the box, images in S3 | [docs/deployment/qa-runbook.md](docs/deployment/qa-runbook.md) |
 
+An Android APK for testers is built from the same source: see
+[docs/deployment/android-apk.md](docs/deployment/android-apk.md). The mobile app is a shell around
+the deployed web app, so the server URL is baked in at build time and each APK points at one
+environment.
+
 Both deploy automatically on a push to their branch. Both terminate TLS with Caddy, which is not
 optional: the session cookie is `secure` in production, so over plain HTTP a browser discards it and
 login fails with no visible error.
