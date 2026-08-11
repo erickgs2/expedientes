@@ -1,8 +1,31 @@
+import type { ConsentBlock } from '@expedientes/shared-types';
 import { prisma } from '../prisma/client';
 import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
 import { getTreatmentItemDetail } from '../treatment/consent';
+
+// TODO(Task 8): the PDF export still renders the consent as a single text blob. This flattens the
+// structured `consentDocument` blocks back into plain text just to keep that working; the real fix
+// is to render the blocks themselves (title/fieldLine/sectionHeading/paragraph/signatureBlock) in
+// `build-pdf.tsx`.
+function flattenConsentDocument(blocks: ConsentBlock[]): string {
+  return blocks
+    .map((block) => {
+      switch (block.kind) {
+        case 'title':
+        case 'sectionHeading':
+        case 'paragraph':
+          return block.text;
+        case 'fieldLine':
+          return `${block.label}: ${block.value}`;
+        case 'signatureBlock':
+          return null;
+      }
+    })
+    .filter((line): line is string => Boolean(line))
+    .join('\n');
+}
 
 export interface ExportModulesSelection {
   historiaClinica: boolean;
@@ -131,12 +154,13 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
               view: d.view,
               imageKey: `diagram_treatmentItem_${item.id}_${d.view}`,
             })),
-            consent: detail?.consent
-              ? {
-                  consentText: detail.consent.consentText,
-                  signatureImagePath: detail.consent.signatureImagePath,
-                }
-              : null,
+            consent:
+              detail?.consent && detail.consentDocument
+                ? {
+                    consentText: flattenConsentDocument(detail.consentDocument),
+                    signatureImagePath: detail.consent.patientSignatureImagePath,
+                  }
+                : null,
           };
         })
       );

@@ -2,13 +2,17 @@ import type { DiagramViewRecord } from './diagram.js';
 
 export interface Consent {
   id: string;
-  consentText: string;
-  signatureImagePath: string;
+  place: string;
+  patientIdentification: string;
+  witnessName: string | null;
+  patientSignatureImagePath: string;
+  witnessSignatureImagePath: string | null;
   signedAt: string;
 }
 
 /** One treatment item's full detail — returned by `GET /api/treatment-items/[id]`, the shape the
- * consent-signing page reads: `consentTemplate` for pre-fill when unsigned, `consent` once signed. */
+ * consent-signing page reads: `consentPreview` for display before signing, `consentDocument` (built
+ * from the frozen snapshot) once signed. */
 export interface TreatmentItemDetail {
   id: string;
   treatmentId: string;
@@ -16,9 +20,17 @@ export interface TreatmentItemDetail {
   treatmentTypeName: string;
   notes: string | null;
   patientId: string;
-  consentTemplate: string;
-  consentTemplateUpdatedAt: string;
+  patientDocumentId: string;
+  /** Blocks for an unsigned item, built from live settings + catalog. Null once signed. */
+  consentPreview: ConsentBlock[] | null;
+  /** Blocks rebuilt from the signed snapshot. Null when unsigned. */
+  consentDocument: ConsentBlock[] | null;
   consent: Consent | null;
+  consentTemplateUpdatedAt: string;
+  settingsUpdatedAt: string | null;
+  defaultPlace: string;
+  /** False when clinic settings are missing or the physician identity is blank. */
+  canSign: boolean;
   diagrams: DiagramViewRecord[];
 }
 

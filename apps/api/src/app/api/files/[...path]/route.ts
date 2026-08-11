@@ -9,9 +9,19 @@ import { withApiErrors } from '../../../../lib/http/with-api-errors';
 
 export const GET = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) => {
-    const userId = await requireAuth(request, 'patients', 'view');
-
     const { path } = await params;
+
+    // Everything under `clinic/` (currently just the physician's signature image, at
+    // `clinic/settings/<uuid>.jpg`) is gated separately from patient files: it isn't a patient
+    // asset at all, and it's the one asset in this system that could be used to fabricate a
+    // consent, so viewing a patient's record must not be enough to fetch it.
+    const isClinicAsset = path[0] === 'clinic';
+    const userId = await requireAuth(
+      request,
+      isClinicAsset ? 'clinic-settings' : 'patients',
+      'view'
+    );
+
     const relativePath = path.join('/');
 
     let buffer: Buffer;
@@ -24,7 +34,10 @@ export const GET = withApiErrors(
       return apiError('NOT_FOUND', 'File not found', 404);
     }
 
-    const patientId = path[1];
+    // The `path[1]` convention is "the patient id" for every other category; for a `clinic/` path
+    // that segment is the literal `settings` bucket name, not a patient — logging it as one would
+    // be misleading, so the audit entry carries no patientId for this bucket.
+    const patientId = isClinicAsset ? undefined : path[1];
     await writeAuditLogSafe({
       userId,
       action: 'view',
