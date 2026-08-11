@@ -106,14 +106,21 @@ sudo usermod -aG docker $USER && newgrp docker
 docker run --rm hello-world
 ```
 
-Trixie is recent enough that the convenience script may not recognise it yet. If it errors, use
-Debian's own packages — they are perfectly adequate here:
+If `hello-world` printed its message, Docker is installed — **skip the rest of this step.**
+
+Only if the convenience script *failed* (Trixie is recent enough that it may not recognise the
+release), fall back to Debian's own packages:
 
 ```bash
-sudo apt install -y docker.io docker-compose-v2
+sudo apt install -y docker.io docker-compose-plugin
 sudo systemctl enable --now docker
-docker compose version        # must print v2.x
+docker compose version
 ```
+
+Do **not** run this on top of a working Docker CE install. `docker.io` is Debian's separate
+packaging of the same daemon and the two conflict — the usual result is a broken Docker rather than
+two working ones. Package names also vary by release (`docker-compose-plugin`, `docker-compose-v2`,
+or neither); `apt-cache search docker-compose` shows what your release actually has.
 
 ## 5. Node 20 or newer
 
