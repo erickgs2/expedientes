@@ -74,6 +74,7 @@
   },
   "historiaClinica": {
     "title": "Clinical history",
+    "quickActions": "Record sections",
     "scheduleAppointment": "Schedule appointment",
     "sections": {
       "personalInfo": "Patient information",

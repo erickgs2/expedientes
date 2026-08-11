@@ -48,23 +48,29 @@ import {
       <p>{{ 'common.loading' | transloco }}</p>
     } @else {
       <h1>{{ 'historiaClinica.title' | transloco }} — {{ patient()?.fullName }}</h1>
-      <a *appHasPermission="'valoracion:view'" mat-button routerLink="/valoracion">{{
-        'historiaClinica.viewValoraciones' | transloco
-      }}</a>
-      <a *appHasPermission="'valoracion:view'" mat-button routerLink="/photos">{{
-        'photoTimeline.navLink' | transloco
-      }}</a>
-      <a *appHasPermission="'treatments:view'" mat-button routerLink="/treatments">{{
-        'historiaClinica.viewTreatments' | transloco
-      }}</a>
-      <button
-        *appHasPermission="'appointments:create'"
-        mat-button
-        type="button"
-        (click)="openAppointmentDialog()"
-      >
-        {{ 'historiaClinica.scheduleAppointment' | transloco }}
-      </button>
+      <nav class="quick-actions" [attr.aria-label]="'historiaClinica.quickActions' | transloco">
+        <a *appHasPermission="'valoracion:view'" class="quick-action" routerLink="/valoracion">
+          <mat-icon aria-hidden="true">assignment</mat-icon>
+          <span>{{ 'historiaClinica.viewValoraciones' | transloco }}</span>
+        </a>
+        <a *appHasPermission="'valoracion:view'" class="quick-action" routerLink="/photos">
+          <mat-icon aria-hidden="true">photo_library</mat-icon>
+          <span>{{ 'photoTimeline.navLink' | transloco }}</span>
+        </a>
+        <a *appHasPermission="'treatments:view'" class="quick-action" routerLink="/treatments">
+          <mat-icon aria-hidden="true">medical_services</mat-icon>
+          <span>{{ 'historiaClinica.viewTreatments' | transloco }}</span>
+        </a>
+        <button
+          *appHasPermission="'appointments:create'"
+          class="quick-action"
+          type="button"
+          (click)="openAppointmentDialog()"
+        >
+          <mat-icon aria-hidden="true">event_available</mat-icon>
+          <span>{{ 'historiaClinica.scheduleAppointment' | transloco }}</span>
+        </button>
+      </nav>
       <form [formGroup]="form" (ngSubmit)="save()">
         <!-- mat-accordion (multi=false by default) keeps a single section open at a time -->
         <mat-accordion>
@@ -222,6 +228,50 @@ import {
     `
       .full-width {
         width: 100%;
+      }
+      /* Tiles rather than bare text links: they read as tappable, sit on the 8pt grid, and give
+         every target a comfortable touch area on a phone. Two per row on a narrow screen,
+         growing to four across on desktop. */
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+        gap: 12px;
+        margin: 0 0 24px;
+      }
+      .quick-action {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 8px;
+        min-height: 92px;
+        padding: 16px 12px;
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 12px;
+        background: var(--mat-sys-surface-container-low, transparent);
+        color: var(--mat-sys-on-surface);
+        font: inherit;
+        font-weight: 500;
+        line-height: 1.3;
+        text-decoration: none;
+        cursor: pointer;
+        appearance: none;
+        transition: background-color 150ms ease-out, border-color 150ms ease-out,
+          transform 150ms ease-out;
+      }
+      .quick-action mat-icon {
+        color: var(--mat-sys-primary);
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+      .quick-action:hover {
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        border-color: var(--mat-sys-primary);
+      }
+      .quick-action:active {
+        transform: scale(0.97);
       }
       .computed-field {
         margin: 0 0 16px 0;

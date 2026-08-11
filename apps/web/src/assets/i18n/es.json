@@ -74,6 +74,7 @@
   },
   "historiaClinica": {
     "title": "Historia clínica",
+    "quickActions": "Secciones del expediente",
     "scheduleAppointment": "Agendar cita",
     "sections": {
       "personalInfo": "Información del paciente",

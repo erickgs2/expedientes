@@ -24,6 +24,13 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Expedientes usa la cámara para tomar fotos clínicas del paciente.</string>
+	<!-- iOS can offer "Fototeca" alongside "Tomar foto" when the web file input opens, and
+	     touching that path without this key terminates the app the same way a missing camera
+	     description does. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Expedientes permite adjuntar fotos clínicas desde tu fototeca.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Expedientes puede guardar fotos clínicas en tu fototeca.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>

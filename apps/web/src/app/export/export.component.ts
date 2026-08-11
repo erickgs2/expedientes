@@ -117,7 +117,7 @@ export class ExportComponent {
         language,
         diagramImages
       );
-      this.downloadBlob(blob, patient.fullName);
+      await this.deliverPdf(blob, patient.fullName);
     } catch (error) {
       console.error('Failed to generate export', error);
       this.errorMessage.set(this.transloco.translate('export.generateFailed'));
@@ -172,15 +172,40 @@ export class ExportComponent {
     return images;
   }
 
-  private downloadBlob(blob: Blob, patientName: string): void {
+  /**
+   * Hands the finished PDF to the user.
+   *
+   * iOS/WKWebView — where this app runs inside the native shell — ignores an anchor's `download`
+   * attribute, so the click that works on desktop silently does nothing there. When the platform
+   * can share files, the PDF goes to the native share sheet instead ("Guardar en Archivos", mail,
+   * AirDrop); everywhere else it falls back to the anchor download.
+   */
+  private async deliverPdf(blob: Blob, patientName: string): Promise<void> {
+    const dateStr = new Date().toISOString().substring(0, 10);
+    const fileName = `${patientName.replace(/[^a-zA-Z0-9]+/g, '-') || 'patient'}-${dateStr}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: fileName });
+        return;
+      } catch (error) {
+        // Dismissing the share sheet is a normal outcome, not a failure to report.
+        if ((error as DOMException | null)?.name === 'AbortError') return;
+        console.warn('Sharing the export failed; falling back to a download', error);
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
-    const dateStr = new Date().toISOString().substring(0, 10);
     anchor.href = url;
-    anchor.download = `${patientName.replace(/[^a-zA-Z0-9]+/g, '-') || 'patient'}-${dateStr}.pdf`;
+    anchor.download = fileName;
+    anchor.rel = 'noopener';
     document.body.appendChild(anchor);
     anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+    anchor.remove();
+    // Revoking synchronously can cancel the transfer before the browser has finished reading the
+    // blob; the object URL is released once the download has certainly started.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
