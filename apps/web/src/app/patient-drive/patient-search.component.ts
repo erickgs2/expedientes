@@ -51,7 +51,12 @@ import { ActivePatientStore } from './active-patient.store';
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>{{ 'patientDrive.search' | transloco }}</mat-label>
       <mat-icon matPrefix>search</mat-icon>
-      <input matInput [(ngModel)]="query" (ngModelChange)="onQueryChange($event)" />
+      <input
+        matInput
+        [(ngModel)]="query"
+        (ngModelChange)="onQueryChange($event)"
+        (keydown.enter)="onEnter()"
+      />
     </mat-form-field>
 
     <mat-list>
@@ -161,9 +166,32 @@ export class PatientSearchComponent {
     documentId: ['', Validators.required],
   });
 
+  // Tracks the most recent search so a slower earlier response can't overwrite a newer one. This
+  // matters more than it looks: pressing Enter selects whatever is first in `results()`, so stale
+  // results landing last would open the wrong patient's record.
+  private searchSequence = 0;
+  private latestSearch: Promise<void> = Promise.resolve();
+
   async onQueryChange(value: string): Promise<void> {
     this.query = value;
-    this.results.set(await this.patientsService.search(value));
+    const sequence = ++this.searchSequence;
+    this.latestSearch = this.patientsService.search(value).then((patients) => {
+      if (sequence === this.searchSequence) {
+        this.results.set(patients);
+      }
+    });
+    await this.latestSearch;
+  }
+
+  /**
+   * Enter opens the first match. Typing and hitting Enter straight away is faster than the search
+   * round-trip, so wait for the in-flight request rather than acting on the previous query's
+   * results — otherwise the shortcut would open whichever patient happened to still be listed.
+   */
+  protected async onEnter(): Promise<void> {
+    await this.latestSearch;
+    const first = this.results()[0];
+    if (first) this.selectPatient(first);
   }
 
   selectPatient(patient: PatientSummary): void {
