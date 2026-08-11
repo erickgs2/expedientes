@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -10,6 +10,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { PatientSummary } from '@expedientes/shared-types';
 import { PatientsService } from './patients.service';
+import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from './active-patient.store';
 
 @Component({
@@ -24,10 +25,29 @@ import { ActivePatientStore } from './active-patient.store';
     MatButtonModule,
     MatIconModule,
     MatExpansionModule,
+    RouterLink,
+    HasPermissionDirective,
     TranslocoModule,
   ],
   template: `
     <h1>{{ 'patientDrive.title' | transloco }}</h1>
+
+    <!-- Landing here with a patient already selected used to look like nothing was loaded: the
+         search box is empty and the record lives on another route. This offers the way back. -->
+    @if (activePatient.patient(); as current) {
+      <a
+        *appHasPermission="'historia-clinica:view'"
+        class="active-patient-card"
+        routerLink="/historia-clinica"
+      >
+        <mat-icon aria-hidden="true">folder_shared</mat-icon>
+        <span class="active-patient-text">
+          <span class="active-patient-label">{{ 'patientDrive.continueWith' | transloco }}</span>
+          <span class="active-patient-name">{{ current.fullName }}</span>
+        </span>
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+      </a>
+    }
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>{{ 'patientDrive.search' | transloco }}</mat-label>
       <mat-icon matPrefix>search</mat-icon>
@@ -86,6 +106,39 @@ import { ActivePatientStore } from './active-patient.store';
       .create-panel {
         margin-top: 24px;
       }
+      .active-patient-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 12px;
+        background: var(--mat-sys-surface-container-low, transparent);
+        color: var(--mat-sys-on-surface);
+        text-decoration: none;
+        transition: background-color 150ms ease-out, border-color 150ms ease-out;
+      }
+      .active-patient-card:hover {
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        border-color: var(--mat-sys-primary);
+      }
+      .active-patient-card mat-icon {
+        color: var(--mat-sys-primary);
+      }
+      .active-patient-text {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .active-patient-label {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .active-patient-name {
+        font-weight: 600;
+      }
       .panel-icon {
         margin-right: 8px;
         color: var(--mat-sys-primary);
@@ -95,7 +148,7 @@ import { ActivePatientStore } from './active-patient.store';
 })
 export class PatientSearchComponent {
   private readonly patientsService = inject(PatientsService);
-  private readonly activePatient = inject(ActivePatientStore);
+  protected readonly activePatient = inject(ActivePatientStore);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
 

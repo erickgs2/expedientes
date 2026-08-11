@@ -1,19 +1,35 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
+import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from './active-patient.store';
 
 @Component({
   selector: 'app-patient-banner',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, TranslocoModule],
+  imports: [RouterLink, MatButtonModule, MatIconModule, TranslocoModule, HasPermissionDirective],
   template: `
     @if (activePatient.patient(); as patient) {
       <div class="banner">
-        <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>
-        <span class="banner-name">{{ patient.fullName }}</span>
-        <span class="banner-meta">{{ patient.documentId }}</span>
+        <!--
+          The selected patient stays visible on every screen, but until this was a link there was
+          no way back to their record: the top nav's "Pacientes" opens the patient *search*, so
+          after a detour through Exportar or Calendario the record was unreachable without
+          re-searching. Tapping the banner returns to it.
+        -->
+        <a
+          *appHasPermission="'historia-clinica:view'"
+          class="banner-link"
+          routerLink="/historia-clinica"
+          [attr.aria-label]="'patientDrive.openRecord' | transloco"
+        >
+          <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>
+          <span class="banner-name">{{ patient.fullName }}</span>
+          <span class="banner-meta">{{ patient.documentId }}</span>
+          <mat-icon class="banner-chevron" aria-hidden="true">chevron_right</mat-icon>
+        </a>
         <span class="banner-spacer"></span>
         <button
           mat-icon-button
@@ -36,6 +52,16 @@ import { ActivePatientStore } from './active-patient.store';
         color: var(--mat-sys-on-surface-variant);
         border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
       }
+      .banner-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 0 8px 0 0;
+        color: inherit;
+        text-decoration: none;
+        border-radius: 8px;
+      }
       .banner-icon {
         color: var(--mat-sys-primary);
       }
@@ -45,6 +71,12 @@ import { ActivePatientStore } from './active-patient.store';
       }
       .banner-meta {
         font-size: 13px;
+      }
+      .banner-chevron {
+        color: var(--mat-sys-primary);
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
       }
       .banner-spacer {
         flex: 1 1 auto;

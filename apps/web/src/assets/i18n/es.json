@@ -70,7 +70,9 @@
     "phone": "Teléfono",
     "documentId": "Documento de identidad",
     "create": "Crear paciente",
-    "clearActive": "Quitar paciente activo"
+    "clearActive": "Quitar paciente activo",
+    "openRecord": "Abrir expediente del paciente",
+    "continueWith": "Continuar con"
   },
   "historiaClinica": {
     "title": "Historia clínica",

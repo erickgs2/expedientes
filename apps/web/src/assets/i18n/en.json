@@ -70,7 +70,9 @@
     "phone": "Phone",
     "documentId": "Document ID",
     "create": "Create patient",
-    "clearActive": "Clear active patient"
+    "clearActive": "Clear active patient",
+    "openRecord": "Open patient record",
+    "continueWith": "Continue with"
   },
   "historiaClinica": {
     "title": "Clinical history",
