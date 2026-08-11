@@ -16,55 +16,98 @@ import type { PhotoDataSource } from './photo-data-source';
       @if (canEdit) {
         <app-photo-capture [dataSource]="dataSource" (photoAdded)="onPhotoAdded($event)" />
       }
-      <div class="photo-grid">
-        @for (photo of photos(); track photo.id) {
-          <div class="photo-item">
-            <img [src]="photoUrl(photo)" alt="" />
-            <span class="photo-tag">{{ tagLabelKey(photo.tag) | transloco }}</span>
-            @if (canEdit) {
-              <button
-                mat-icon-button
-                type="button"
-                (click)="delete(photo)"
-                [attr.aria-label]="'valoracion.photos.delete' | transloco"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            }
-          </div>
-        } @empty {
+      @if (photos().length) {
+        <div class="photo-grid">
+          @for (photo of photos(); track photo.id) {
+            <div class="photo-item">
+              <img [src]="photoUrl(photo)" alt="" />
+              <span class="photo-tag">{{ tagLabelKey(photo.tag) | transloco }}</span>
+              @if (canEdit) {
+                <!-- Plain button, not mat-icon-button: this needs to sit on the photo at a fixed
+                     size, and Material's own 48px box and ripple fight absolute positioning. -->
+                <button
+                  class="photo-delete"
+                  type="button"
+                  (click)="delete(photo)"
+                  [attr.aria-label]="'valoracion.photos.delete' | transloco"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <mat-icon>photo_library</mat-icon>
           <p>{{ 'valoracion.photos.empty' | transloco }}</p>
-        }
-      </div>
+        </div>
+      }
     </div>
   `,
   styles: [
     `
       .photo-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 8px;
-        margin-top: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
       }
       .photo-item {
         position: relative;
+        /* Bounds the absolutely positioned tag and delete button to this cell. */
+        isolation: isolate;
       }
       .photo-item img {
         width: 100%;
         aspect-ratio: 1;
         object-fit: cover;
-        border-radius: 4px;
+        border-radius: 8px;
         display: block;
+        background: var(--mat-sys-surface-container-high, #eee);
       }
       .photo-tag {
         position: absolute;
-        bottom: 4px;
-        left: 4px;
-        background: rgba(0, 0, 0, 0.6);
+        bottom: 8px;
+        left: 8px;
+        /* Never let a long label run under the delete button or past the photo. */
+        max-width: calc(100% - 60px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: rgba(0, 0, 0, 0.68);
         color: #fff;
         font-size: 12px;
-        padding: 2px 6px;
-        border-radius: 4px;
+        font-weight: 500;
+        line-height: 1.4;
+        padding: 3px 10px;
+        border-radius: 999px;
+      }
+      .photo-delete {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        cursor: pointer;
+        appearance: none;
+        transition: background-color 150ms ease-out;
+      }
+      .photo-delete:hover {
+        background: var(--mat-sys-error, #b3261e);
+      }
+      .photo-delete mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
       }
     `,
   ],

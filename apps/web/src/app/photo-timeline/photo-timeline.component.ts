@@ -65,15 +65,22 @@ interface PhotoTimelineGroup {
         border-radius: 4px;
         display: block;
       }
+      /* Kept in step with the same label in PhotoGalleryComponent. */
       .photo-tag {
         position: absolute;
-        bottom: 4px;
-        left: 4px;
-        background: rgba(0, 0, 0, 0.6);
+        bottom: 8px;
+        left: 8px;
+        max-width: calc(100% - 16px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: rgba(0, 0, 0, 0.68);
         color: #fff;
         font-size: 12px;
-        padding: 2px 6px;
-        border-radius: 4px;
+        font-weight: 500;
+        line-height: 1.4;
+        padding: 3px 10px;
+        border-radius: 999px;
       }
     `,
   ],
