@@ -122,25 +122,40 @@ packaging of the same daemon and the two conflict — the usual result is a brok
 two working ones. Package names also vary by release (`docker-compose-plugin`, `docker-compose-v2`,
 or neither); `apt-cache search docker-compose` shows what your release actually has.
 
-## 5. Node 20 or newer
+## 5. Node 22 LTS
 
-The runner needs it for `npm ci` and `nx test`.
-
-```bash
-sudo apt install -y nodejs npm
-node --version        # must be v20+
-```
-
-Trixie should ship Node 20. **If that prints anything older, use nvm** rather than fighting apt:
+The runner needs it for `npm ci` and `nx test`. **Do not use Debian's `nodejs`/`npm` packages.**
+Trixie pairs Node 20 with npm 9.2.0, and npm 9 cannot validate this repo's lock file — it fails with
+`npm ci can only install packages when your package.json and package-lock.json are in sync`,
+naming a nested dependency it resolves incorrectly. The lock file is fine; npm 9 is not. Parts of
+the Nx toolchain also declare `node >=22.13.0`.
 
 ```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc && nvm install 20 && nvm alias default 20
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node --version && npm --version      # expect v22.x and npm 10+
 ```
 
-Note that a runner installed as a service does not read `~/.bashrc`. With nvm, either symlink the
-binaries into `/usr/local/bin` or set `PATH` in the runner's service environment, or the workflow
-will not find Node.
+If NodeSource has no packages for this release, install Node's own arm64 build. It lands in
+`/usr/local/bin`, which is already on the runner service's PATH:
+
+```bash
+sudo apt remove -y nodejs npm
+VER=v22.20.0                          # any current 22.x LTS
+curl -fsSLO https://nodejs.org/dist/$VER/node-$VER-linux-arm64.tar.xz
+sudo tar -xJf node-$VER-linux-arm64.tar.xz -C /usr/local --strip-components=1
+hash -r && node --version && npm --version
+```
+
+**Avoid nvm here.** A runner installed as a service does not read `~/.bashrc`, so an nvm-managed
+Node is invisible to it — the workflow fails with `node: command not found`. If you use nvm anyway,
+symlink the binaries into `/usr/local/bin` or set `PATH` in the runner's service environment.
+
+After changing Node, restart the runner so it picks up the new toolchain:
+
+```bash
+cd ~/actions-runner && sudo ./svc.sh stop && sudo ./svc.sh start
+```
 
 ## 6. DuckDNS and the router
 
@@ -260,6 +275,11 @@ containers, and check the board against step 0.
 
 **`node: command not found` in the workflow.** The runner service does not read your shell profile;
 see the nvm note in step 5.
+
+**`npm ci` fails with "package.json and package-lock.json are not in sync".** Almost always npm 9
+from Debian's packaging, which mis-resolves nested dependencies this lock file contains. Check with
+`npm --version`; anything below 10 needs the Node 22 install in step 5. Regenerating the lock file
+is *not* the fix — it is valid, and rewriting it with npm 9 would break it for everyone else.
 
 **Disk full.** `docker image prune -f` runs after each deploy, but volumes and build cache are not
 touched. `docker system df` shows what is using space; `docker builder prune` usually reclaims most.
