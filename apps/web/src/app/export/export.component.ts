@@ -173,12 +173,28 @@ export class ExportComponent {
   }
 
   /**
+   * A pointing device that can hover and click precisely means a desktop browser — one with a
+   * built-in PDF viewer and room for a second tab. Phones and tablets (including a tablet with a
+   * keyboard case) report a coarse pointer and no hover, and a touchscreen laptop still reports
+   * fine/hover because of its trackpad, which is the answer we want in both cases.
+   */
+  private isDesktopBrowser(): boolean {
+    return (
+      window.matchMedia?.('(pointer: fine)').matches === true &&
+      window.matchMedia?.('(hover: hover)').matches === true
+    );
+  }
+
+  /**
    * Hands the finished PDF to the user.
    *
    * iOS/WKWebView — where this app runs inside the native shell — ignores an anchor's `download`
    * attribute, so the click that works on desktop silently does nothing there. When the platform
    * can share files, the PDF goes to the native share sheet instead ("Guardar en Archivos", mail,
    * AirDrop); everywhere else it falls back to the anchor download.
+   *
+   * On desktop the file is additionally opened in a new tab, so the record can be read straight
+   * away instead of being hunted down in the downloads folder.
    */
   private async deliverPdf(blob: Blob, patientName: string): Promise<void> {
     const dateStr = new Date().toISOString().substring(0, 10);
@@ -204,8 +220,20 @@ export class ExportComponent {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+
+    // The download above always happens; the preview tab is a bonus on top of it. Generating the
+    // PDF takes long enough that the browser's user-activation window may have lapsed, so a popup
+    // blocker can refuse this — the user still has the downloaded file either way.
+    const previewTab = this.isDesktopBrowser() ? window.open(url, '_blank') : null;
+    if (this.isDesktopBrowser() && !previewTab) {
+      console.info('The export preview tab was blocked; the PDF was downloaded instead.');
+    }
+
     // Revoking synchronously can cancel the transfer before the browser has finished reading the
-    // blob; the object URL is released once the download has certainly started.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    // blob. Once a preview tab holds the URL, keep it alive for this page's lifetime instead —
+    // revoking would break the tab on reload for the sake of memory the user is still using.
+    if (!previewTab) {
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   }
 }
