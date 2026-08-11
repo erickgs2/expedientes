@@ -51,8 +51,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-      target: runtime
+      dockerfile: Dockerfile
+      target: api-runtime
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
@@ -75,8 +75,8 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-      target: build
+      dockerfile: Dockerfile
+      target: migrate
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
@@ -90,7 +90,8 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: Dockerfile
+      target: web-runtime
     restart: unless-stopped
     # Not published: only Caddy reaches it. Exposing it would serve the app over plain HTTP too,
     # where the browser refuses to keep the `secure` session cookie.
