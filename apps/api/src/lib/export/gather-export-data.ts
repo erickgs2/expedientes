@@ -4,28 +4,7 @@ import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
 import { getTreatmentItemDetail } from '../treatment/consent';
-
-// TODO(Task 8): the PDF export still renders the consent as a single text blob. This flattens the
-// structured `consentDocument` blocks back into plain text just to keep that working; the real fix
-// is to render the blocks themselves (title/fieldLine/sectionHeading/paragraph/signatureBlock) in
-// `build-pdf.tsx`.
-function flattenConsentDocument(blocks: ConsentBlock[]): string {
-  return blocks
-    .map((block) => {
-      switch (block.kind) {
-        case 'title':
-        case 'sectionHeading':
-        case 'paragraph':
-          return block.text;
-        case 'fieldLine':
-          return `${block.label}: ${block.value}`;
-        case 'signatureBlock':
-          return null;
-      }
-    })
-    .filter((line): line is string => Boolean(line))
-    .join('\n');
-}
+import { getClinicSettings } from '../clinic/clinic-settings';
 
 export interface ExportModulesSelection {
   historiaClinica: boolean;
@@ -78,7 +57,19 @@ export interface ExportTreatmentItem {
   treatmentTypeName: string;
   notes: string | null;
   diagrams: ExportDiagramRef[];
-  consent: { consentText: string; signatureImagePath: string } | null;
+  consent: {
+    blocks: ConsentBlock[];
+    /**
+     * The consent's FECHA — `Consent.signedDateSnapshot`, a `YYYY-MM-DD` string already resolved in
+     * the clinic's local timezone at signing. Deliberately NOT the raw `Consent.signedAt` audit
+     * timestamp: that field is UTC and would print the wrong calendar date for anything signed late
+     * in the day. This is what the printed document itself shows as FECHA, so it's what the record
+     * chrome (the one-line annex reference, the annex footer) shows too.
+     */
+    signedAt: string;
+    patientSignatureImagePath: string;
+    witnessSignatureImagePath: string | null;
+  } | null;
 }
 
 export interface ExportTreatment {
@@ -92,6 +83,8 @@ export interface ExportData {
   historiaClinica: ExportHistoriaClinica | null;
   valoraciones: ExportValoracion[] | null;
   treatments: ExportTreatment[] | null;
+  clinicName: string;
+  doctorSignaturePath: string | null;
 }
 
 async function gatherHistoriaClinica(patientId: string): Promise<ExportHistoriaClinica | null> {
@@ -146,6 +139,22 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
       const items = await Promise.all(
         t.items.map(async (item): Promise<ExportTreatmentItem> => {
           const detail = await getTreatmentItemDetail(item.id);
+          let consent: ExportTreatmentItem['consent'] = null;
+          if (detail?.consent && detail.consentDocument) {
+            // `getTreatmentItemDetail`'s `consent` doesn't carry `signedDateSnapshot` (only the raw
+            // `signedAt` audit timestamp), so it's re-read directly here — the one extra targeted
+            // query is cheaper than threading a new field through a shape other callers depend on.
+            const consentRow = await prisma.consent.findUnique({
+              where: { treatmentItemId: item.id },
+              select: { signedDateSnapshot: true },
+            });
+            consent = {
+              blocks: detail.consentDocument,
+              signedAt: consentRow?.signedDateSnapshot ?? detail.consent.signedAt.toISOString().substring(0, 10),
+              patientSignatureImagePath: detail.consent.patientSignatureImagePath,
+              witnessSignatureImagePath: detail.consent.witnessSignatureImagePath,
+            };
+          }
           return {
             id: item.id,
             treatmentTypeName: item.treatmentTypeName,
@@ -154,13 +163,7 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
               view: d.view,
               imageKey: `diagram_treatmentItem_${item.id}_${d.view}`,
             })),
-            consent:
-              detail?.consent && detail.consentDocument
-                ? {
-                    consentText: flattenConsentDocument(detail.consentDocument),
-                    signatureImagePath: detail.consent.patientSignatureImagePath,
-                  }
-                : null,
+            consent,
           };
         })
       );
@@ -182,10 +185,11 @@ export async function gatherExportData(
   const patient = await prisma.patient.findUnique({ where: { id: patientId } });
   if (!patient) return null;
 
-  const [historiaClinica, valoraciones, treatments] = await Promise.all([
+  const [historiaClinica, valoraciones, treatments, settings] = await Promise.all([
     modules.historiaClinica ? gatherHistoriaClinica(patientId) : Promise.resolve(null),
     modules.valoracion ? gatherValoraciones(patientId) : Promise.resolve(null),
     modules.treatments ? gatherTreatments(patientId) : Promise.resolve(null),
+    getClinicSettings(),
   ]);
 
   return {
@@ -198,5 +202,7 @@ export async function gatherExportData(
     historiaClinica,
     valoraciones,
     treatments,
+    clinicName: settings?.clinicName ?? '',
+    doctorSignaturePath: settings?.doctorSignaturePath ?? null,
   };
 }

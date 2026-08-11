@@ -31,7 +31,15 @@ export interface PdfLabels {
     posibilidadEmbarazoOptions: { si: string; no: string; no_aplica: string };
   };
   valoracion: { sectionTitle: string; visitOn: string; notes: string };
-  treatments: { sectionTitle: string; visitOn: string; notes: string; consent: string };
+  treatments: {
+    sectionTitle: string;
+    visitOn: string;
+    notes: string;
+    consent: string;
+    consentSignedOn: string;
+    consentAnnexRef: string;
+    consentPageOf: string;
+  };
 }
 
 export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
@@ -73,6 +81,9 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       visitOn: 'Visita del',
       notes: 'Notas',
       consent: 'Consentimiento',
+      consentSignedOn: 'Consentimiento firmado el',
+      consentAnnexRef: 'ver anexo',
+      consentPageOf: 'Página {{n}} de {{total}}',
     },
   },
   en: {
@@ -113,6 +124,9 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       visitOn: 'Visit on',
       notes: 'Notes',
       consent: 'Consent',
+      consentSignedOn: 'Consent signed on',
+      consentAnnexRef: 'see annex',
+      consentPageOf: 'Page {{n}} of {{total}}',
     },
   },
 };

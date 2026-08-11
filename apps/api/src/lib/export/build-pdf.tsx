@@ -1,6 +1,10 @@
 import { readFile } from 'fs/promises';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
+import type { ConsentSignatureRole } from '@expedientes/shared-types';
 import { resolveFilePath } from '../storage/file-storage';
+import { interpolate } from '../consent/build-consent-document';
+import { CONSENT_LABELS } from '../consent/consent-labels';
+import { ConsentPage } from './consent-document-pdf';
 import type { ExportData, ExportDiagramRef, ExportTreatment, ExportTreatmentItem, ExportValoracion } from './gather-export-data';
 import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 
@@ -31,7 +35,6 @@ const styles = StyleSheet.create({
   itemTitle: { fontWeight: 'bold' },
   diagramRow: { flexDirection: 'row', marginTop: 6, marginBottom: 6 },
   diagramImage: { width: 130, height: 162, marginRight: 8 },
-  signatureImage: { width: 200, height: 80, marginTop: 4 },
 });
 
 function Field({ label, value }: { label: string; value: string | null }) {
@@ -163,29 +166,23 @@ function ValoracionSection({
 function TreatmentItemBlock({
   item,
   diagramImages,
-  signatureImages,
   labels,
 }: {
   item: ExportTreatmentItem;
   diagramImages: Map<string, Buffer>;
-  signatureImages: Map<string, Buffer>;
   labels: PdfLabels;
 }) {
   const l = labels.treatments;
-  const signature = signatureImages.get(item.id);
   return (
     <View style={styles.itemBlock}>
       <Text style={styles.itemTitle}>{item.treatmentTypeName}</Text>
       <Field label={l.notes} value={item.notes} />
       <DiagramImages diagrams={item.diagrams} diagramImages={diagramImages} />
       {item.consent && (
-        <View>
-          <Text style={styles.subsectionTitle}>{l.consent}</Text>
-          <Text>{item.consent.consentText}</Text>
-          {signature && (
-            <Image style={styles.signatureImage} src={{ data: signature, format: 'jpg' }} />
-          )}
-        </View>
+        <Field
+          label={l.consentSignedOn}
+          value={`${item.consent.signedAt} — ${l.consentAnnexRef}`}
+        />
       )}
     </View>
   );
@@ -194,12 +191,10 @@ function TreatmentItemBlock({
 function TreatmentsSection({
   treatments,
   diagramImages,
-  signatureImages,
   labels,
 }: {
   treatments: ExportTreatment[];
   diagramImages: Map<string, Buffer>;
-  signatureImages: Map<string, Buffer>;
   labels: PdfLabels;
 }) {
   const l = labels.treatments;
@@ -216,7 +211,6 @@ function TreatmentsSection({
               key={item.id}
               item={item}
               diagramImages={diagramImages}
-              signatureImages={signatureImages}
               labels={labels}
             />
           ))}
@@ -231,11 +225,12 @@ function TreatmentsSection({
  *
  * `diagramImages` are already-resolved Buffers (the client-rendered PNGs uploaded with the
  * request — read from the parsed `multipart/form-data` by the route handler). Consent signature
- * images are NOT part of that map — they're existing files already on disk, read here via
- * `resolveFilePath`/`readFile`, keyed by the owning treatment item's id so `TreatmentItemBlock`
- * can look each one up directly. All image reads happen before the JSX tree is constructed:
- * `@react-pdf/renderer`'s `Image` component needs its `src` data available synchronously at
- * render time, not as a promise.
+ * images (patient, witness, and the clinic's physician signature) are NOT part of that map —
+ * they're existing files already on disk, read here via `resolveFilePath`/`readFile`. All image
+ * reads happen before the JSX tree is constructed: `@react-pdf/renderer`'s `Image` component needs
+ * its `src` data available synchronously at render time, not as a promise. Every read is wrapped in
+ * its own `try/catch` so one unreadable file — a missing physician signature, a corrupted upload —
+ * never fails the whole export; a missing signature just prints a blank ruled line.
  */
 export async function buildExportPdf(
   data: ExportData,
@@ -244,20 +239,75 @@ export async function buildExportPdf(
 ): Promise<Buffer> {
   const labels = PDF_LABELS[language];
 
+  // Keyed `${treatmentItemId}:patient` / `${treatmentItemId}:witness` so `ConsentPage` can look up
+  // each signature independently — a witness-less consent simply has no `:witness` entry.
   const signatureImages = new Map<string, Buffer>();
   if (data.treatments) {
     for (const treatment of data.treatments) {
       for (const item of treatment.items) {
         if (!item.consent) continue;
         try {
-          const buffer = await readFile(resolveFilePath(item.consent.signatureImagePath));
-          signatureImages.set(item.id, buffer);
+          const buffer = await readFile(resolveFilePath(item.consent.patientSignatureImagePath));
+          signatureImages.set(`${item.id}:patient`, buffer);
         } catch (error) {
-          console.error(`Failed to read signature image for treatment item ${item.id}`, error);
+          console.error(`Failed to read patient signature image for treatment item ${item.id}`, error);
+        }
+        if (item.consent.witnessSignatureImagePath) {
+          try {
+            const buffer = await readFile(resolveFilePath(item.consent.witnessSignatureImagePath));
+            signatureImages.set(`${item.id}:witness`, buffer);
+          } catch (error) {
+            console.error(`Failed to read witness signature image for treatment item ${item.id}`, error);
+          }
         }
       }
     }
   }
+
+  // Read once — the same physician signature is stamped onto every signed consent in the export.
+  let doctorSignature: Buffer | null = null;
+  if (data.doctorSignaturePath) {
+    try {
+      doctorSignature = await readFile(resolveFilePath(data.doctorSignaturePath));
+    } catch (error) {
+      console.error('Failed to read physician signature image', error);
+    }
+  }
+
+  const consentPages =
+    data.treatments?.flatMap((treatment) =>
+      treatment.items
+        .filter((item): item is ExportTreatmentItem & { consent: NonNullable<ExportTreatmentItem['consent']> } =>
+          Boolean(item.consent)
+        )
+        .map((item) => {
+          const signatures: Partial<Record<ConsentSignatureRole, Buffer>> = {};
+          const patientSignature = signatureImages.get(`${item.id}:patient`);
+          if (patientSignature) signatures.patient = patientSignature;
+          const witnessSignature = signatureImages.get(`${item.id}:witness`);
+          if (witnessSignature) signatures.witness = witnessSignature;
+          if (doctorSignature) signatures.doctor = doctorSignature;
+
+          return (
+            <ConsentPage
+              key={item.id}
+              blocks={item.consent.blocks}
+              header={{
+                clinicName: data.clinicName,
+                title: CONSENT_LABELS.es.title,
+                treatmentTypeName: item.treatmentTypeName,
+              }}
+              footer={{
+                patientName: data.patient.fullName,
+                signedOn: item.consent.signedAt,
+                pageLabel: (n, total) =>
+                  interpolate(labels.treatments.consentPageOf, { n: String(n), total: String(total) }),
+              }}
+              signatures={signatures}
+            />
+          );
+        })
+    ) ?? [];
 
   const document = (
     <Document>
@@ -284,11 +334,11 @@ export async function buildExportPdf(
           <TreatmentsSection
             treatments={data.treatments}
             diagramImages={diagramImages}
-            signatureImages={signatureImages}
             labels={labels}
           />
         )}
       </Page>
+      {consentPages}
     </Document>
   );
 
