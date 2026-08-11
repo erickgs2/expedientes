@@ -7,6 +7,12 @@ export interface Consent {
   witnessName: string | null;
   patientSignatureImagePath: string;
   witnessSignatureImagePath: string | null;
+  /**
+   * The date the document itself prints as its FECHA: a `YYYY-MM-DD` string resolved in the
+   * clinic's local timezone at signing and frozen. Not derived from `signedAt`, which is the UTC
+   * audit timestamp and would show the wrong calendar day for a late-evening signing.
+   */
+  signedDateSnapshot: string;
   signedAt: string;
 }
 

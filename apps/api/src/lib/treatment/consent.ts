@@ -99,6 +99,7 @@ export async function getTreatmentItemDetail(id: string) {
           witnessName: item.consent.witnessName,
           patientSignatureImagePath: item.consent.patientSignatureImagePath,
           witnessSignatureImagePath: item.consent.witnessSignatureImagePath,
+          signedDateSnapshot: item.consent.signedDateSnapshot,
           signedAt: item.consent.signedAt,
         }
       : null,

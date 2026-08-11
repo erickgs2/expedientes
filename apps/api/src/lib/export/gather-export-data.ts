@@ -66,7 +66,7 @@ export interface ExportTreatmentItem {
      * in the day. This is what the printed document itself shows as FECHA, so it's what the record
      * chrome (the one-line annex reference, the annex footer) shows too.
      */
-    signedAt: string;
+    signedDate: string;
     patientSignatureImagePath: string;
     witnessSignatureImagePath: string | null;
   } | null;
@@ -141,16 +141,9 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
           const detail = await getTreatmentItemDetail(item.id);
           let consent: ExportTreatmentItem['consent'] = null;
           if (detail?.consent && detail.consentDocument) {
-            // `getTreatmentItemDetail`'s `consent` doesn't carry `signedDateSnapshot` (only the raw
-            // `signedAt` audit timestamp), so it's re-read directly here — the one extra targeted
-            // query is cheaper than threading a new field through a shape other callers depend on.
-            const consentRow = await prisma.consent.findUnique({
-              where: { treatmentItemId: item.id },
-              select: { signedDateSnapshot: true },
-            });
             consent = {
               blocks: detail.consentDocument,
-              signedAt: consentRow?.signedDateSnapshot ?? detail.consent.signedAt.toISOString().substring(0, 10),
+              signedDate: detail.consent.signedDateSnapshot,
               patientSignatureImagePath: detail.consent.patientSignatureImagePath,
               witnessSignatureImagePath: detail.consent.witnessSignatureImagePath,
             };

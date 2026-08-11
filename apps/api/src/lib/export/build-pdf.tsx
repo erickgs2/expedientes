@@ -181,7 +181,7 @@ function TreatmentItemBlock({
       {item.consent && (
         <Field
           label={l.consentSignedOn}
-          value={`${item.consent.signedAt} — ${l.consentAnnexRef}`}
+          value={`${item.consent.signedDate} — ${l.consentAnnexRef}`}
         />
       )}
     </View>
@@ -299,7 +299,7 @@ export async function buildExportPdf(
               }}
               footer={{
                 patientName: data.patient.fullName,
-                signedOn: item.consent.signedAt,
+                signedOn: item.consent.signedDate,
                 pageLabel: (n, total) =>
                   interpolate(labels.treatments.consentPageOf, { n: String(n), total: String(total) }),
               }}
