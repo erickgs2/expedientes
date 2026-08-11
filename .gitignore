@@ -75,3 +75,6 @@ storage/
 
 # Subagent-driven-development scratch workspace (ledgers, briefs, review packages)
 .superpowers/
+
+# Local TLS material for the dev server (private keys — never commit)
+apps/web/.certs/
