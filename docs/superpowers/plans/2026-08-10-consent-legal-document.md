@@ -14,7 +14,7 @@
 
 - Run every task through nx with npm: `npm exec nx <target> <project>`. Never call `tsc`, `jest` or `next` directly.
 - Test command for API unit tests: `npm exec nx test api` — the whole suite runs in about 3 seconds, so always run all of it rather than filtering to one file.
-- Typecheck command: `npm exec nx typecheck api` and `npm exec nx build web`.
+- Typecheck the API with `npm exec nx build api` (the `api` project has only `build` and `test` targets — there is no `typecheck` or `lint` target for it; `next build` is what typechecks it). The `web` project has `typecheck`, `build`, `lint` and `test`.
 - The client **never** sends consent document text. The server re-reads `ClinicSettings` and `TreatmentType` and builds every snapshot field itself. This rule already exists at `apps/api/src/app/api/treatment-items/[id]/consent/route.ts:40-42` and must survive this change.
 - All signature uploads reuse the existing validation: `content-length` early-out at 10MB, authoritative post-read bounds of 1KB–10MB, and `isJpeg(buffer)` magic-byte verification from `apps/api/src/lib/storage/image-signature.ts`. Do not write a new upload path.
 - All user-facing strings go through Transloco with keys added to **both** `apps/web/src/assets/i18n/es.json` and `apps/web/src/assets/i18n/en.json`. PDF strings go in `apps/api/src/lib/export/pdf-labels.ts` under both `es` and `en`.
@@ -685,7 +685,7 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
 
 - [ ] **Step 4: Typecheck**
 
-Run: `npm exec nx typecheck api`
+Run: `npm exec nx build api`
 Expected: PASS.
 
 - [ ] **Step 5: Verify by hand**
@@ -1068,7 +1068,7 @@ Expected: no results other than inside `prisma/migrations/`.
 
 - [ ] **Step 7: Typecheck and build**
 
-Run: `npm exec nx typecheck api && npm exec nx build web`
+Run: `npm exec nx build api && npm exec nx build web`
 Expected: PASS.
 
 - [ ] **Step 8: Verify by hand**
@@ -1255,7 +1255,7 @@ In `apps/api/src/app/api/treatment-items/[id]/consent/route.ts`, keep the existi
 
 - [ ] **Step 6: Typecheck**
 
-Run: `npm exec nx typecheck api`
+Run: `npm exec nx build api`
 Expected: PASS.
 
 - [ ] **Step 7: Verify by hand**
@@ -1418,7 +1418,7 @@ Replace the inline consent block in `TreatmentItemBlock` (currently `build-pdf.t
 
 - [ ] **Step 5: Typecheck**
 
-Run: `npm exec nx typecheck api`
+Run: `npm exec nx build api`
 Expected: PASS.
 
 - [ ] **Step 6: Verify by hand**
@@ -1440,9 +1440,9 @@ After Task 8, run the full gate before declaring the feature done:
 
 ```bash
 npm exec nx test api
-npm exec nx typecheck api
+npm exec nx build api
 npm exec nx build web
-npm exec nx lint api && npm exec nx lint web
+npm exec nx lint web
 ```
 
 Then walk the end-to-end path: configure clinic settings with a drawn physician signature → add consent sections to a treatment type → create a treatment with that type → sign its consent with a witness → export the patient record → open the PDF and check the annex.
