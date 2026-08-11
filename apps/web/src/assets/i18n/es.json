@@ -203,6 +203,21 @@
       "editTitle": "Editar tratamiento"
     }
   },
+  "clinicSettings": {
+    "title": "Datos de la clínica",
+    "clinicName": "Nombre de la clínica",
+    "defaultPlace": "Lugar predeterminado",
+    "doctorTitle": "Título",
+    "doctorName": "Nombre del médico",
+    "doctorLicense": "Cédula profesional",
+    "declarationBefore": "Declaración inicial",
+    "declarationAfter": "Declaración final",
+    "doctorSignature": "Firma del médico",
+    "currentSignature": "Firma actual",
+    "replaceSignature": "Reemplazar firma",
+    "placeholderHelp": "Puede usar los marcadores patientName, doctorTitle, doctorName, doctorLicense y clinicName entre llaves dobles.",
+    "saved": "Datos guardados"
+  },
   "treatments": {
     "listTitle": "Tratamientos",
     "new": "Nuevo tratamiento",

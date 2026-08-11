@@ -203,6 +203,21 @@
       "editTitle": "Edit treatment"
     }
   },
+  "clinicSettings": {
+    "title": "Clinic details",
+    "clinicName": "Clinic name",
+    "defaultPlace": "Default place",
+    "doctorTitle": "Title",
+    "doctorName": "Doctor name",
+    "doctorLicense": "Licence number",
+    "declarationBefore": "Opening declaration",
+    "declarationAfter": "Closing declaration",
+    "doctorSignature": "Doctor signature",
+    "currentSignature": "Current signature",
+    "replaceSignature": "Replace signature",
+    "placeholderHelp": "You can use the placeholders patientName, doctorTitle, doctorName, doctorLicense and clinicName inside double curly braces.",
+    "saved": "Settings saved"
+  },
   "treatments": {
     "listTitle": "Treatments",
     "new": "New treatment",
