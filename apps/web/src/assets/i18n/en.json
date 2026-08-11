@@ -322,7 +322,8 @@
     "modules": {
       "historiaClinica": "Medical History",
       "valoracion": "Assessment",
-      "treatments": "Treatments"
+      "treatments": "Treatments",
+      "consents": "Consents"
     },
     "generate": "Generate PDF",
     "generating": "Generating...",

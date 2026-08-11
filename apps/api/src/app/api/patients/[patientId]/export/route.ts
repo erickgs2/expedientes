@@ -22,7 +22,8 @@ function isValidModulesSelection(value: unknown): value is ExportModulesSelectio
   return (
     typeof v['historiaClinica'] === 'boolean' &&
     typeof v['valoracion'] === 'boolean' &&
-    typeof v['treatments'] === 'boolean'
+    typeof v['treatments'] === 'boolean' &&
+    typeof v['consents'] === 'boolean'
   );
 }
 
@@ -51,7 +52,7 @@ export const POST = withApiErrors(
     if (!isValidModulesSelection(modules)) {
       return apiError(
         'INVALID_INPUT',
-        'modules must specify historiaClinica, valoracion, and treatments as booleans',
+        'modules must specify historiaClinica, valoracion, treatments, and consents as booleans',
         400
       );
     }

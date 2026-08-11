@@ -11,6 +11,8 @@ export interface ExportModulesSelection {
   historiaClinica: boolean;
   valoracion: boolean;
   treatments: boolean;
+  /** Independent of `treatments`: the signed consents can be exported on their own. */
+  consents: boolean;
 }
 
 export interface ExportDiagramRef {
@@ -74,6 +76,13 @@ export interface ExportTreatmentItem {
   } | null;
 }
 
+/** One signed consent's annex pages, selected independently of the treatment history. */
+export interface ExportConsent {
+  treatmentItemId: string;
+  treatmentTypeName: string;
+  consent: NonNullable<ExportTreatmentItem['consent']>;
+}
+
 export interface ExportTreatment {
   fecha: string;
   items: ExportTreatmentItem[];
@@ -85,6 +94,7 @@ export interface ExportData {
   historiaClinica: ExportHistoriaClinica | null;
   valoraciones: ExportValoracion[] | null;
   treatments: ExportTreatment[] | null;
+  consents: ExportConsent[] | null;
   clinicName: string;
   doctorSignaturePath: string | null;
   clinicLogoPath: string | null;
@@ -173,6 +183,19 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
   );
 }
 
+/** Flattens the signed consents out of the gathered treatments, in visit order. */
+function collectConsents(treatments: ExportTreatment[] | null): ExportConsent[] {
+  return (treatments ?? []).flatMap((treatment) =>
+    treatment.items
+      .filter((item) => item.consent)
+      .map((item) => ({
+        treatmentItemId: item.id,
+        treatmentTypeName: item.treatmentTypeName,
+        consent: item.consent as NonNullable<ExportTreatmentItem['consent']>,
+      }))
+  );
+}
+
 /**
  * Gathers every selected module's data for one patient, re-reading everything from the database
  * directly (never trusting a client-supplied copy of this data — only the module selection,
@@ -186,10 +209,14 @@ export async function gatherExportData(
   const patient = await prisma.patient.findUnique({ where: { id: patientId } });
   if (!patient) return null;
 
-  const [historiaClinica, valoraciones, treatments, settings] = await Promise.all([
+  // Consents live on treatment items, so their data has to be gathered whenever EITHER module is
+  // selected — then projected into the two independent outputs below.
+  const needsTreatmentData = modules.treatments || modules.consents;
+
+  const [historiaClinica, valoraciones, treatmentData, settings] = await Promise.all([
     modules.historiaClinica ? gatherHistoriaClinica(patientId) : Promise.resolve(null),
     modules.valoracion ? gatherValoraciones(patientId) : Promise.resolve(null),
-    modules.treatments ? gatherTreatments(patientId) : Promise.resolve(null),
+    needsTreatmentData ? gatherTreatments(patientId) : Promise.resolve(null),
     getClinicSettings(),
   ]);
 
@@ -202,7 +229,8 @@ export async function gatherExportData(
     generatedAt: new Date(),
     historiaClinica,
     valoraciones,
-    treatments,
+    treatments: modules.treatments ? treatmentData : null,
+    consents: modules.consents ? collectConsents(treatmentData) : null,
     clinicName: settings?.clinicName ?? '',
     doctorSignaturePath: settings?.doctorSignaturePath ?? null,
     clinicLogoPath: settings?.clinicLogoPath ?? null,

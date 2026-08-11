@@ -179,10 +179,12 @@ function TreatmentItemBlock({
   item,
   diagramImages,
   labels,
+  annexIncluded,
 }: {
   item: ExportTreatmentItem;
   diagramImages: Map<string, Buffer>;
   labels: PdfLabels;
+  annexIncluded: boolean;
 }) {
   const l = labels.treatments;
   return (
@@ -212,7 +214,14 @@ function TreatmentItemBlock({
       {item.consent && (
         <Field
           label={l.consentSignedOn}
-          value={`${item.consent.signedDate} — ${l.consentAnnexRef}`}
+          // Only point at the annex when the annex is actually in this export — with the consents
+          // module unchecked, the signing date still belongs in the history, but there is nothing
+          // to turn to.
+          value={
+            annexIncluded
+              ? `${item.consent.signedDate} — ${l.consentAnnexRef}`
+              : item.consent.signedDate
+          }
         />
       )}
     </View>
@@ -223,10 +232,12 @@ function TreatmentsSection({
   treatments,
   diagramImages,
   labels,
+  annexIncluded,
 }: {
   treatments: ExportTreatment[];
   diagramImages: Map<string, Buffer>;
   labels: PdfLabels;
+  annexIncluded: boolean;
 }) {
   const l = labels.treatments;
   return (
@@ -243,6 +254,7 @@ function TreatmentsSection({
               item={item}
               diagramImages={diagramImages}
               labels={labels}
+              annexIncluded={annexIncluded}
             />
           ))}
         </View>
@@ -273,24 +285,20 @@ export async function buildExportPdf(
   // Keyed `${treatmentItemId}:patient` / `${treatmentItemId}:witness` so `ConsentPage` can look up
   // each signature independently — a witness-less consent simply has no `:witness` entry.
   const signatureImages = new Map<string, Buffer>();
-  if (data.treatments) {
-    for (const treatment of data.treatments) {
-      for (const item of treatment.items) {
-        if (!item.consent) continue;
-        try {
-          const buffer = await readFile(resolveFilePath(item.consent.patientSignatureImagePath));
-          signatureImages.set(`${item.id}:patient`, buffer);
-        } catch (error) {
-          console.error(`Failed to read patient signature image for treatment item ${item.id}`, error);
-        }
-        if (item.consent.witnessSignatureImagePath) {
-          try {
-            const buffer = await readFile(resolveFilePath(item.consent.witnessSignatureImagePath));
-            signatureImages.set(`${item.id}:witness`, buffer);
-          } catch (error) {
-            console.error(`Failed to read witness signature image for treatment item ${item.id}`, error);
-          }
-        }
+  for (const entry of data.consents ?? []) {
+    const id = entry.treatmentItemId;
+    try {
+      const buffer = await readFile(resolveFilePath(entry.consent.patientSignatureImagePath));
+      signatureImages.set(`${id}:patient`, buffer);
+    } catch (error) {
+      console.error(`Failed to read patient signature image for treatment item ${id}`, error);
+    }
+    if (entry.consent.witnessSignatureImagePath) {
+      try {
+        const buffer = await readFile(resolveFilePath(entry.consent.witnessSignatureImagePath));
+        signatureImages.set(`${id}:witness`, buffer);
+      } catch (error) {
+        console.error(`Failed to read witness signature image for treatment item ${id}`, error);
       }
     }
   }
@@ -324,42 +332,35 @@ export async function buildExportPdf(
     </View>
   ) : null;
 
-  const consentPages =
-    data.treatments?.flatMap((treatment) =>
-      treatment.items
-        .filter((item): item is ExportTreatmentItem & { consent: NonNullable<ExportTreatmentItem['consent']> } =>
-          Boolean(item.consent)
-        )
-        .map((item) => {
-          const signatures: Partial<Record<ConsentSignatureRole, Buffer>> = {};
-          const patientSignature = signatureImages.get(`${item.id}:patient`);
-          if (patientSignature) signatures.patient = patientSignature;
-          const witnessSignature = signatureImages.get(`${item.id}:witness`);
-          if (witnessSignature) signatures.witness = witnessSignature;
-          if (doctorSignature) signatures.doctor = doctorSignature;
+  const consentPages = (data.consents ?? []).map((entry) => {
+    const signatures: Partial<Record<ConsentSignatureRole, Buffer>> = {};
+    const patientSignature = signatureImages.get(`${entry.treatmentItemId}:patient`);
+    if (patientSignature) signatures.patient = patientSignature;
+    const witnessSignature = signatureImages.get(`${entry.treatmentItemId}:witness`);
+    if (witnessSignature) signatures.witness = witnessSignature;
+    if (doctorSignature) signatures.doctor = doctorSignature;
 
-          return (
-            <ConsentPage
-              key={item.id}
-              blocks={item.consent.blocks}
-              header={{
-                clinicName: data.clinicName,
-                logo: clinicLogo,
-                logoFormat: clinicLogoFormat,
-                title: CONSENT_LABELS.es.title,
-                treatmentTypeName: item.treatmentTypeName,
-              }}
-              footer={{
-                patientName: data.patient.fullName,
-                signedOn: item.consent.signedDate,
-                pageLabel: (n, total) =>
-                  interpolate(labels.treatments.consentPageOf, { n: String(n), total: String(total) }),
-              }}
-              signatures={signatures}
-            />
-          );
-        })
-    ) ?? [];
+    return (
+      <ConsentPage
+        key={entry.treatmentItemId}
+        blocks={entry.consent.blocks}
+        header={{
+          clinicName: data.clinicName,
+          logo: clinicLogo,
+          logoFormat: clinicLogoFormat,
+          title: CONSENT_LABELS.es.title,
+          treatmentTypeName: entry.treatmentTypeName,
+        }}
+        footer={{
+          patientName: data.patient.fullName,
+          signedOn: entry.consent.signedDate,
+          pageLabel: (n, total) =>
+            interpolate(labels.treatments.consentPageOf, { n: String(n), total: String(total) }),
+        }}
+        signatures={signatures}
+      />
+    );
+  });
 
   const document = (
     <Document>
@@ -388,6 +389,7 @@ export async function buildExportPdf(
             treatments={data.treatments}
             diagramImages={diagramImages}
             labels={labels}
+            annexIncluded={consentPages.length > 0}
           />
         )}
       </Page>

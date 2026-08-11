@@ -40,6 +40,9 @@ import { ExportService, type ExportDiagramImage } from './export.service';
           <mat-checkbox [(ngModel)]="includeTreatments">
             {{ 'export.modules.treatments' | transloco }}
           </mat-checkbox>
+          <mat-checkbox [(ngModel)]="includeConsents">
+            {{ 'export.modules.consents' | transloco }}
+          </mat-checkbox>
         </div>
 
         @if (errorMessage()) {
@@ -94,6 +97,7 @@ export class ExportComponent {
   protected includeHistoriaClinica = true;
   protected includeValoracion = true;
   protected includeTreatments = true;
+  protected includeConsents = true;
 
   protected readonly generating = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -113,6 +117,7 @@ export class ExportComponent {
           historiaClinica: this.includeHistoriaClinica,
           valoracion: this.includeValoracion,
           treatments: this.includeTreatments,
+          consents: this.includeConsents,
         },
         language,
         diagramImages

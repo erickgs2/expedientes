@@ -6,6 +6,8 @@ export interface ExportModulesSelection {
   historiaClinica: boolean;
   valoracion: boolean;
   treatments: boolean;
+  /** Independent of `treatments`: the signed consents can be exported on their own. */
+  consents: boolean;
 }
 
 export interface ExportDiagramImage {
