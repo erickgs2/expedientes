@@ -127,6 +127,12 @@ interface TreatmentItemForm {
                     (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco
                   }}</span>
                 </a>
+                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'products']">
+                  <mat-icon aria-hidden="true">vaccines</mat-icon>
+                  <span>{{
+                    (canEdit ? 'treatments.addProducts' : 'treatments.viewProducts') | transloco
+                  }}</span>
+                </a>
               </div>
             }
           }

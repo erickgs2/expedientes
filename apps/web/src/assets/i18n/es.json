@@ -255,7 +255,20 @@
     "editDiagram": "Editar diagrama",
     "photosTitle": "Fotos",
     "viewPhotos": "Ver fotos",
-    "addPhotos": "Agregar fotos"
+    "addPhotos": "Agregar fotos",
+    "productsTitle": "Productos utilizados",
+    "viewProducts": "Ver productos",
+    "addProducts": "Productos utilizados",
+    "noProducts": "No hay productos registrados",
+    "productBrand": "Marca",
+    "productLot": "Lote",
+    "productExpiry": "Caducidad",
+    "productPhoto": "Foto del empaque",
+    "productExpired": "Caducado al momento del tratamiento",
+    "addProduct": "Agregar producto",
+    "editProduct": "Editar producto",
+    "deleteProduct": "Eliminar producto",
+    "confirmDeleteProduct": "¿Eliminar este producto del tratamiento?"
   },
   "appointments": {
     "calendarTitle": "Calendario",

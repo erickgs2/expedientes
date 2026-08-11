@@ -95,6 +95,14 @@ export const appRoutes: Routes = [
       import('./treatments/treatment-photo.component').then((m) => m.TreatmentPhotoComponent),
   },
   {
+    path: 'treatments/items/:itemId/products',
+    canActivate: [authGuard, permissionGuard('treatments', 'view'), activePatientGuard],
+    loadComponent: () =>
+      import('./treatments/treatment-products.component').then(
+        (m) => m.TreatmentProductsComponent
+      ),
+  },
+  {
     path: 'calendar',
     canActivate: [authGuard, permissionGuard('appointments', 'view')],
     loadComponent: () =>

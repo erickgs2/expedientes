@@ -255,7 +255,20 @@
     "editDiagram": "Edit diagram",
     "photosTitle": "Photos",
     "viewPhotos": "View photos",
-    "addPhotos": "Add photos"
+    "addPhotos": "Add photos",
+    "productsTitle": "Products used",
+    "viewProducts": "View products",
+    "addProducts": "Products used",
+    "noProducts": "No products recorded",
+    "productBrand": "Brand",
+    "productLot": "Lot",
+    "productExpiry": "Expiry",
+    "productPhoto": "Package photo",
+    "productExpired": "Expired at the time of treatment",
+    "addProduct": "Add product",
+    "editProduct": "Edit product",
+    "deleteProduct": "Delete product",
+    "confirmDeleteProduct": "Remove this product from the treatment?"
   },
   "appointments": {
     "calendarTitle": "Calendar",
