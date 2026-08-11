@@ -1,0 +1,109 @@
+# QA stack for a single small EC2 instance.
+#
+# Differences from docker-compose.prod.yml, all deliberate:
+#   * Images are PULLED, not built. A t3.small has 2 GiB of RAM and the Angular/Next builds will
+#     exhaust it; CI builds them and pushes to GHCR, the instance only pulls.
+#   * Uploads go to S3 instead of a local volume, so the instance holds no patient images and can
+#     be replaced without migrating files. Credentials come from the EC2 instance role — there are
+#     deliberately no AWS keys in this file or in the environment.
+#   * Caddy terminates TLS. The session cookie is `secure` whenever NODE_ENV=production, so over
+#     plain HTTP the browser silently discards it and login appears to fail for no reason. Caddy
+#     provisions a Let's Encrypt certificate automatically, which needs QA_DOMAIN to resolve to
+#     this instance and ports 80 and 443 open.
+#
+# Postgres runs here as a container with a named volume — no RDS. That volume is the only piece of
+# state on the instance: back it up (see docs/deployment/qa-runbook.md) or accept losing it.
+#
+# Required environment, in a .env file beside this one on the instance:
+#   IMAGE_REPO         e.g. ghcr.io/erickgs2/expedientes
+#   IMAGE_TAG          image tag to run, set by the deploy workflow to the commit SHA
+#   QA_DOMAIN          hostname the certificate is issued for, e.g. qa.example.com
+#   ACME_EMAIL         address Let's Encrypt sends expiry warnings to
+#   JWT_SECRET         signing key for session tokens
+#   POSTGRES_USER      database user
+#   POSTGRES_PASSWORD  database password
+#   STORAGE_S3_BUCKET  bucket holding patient images
+#   AWS_REGION         its region, e.g. mx-central-1
+#   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD   used only by the one-off `migrate` job
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: expedientes
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-api:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      # Uploads go to S3. STORAGE_ROOT is intentionally unset: with a bucket configured the local
+      # disk is never written to, so the container needs no writable volume.
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:?STORAGE_S3_BUCKET must be set}
+      AWS_REGION: ${AWS_REGION:?AWS_REGION must be set}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_CONFIRMATION_TEMPLATE: ${WHATSAPP_CONFIRMATION_TEMPLATE:-appointment_confirmation}
+      WHATSAPP_REMINDER_TEMPLATE: ${WHATSAPP_REMINDER_TEMPLATE:-appointment_reminder}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_MX}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-migrate:${IMAGE_TAG:?IMAGE_TAG must be set}
+    # No restart policy: a one-off job that must run once and exit, not restart-loop when it
+    # finishes. The deploy workflow runs it with `--profile tools run --rm migrate`.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set}
+    command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ['tools']
+
+  web:
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-web:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    # No published ports: only Caddy reaches this, over the compose network. Exposing it directly
+    # would serve the app over plain HTTP alongside the TLS one, and the browser would refuse to
+    # keep the session cookie there.
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      QA_DOMAIN: ${QA_DOMAIN:?QA_DOMAIN must be set}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Issued certificates live here. Without this volume Caddy re-requests one on every deploy
+      # and will hit Let's Encrypt's rate limit within a day of normal use.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

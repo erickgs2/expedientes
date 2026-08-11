@@ -1,7 +1,6 @@
-import { readFile } from 'fs/promises';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import type { ConsentSignatureRole } from '@expedientes/shared-types';
-import { resolveFilePath } from '../storage/file-storage';
+import { readStoredFile } from '../storage/file-storage';
 import { isPng } from '../storage/image-signature';
 import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
@@ -269,7 +268,7 @@ function TreatmentsSection({
  * `diagramImages` are already-resolved Buffers (the client-rendered PNGs uploaded with the
  * request — read from the parsed `multipart/form-data` by the route handler). Consent signature
  * images (patient, witness, and the clinic's physician signature) are NOT part of that map —
- * they're existing files already on disk, read here via `resolveFilePath`/`readFile`. All image
+ * they're existing stored files, read here via `readStoredFile` (local disk or S3). All image
  * reads happen before the JSX tree is constructed: `@react-pdf/renderer`'s `Image` component needs
  * its `src` data available synchronously at render time, not as a promise. Every read is wrapped in
  * its own `try/catch` so one unreadable file — a missing physician signature, a corrupted upload —
@@ -288,14 +287,14 @@ export async function buildExportPdf(
   for (const entry of data.consents ?? []) {
     const id = entry.treatmentItemId;
     try {
-      const buffer = await readFile(resolveFilePath(entry.consent.patientSignatureImagePath));
+      const buffer = await readStoredFile(entry.consent.patientSignatureImagePath);
       signatureImages.set(`${id}:patient`, buffer);
     } catch (error) {
       console.error(`Failed to read patient signature image for treatment item ${id}`, error);
     }
     if (entry.consent.witnessSignatureImagePath) {
       try {
-        const buffer = await readFile(resolveFilePath(entry.consent.witnessSignatureImagePath));
+        const buffer = await readStoredFile(entry.consent.witnessSignatureImagePath);
         signatureImages.set(`${id}:witness`, buffer);
       } catch (error) {
         console.error(`Failed to read witness signature image for treatment item ${id}`, error);
@@ -307,7 +306,7 @@ export async function buildExportPdf(
   let doctorSignature: Buffer | null = null;
   if (data.doctorSignaturePath) {
     try {
-      doctorSignature = await readFile(resolveFilePath(data.doctorSignaturePath));
+      doctorSignature = await readStoredFile(data.doctorSignaturePath);
     } catch (error) {
       console.error('Failed to read physician signature image', error);
     }
@@ -319,7 +318,7 @@ export async function buildExportPdf(
   let clinicLogoFormat: 'png' | 'jpg' = 'png';
   if (data.clinicLogoPath) {
     try {
-      clinicLogo = await readFile(resolveFilePath(data.clinicLogoPath));
+      clinicLogo = await readStoredFile(data.clinicLogoPath);
       clinicLogoFormat = isPng(clinicLogo) ? 'png' : 'jpg';
     } catch (error) {
       console.error('Failed to read the clinic logo', error);

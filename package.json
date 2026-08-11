@@ -75,6 +75,7 @@
     "@angular/material": "~22.0.4",
     "@angular/platform-browser": "~22.0.4",
     "@angular/router": "~22.0.4",
+    "@aws-sdk/client-s3": "^3.1107.0",
     "@capacitor/core": "^7.6.8",
     "@jsverse/transloco": "^8.4.0",
     "@prisma/client": "^5.22.0",

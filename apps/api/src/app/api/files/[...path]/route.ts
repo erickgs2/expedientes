@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { resolveFilePath } from '../../../../lib/storage/file-storage';
+import { readStoredFile } from '../../../../lib/storage/file-storage';
 import { isJpeg } from '../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
@@ -26,8 +25,7 @@ export const GET = withApiErrors(
 
     let buffer: Buffer;
     try {
-      const absolutePath = resolveFilePath(relativePath);
-      buffer = await readFile(absolutePath);
+      buffer = await readStoredFile(relativePath);
     } catch {
       // A path that escapes the storage root is answered the same as a missing file, so the
       // response never confirms what does or doesn't exist outside the root.
