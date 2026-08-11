@@ -130,7 +130,16 @@
     "notApplicable": "Not applicable",
     "allergyPlaceholder": "Type and press Enter to add",
     "viewValoraciones": "View assessments",
-    "viewTreatments": "View treatments"
+    "viewTreatments": "View treatments",
+    "summary": {
+      "title": "Summary",
+      "last": "Last:",
+      "none": "No records",
+      "photos": "photos in total",
+      "upcoming": "Upcoming appointments",
+      "next": "Next:",
+      "noneScheduled": "No upcoming appointments"
+    }
   },
   "valoracion": {
     "listTitle": "Assessments",

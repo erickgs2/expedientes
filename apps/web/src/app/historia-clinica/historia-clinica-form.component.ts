@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
-import type { AllergyOption } from '@expedientes/shared-types';
+import type { AllergyOption, PatientSummaryStats } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { PatientsService } from '../patient-drive/patients.service';
@@ -49,6 +49,56 @@ import {
       <p>{{ 'common.loading' | transloco }}</p>
     } @else {
       <h1>{{ 'historiaClinica.title' | transloco }} — {{ patient()?.fullName }}</h1>
+      <!-- Aggregate counts for the shortcuts below. Rendered only once loaded so the row doesn't
+           flash zeroes, which would read as "no records" rather than "not counted yet". -->
+      @if (summary(); as stats) {
+        <section
+          class="summary-widgets"
+          [attr.aria-label]="'historiaClinica.summary.title' | transloco"
+        >
+          <div *appHasPermission="'valoracion:view'" class="summary-widget">
+            <span class="summary-label">{{ 'historiaClinica.viewValoraciones' | transloco }}</span>
+            <span class="summary-value">{{ stats.valoraciones.count }}</span>
+            <span class="summary-meta">
+              @if (stats.valoraciones.lastDate; as last) {
+                {{ 'historiaClinica.summary.last' | transloco }} {{ formatDate(last) }}
+              } @else {
+                {{ 'historiaClinica.summary.none' | transloco }}
+              }
+            </span>
+          </div>
+
+          <div *appHasPermission="'valoracion:view'" class="summary-widget">
+            <span class="summary-label">{{ 'photoTimeline.navLink' | transloco }}</span>
+            <span class="summary-value">{{ stats.photos.count }}</span>
+            <span class="summary-meta">{{ 'historiaClinica.summary.photos' | transloco }}</span>
+          </div>
+
+          <div *appHasPermission="'treatments:view'" class="summary-widget">
+            <span class="summary-label">{{ 'historiaClinica.viewTreatments' | transloco }}</span>
+            <span class="summary-value">{{ stats.treatments.count }}</span>
+            <span class="summary-meta">
+              @if (stats.treatments.lastDate; as last) {
+                {{ 'historiaClinica.summary.last' | transloco }} {{ formatDate(last) }}
+              } @else {
+                {{ 'historiaClinica.summary.none' | transloco }}
+              }
+            </span>
+          </div>
+
+          <div *appHasPermission="'appointments:view'" class="summary-widget">
+            <span class="summary-label">{{ 'historiaClinica.summary.upcoming' | transloco }}</span>
+            <span class="summary-value">{{ stats.appointments.upcomingCount }}</span>
+            <span class="summary-meta">
+              @if (stats.appointments.nextStartTime; as next) {
+                {{ 'historiaClinica.summary.next' | transloco }} {{ formatDateTime(next) }}
+              } @else {
+                {{ 'historiaClinica.summary.noneScheduled' | transloco }}
+              }
+            </span>
+          </div>
+        </section>
+      }
       <nav class="quick-actions" [attr.aria-label]="'historiaClinica.quickActions' | transloco">
         <a *appHasPermission="'valoracion:view'" class="quick-action" routerLink="/valoracion">
           <mat-icon aria-hidden="true">assignment</mat-icon>
@@ -244,6 +294,40 @@ import {
       /* Tiles rather than bare text links: they read as tappable, sit on the 8pt grid, and give
          every target a comfortable touch area on a phone. Two per row on a narrow screen,
          growing to four across on desktop. */
+      /* Same track sizing as .quick-actions so each widget lines up over its shortcut. */
+      .summary-widgets {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+        gap: 12px;
+        margin: 0 0 12px;
+      }
+      .summary-widget {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 14px;
+        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-radius: 12px;
+        background: var(--mat-sys-surface-container-low, transparent);
+      }
+      .summary-label {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        /* A long shortcut name must not widen the track and break the alignment below. */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .summary-value {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.1;
+        color: var(--mat-sys-primary);
+      }
+      .summary-meta {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .quick-actions {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
@@ -306,6 +390,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly exists = signal(false);
+  protected readonly summary = signal<PatientSummaryStats | null>(null);
 
   protected readonly allergyOptions = signal<AllergyOption[]>([]);
   protected readonly allergyNames = signal<string[]>([]);
@@ -365,6 +450,13 @@ export class HistoriaClinicaFormComponent implements OnInit {
     // clinical history yet, and the CURP lives on the patient record — a brand-new patient is
     // exactly who still needs to have theirs filled in.
     this.form.patchValue({ documentId: patient.documentId ?? '' });
+
+    // Fire-and-forget: the widgets are a convenience, so a failed count must not stop the record
+    // itself from loading. The error interceptor still reports it.
+    void this.patientsService
+      .getSummary(patient.id)
+      .then((stats) => this.summary.set(stats))
+      .catch(() => this.summary.set(null));
 
     // `finally`, not a trailing `set(false)`: Angular does not await `ngOnInit`, so a rejected
     // load would otherwise leave the page stuck on "Cargando..." with no way forward. The error
@@ -436,6 +528,25 @@ export class HistoriaClinicaFormComponent implements OnInit {
         initialPatientName: patient.fullName,
       } as AppointmentFormDialogData,
     });
+  }
+
+  /**
+   * `YYYY-MM-DD` in the viewer's own timezone. `fecha` is a real timestamp, not a plain date, so
+   * slicing its UTC string would show tomorrow for anything recorded after early evening here.
+   */
+  protected formatDate(iso: string): string {
+    return this.formatDateTime(iso).substring(0, 10);
+  }
+
+  /**
+   * `YYYY-MM-DD HH:mm` in the viewer's own timezone. Built from local getters rather than slicing
+   * the ISO string, which is UTC and would show the wrong hour — and the wrong day for an
+   * appointment early or late enough in the day.
+   */
+  protected formatDateTime(iso: string): string {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   async save(): Promise<void> {

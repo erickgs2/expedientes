@@ -11,3 +11,11 @@ export interface CreatePatientRequest {
   phone: string;
   documentId?: string;
 }
+
+/** At-a-glance counts for the clinical-history screen's shortcut widgets. */
+export interface PatientSummaryStats {
+  valoraciones: { count: number; lastDate: string | null };
+  photos: { count: number };
+  treatments: { count: number; lastDate: string | null };
+  appointments: { upcomingCount: number; nextStartTime: string | null };
+}

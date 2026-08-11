@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { CreatePatientRequest, PatientSummary } from '@expedientes/shared-types';
+import type {
+  CreatePatientRequest,
+  PatientSummary,
+  PatientSummaryStats,
+} from '@expedientes/shared-types';
 
 @Injectable({ providedIn: 'root' })
 export class PatientsService {
@@ -17,6 +21,12 @@ export class PatientsService {
     return firstValueFrom(
       this.http.get<{ patient: PatientSummary }>(`/api/patients/${patientId}`)
     ).then((r) => r.patient);
+  }
+
+  getSummary(patientId: string): Promise<PatientSummaryStats> {
+    return firstValueFrom(
+      this.http.get<{ summary: PatientSummaryStats }>(`/api/patients/${patientId}/summary`)
+    ).then((r) => r.summary);
   }
 
   /** Empty string clears the stored CURP; the server normalizes it to NULL. */
