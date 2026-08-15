@@ -9,6 +9,8 @@ import { TranslocoModule } from '@jsverse/transloco';
 import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
+import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
+import type { HistoriaClinica } from '@expedientes/shared-types';
 import { ValoracionService } from './valoracion.service';
 import { FacialDiagramViewsComponent } from '../shared/facial-diagram/facial-diagram-views.component';
 import type { DiagramDataSource } from '../shared/facial-diagram/diagram-data-source';
@@ -57,6 +59,25 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
           <mat-label>{{ 'valoracion.fields.queNecesitaElPaciente' | transloco }}</mat-label>
           <textarea matInput formControlName="queNecesitaElPaciente" rows="3"></textarea>
         </mat-form-field>
+        <div *appHasPermission="'valoracion:edit'" class="copy-row">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!historiaHasWantsOrNeeds()"
+            (click)="copyFromHistoria()"
+          >
+            <mat-icon>content_copy</mat-icon>
+            {{ 'valoracion.copyFromHistoria' | transloco }}
+          </button>
+          <span class="hint">
+            {{
+              (historiaHasWantsOrNeeds()
+                ? 'valoracion.copyFromHistoriaHelp'
+                : 'valoracion.copyFromHistoriaEmpty'
+              ) | transloco
+            }}
+          </span>
+        </div>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'valoracion.fields.notas' | transloco }}</mat-label>
           <textarea matInput formControlName="notas" rows="10"></textarea>
@@ -81,6 +102,19 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
   `,
   styles: [
     `
+      .copy-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: -8px 0 16px;
+      }
+      .copy-row .hint {
+        flex: 1;
+        min-width: 200px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .full-width {
         width: 100%;
       }
@@ -96,6 +130,7 @@ export class ValoracionDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly historiaClinicaService = inject(HistoriaClinicaService);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -106,6 +141,9 @@ export class ValoracionDetailComponent implements OnInit {
   protected diagrams: ValoracionDiagram[] = [];
   protected diagramDataSource!: DiagramDataSource;
   protected photoDataSource!: PhotoDataSource;
+
+  /** The patient's clinical history, for the copy button. Null when they have none recorded. */
+  protected readonly historia = signal<HistoriaClinica | null>(null);
 
   protected readonly form = this.fb.group({
     fecha: [''],
@@ -137,6 +175,14 @@ export class ValoracionDetailComponent implements OnInit {
         return;
       }
       this.patientId = this.patient()!.id; // patient() is guaranteed non-null here, per the check above
+
+      // Fetched alongside the visit so the copy button knows whether there is anything to copy.
+      // Fire-and-forget: the clinical history is a convenience here, and a patient who has none
+      // yet must still be able to record a valoración.
+      void this.historiaClinicaService
+        .get(this.patientId)
+        .then((historia) => this.historia.set(historia))
+        .catch(() => this.historia.set(null));
       this.form.patchValue({
         fecha: valoracion.fecha.substring(0, 10),
         queQuiereElPaciente: valoracion.queQuiereElPaciente ?? '',
@@ -193,6 +239,27 @@ export class ValoracionDetailComponent implements OnInit {
         this.loading.set(false);
       }
     }
+  }
+
+  protected historiaHasWantsOrNeeds(): boolean {
+    const h = this.historia();
+    return Boolean(h?.queQuiereElPaciente?.trim() || h?.queNecesitaElPaciente?.trim());
+  }
+
+  /**
+   * Copies what the patient wants and needs from their clinical history into this visit.
+   *
+   * Overwrites both fields — the button is an explicit action, and silently merging or appending
+   * would be harder to reason about than retyping. Nothing is stored until the form is submitted.
+   */
+  protected copyFromHistoria(): void {
+    const h = this.historia();
+    if (!h) return;
+    this.form.patchValue({
+      queQuiereElPaciente: h.queQuiereElPaciente ?? '',
+      queNecesitaElPaciente: h.queNecesitaElPaciente ?? '',
+    });
+    this.form.markAsDirty();
   }
 
   async save(): Promise<void> {

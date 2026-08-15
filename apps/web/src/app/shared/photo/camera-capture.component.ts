@@ -31,11 +31,33 @@ const JPEG_QUALITY = 0.9;
         class="visually-hidden"
         (change)="onFileSelected($event)"
       />
+      <!-- Same picker without the capture attribute, which is what makes the OS offer the photo
+           library or file browser instead of opening the camera. Multi-select, because picking a
+           batch of existing photos is the whole point of this path. -->
+      <input
+        #libraryInput
+        type="file"
+        accept="image/*"
+        [multiple]="allowMultiple"
+        class="visually-hidden"
+        (change)="onLibrarySelected($event)"
+      />
       @if (!active()) {
-        <button class="add-photos" type="button" [disabled]="disabled" (click)="openCamera()">
-          <mat-icon aria-hidden="true">photo_camera</mat-icon>
-          <span>{{ 'valoracion.photos.addPhotos' | transloco }}</span>
-        </button>
+        <div class="source-buttons">
+          <button class="add-photos" type="button" [disabled]="disabled" (click)="openCamera()">
+            <mat-icon aria-hidden="true">photo_camera</mat-icon>
+            <span>{{ 'valoracion.photos.addPhotos' | transloco }}</span>
+          </button>
+          <button
+            class="add-photos"
+            type="button"
+            [disabled]="disabled || busy"
+            (click)="libraryInput.click()"
+          >
+            <mat-icon aria-hidden="true">photo_library</mat-icon>
+            <span>{{ 'valoracion.photos.uploadPhotos' | transloco }}</span>
+          </button>
+        </div>
         @if (cameraError()) {
           <p class="camera-error" role="alert">{{ 'valoracion.photos.cameraError' | transloco }}</p>
         }
@@ -239,6 +261,12 @@ const JPEG_QUALITY = 0.9;
         display: flex;
         gap: 8px;
       }
+      .source-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+      }
       .camera-error {
         color: var(--mat-sys-error, #b3261e);
       }
@@ -255,6 +283,8 @@ const JPEG_QUALITY = 0.9;
 export class CameraCaptureComponent implements OnDestroy {
   @Input() disabled = false;
   @Input() busy = false;
+  /** False where the host keeps only one photo, such as a product's packaging shot. */
+  @Input() allowMultiple = true;
   readonly captured = output<Blob>();
 
   // Public so a host can mirror the camera's open/closed state in its own chrome — the photo
@@ -378,6 +408,33 @@ export class CameraCaptureComponent implements OnDestroy {
    * Handles a photo coming back from the device's own camera app (the non-secure-origin
    * fallback) and drops the user straight into the same review step the live path uses.
    */
+  /**
+   * Photos picked from the library or file browser. These skip the review step entirely and are
+   * emitted straight away: the user already chose them deliberately from a visual picker, so a
+   * confirm-each-one step would just be in the way — and it would make selecting a batch tedious.
+   *
+   * Emitted one at a time, sequentially, because the host uploads each blob it receives.
+   */
+  protected async onLibrarySelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    // Cleared so picking the same file twice still fires `change`.
+    input.value = '';
+    if (files.length === 0) return;
+
+    let anyFailed = false;
+    for (const file of files) {
+      const blob = await this.toJpegBlob(file);
+      if (this.destroyed) return;
+      if (!blob) {
+        anyFailed = true;
+        continue;
+      }
+      this.captured.emit(blob);
+    }
+    this.cameraError.set(anyFailed);
+  }
+
   protected async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;

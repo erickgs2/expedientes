@@ -175,7 +175,9 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       FacialDiagramEditDialogResult
     >(FacialDiagramEditDialogComponent, {
       data,
-      width: 'min(96vw, 640px)',
+      // Wide enough for the whole toolbar — tools, colours, widths and actions — to sit on one
+      // or two rows beside the canvas rather than wrapping into a stack that pushes it off screen.
+      width: 'min(96vw, 900px)',
       maxWidth: '96vw',
       maxHeight: '95dvh',
       autoFocus: false,

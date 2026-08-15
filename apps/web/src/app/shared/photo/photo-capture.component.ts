@@ -61,12 +61,37 @@ export class PhotoCaptureComponent {
     this.tag.set(tag);
   }
 
-  protected async onCaptured(blob: Blob): Promise<void> {
+  /**
+   * Uploads arrive one blob at a time, but a library selection emits a whole batch back-to-back.
+   * They are queued rather than uploaded concurrently: parallel uploads would race the `uploading`
+   * flag — the first to finish would clear it while the rest were still in flight — and would hit
+   * the API with as many simultaneous multipart requests as the user picked files.
+   */
+  protected onCaptured(blob: Blob): void {
+    this.queue.push(blob);
+    void this.drainQueue();
+  }
+
+  private readonly queue: Blob[] = [];
+  private draining = false;
+
+  private async drainQueue(): Promise<void> {
+    if (this.draining) return;
+    this.draining = true;
     this.uploading.set(true);
     try {
-      const photo = await this.dataSource.upload(blob, this.tag());
-      this.photoAdded.emit(photo);
+      while (this.queue.length > 0) {
+        const blob = this.queue.shift() as Blob;
+        // One failure must not strand the rest of the batch; the error interceptor reports it.
+        try {
+          const photo = await this.dataSource.upload(blob, this.tag());
+          this.photoAdded.emit(photo);
+        } catch (error) {
+          console.error('Failed to upload a selected photo', error);
+        }
+      }
     } finally {
+      this.draining = false;
       this.uploading.set(false);
     }
   }

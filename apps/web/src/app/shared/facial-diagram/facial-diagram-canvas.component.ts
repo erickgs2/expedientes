@@ -16,7 +16,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { Canvas, FabricImage, FabricObject, IText, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
+import { Canvas, FabricImage, FabricObject, IText, Line, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
 import type { DiagramView, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
@@ -47,7 +47,7 @@ export function fitBackgroundToCanvas(background: FabricImage): void {
   });
 }
 
-type DiagramTool = 'select' | 'pencil' | 'pin' | 'x' | 'star' | 'text';
+type DiagramTool = 'select' | 'pencil' | 'line' | 'pin' | 'x' | 'star' | 'text';
 
 const DRAW_COLORS = ['#000000', '#e53935', '#1e88e5', '#43a047'];
 const DRAW_WIDTHS = [2, 4, 6];
@@ -195,7 +195,7 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
             </button>
           </div>
         </div>
-        @if (activeTool() === 'pencil') {
+        @if (activeTool() === 'pencil' || activeTool() === 'line') {
           <div class="diagram-brush-options">
             @for (color of drawColors; track color) {
               <button
@@ -345,6 +345,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   protected readonly toolDefs: { id: DiagramTool; icon: string; labelKey: string }[] = [
     { id: 'select', icon: 'near_me', labelKey: 'valoracion.diagram.tools.select' },
     { id: 'pencil', icon: 'edit', labelKey: 'valoracion.diagram.tools.pencil' },
+    { id: 'line', icon: 'horizontal_rule', labelKey: 'valoracion.diagram.tools.line' },
     { id: 'pin', icon: 'place', labelKey: 'valoracion.diagram.tools.pin' },
     { id: 'x', icon: 'close', labelKey: 'valoracion.diagram.tools.x' },
     { id: 'star', icon: 'star', labelKey: 'valoracion.diagram.tools.star' },
@@ -354,6 +355,8 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   protected readonly drawColor = signal(DRAW_COLORS[0]);
   protected readonly drawWidth = signal(DRAW_WIDTHS[0]);
   private pinCounter = 1;
+  /** The line currently being dragged out, or null. Unselectable until the drag ends. */
+  private pendingLine: Line | null = null;
   /** Overlay objects from a referenced past visit — never saved, never cleared by "Clear all". */
   private referenceObjects: FabricObject[] = [];
   /**
@@ -412,6 +415,15 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       this.canvasWrapper.nativeElement.focus();
       this.onCanvasMouseDown(opt);
     });
+
+    this.canvas.on('mouse:move', (opt: TPointerEventInfo<TPointerEvent>) => {
+      if (!this.pendingLine) return;
+      const p = this.canvas.getScenePoint(opt.e);
+      this.pendingLine.set({ x2: p.x, y2: p.y });
+      this.canvas.requestRenderAll();
+    });
+
+    this.canvas.on('mouse:up', () => this.finishLine());
 
     // Drop text notes that were opened but left empty, so a stray click with the text tool doesn't
     // persist a zero-width IText. Scoped to empty text objects only.
@@ -526,6 +538,29 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     if (tool === 'pencil') {
       this.applyBrushSettings();
     }
+    // Dragging a line out relies on the canvas NOT starting a selection rectangle under the
+    // pointer; restored the moment the tool changes back.
+    this.canvas.selection = tool !== 'line';
+  }
+
+  /**
+   * Ends a line drag. A click without movement leaves a zero-length line that is invisible but
+   * still selectable and still serialized, so it is discarded rather than kept.
+   */
+  private finishLine(): void {
+    const line = this.pendingLine;
+    if (!line) return;
+    this.pendingLine = null;
+
+    const tooShort = Math.hypot(line.x2 - line.x1, line.y2 - line.y1) < 3;
+    if (tooShort) {
+      this.canvas.remove(line);
+    } else {
+      line.set({ selectable: true, evented: true });
+      line.setCoords();
+    }
+    this.canvas.requestRenderAll();
+    this.setTool('select');
   }
 
   protected setColor(color: string): void {
@@ -556,6 +591,20 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     // `getPointer` is deprecated in Fabric v6; `getScenePoint` returns the same `Point` in scene
     // coordinates, which stays correct if zoom/pan is added later.
     const pointer = this.canvas.getScenePoint(opt.e);
+
+    if (tool === 'line') {
+      this.pendingLine = new Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+        stroke: this.drawColor(),
+        strokeWidth: this.drawWidth(),
+        strokeLineCap: 'round',
+        // Not selectable while being dragged: otherwise the click that starts the line
+        // immediately selects it and Fabric begins a move instead of a draw.
+        selectable: false,
+        evented: false,
+      });
+      this.canvas.add(this.pendingLine);
+      return;
+    }
 
     if (tool === 'text') {
       const note = new IText('', {

@@ -7,6 +7,7 @@ import {
   MatAutocompleteModule,
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
@@ -51,6 +52,7 @@ function toDatetimeLocalString(date: Date): string {
     MatFormFieldModule,
     MatInputModule,
     MatAutocompleteModule,
+    MatButtonToggleModule,
     MatCheckboxModule,
     MatSelectModule,
     MatButtonModule,
@@ -61,6 +63,32 @@ function toDatetimeLocalString(date: Date): string {
       {{ (data.appointment ? 'appointments.form.editTitle' : 'appointments.form.newTitle') | transloco }}
     </h2>
     <mat-dialog-content>
+      @if (canCreatePatients && !data.appointment) {
+        <mat-button-toggle-group
+          class="patient-mode"
+          [value]="newPatient() ? 'new' : 'existing'"
+          [hideSingleSelectionIndicator]="true"
+        >
+          <mat-button-toggle value="existing" (click)="setNewPatient(false)">
+            {{ 'appointments.form.existingPatient' | transloco }}
+          </mat-button-toggle>
+          <mat-button-toggle value="new" (click)="setNewPatient(true)">
+            {{ 'appointments.form.newPatient' | transloco }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      }
+
+      @if (newPatient()) {
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'appointments.form.newPatientName' | transloco }}</mat-label>
+          <input matInput [(ngModel)]="newPatientName" [ngModelOptions]="{ standalone: true }" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'appointments.form.newPatientPhone' | transloco }}</mat-label>
+          <input matInput [(ngModel)]="newPatientPhone" [ngModelOptions]="{ standalone: true }" />
+        </mat-form-field>
+        <p class="hint">{{ 'appointments.form.newPatientHelp' | transloco }}</p>
+      } @else {
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>{{ 'appointments.form.patient' | transloco }}</mat-label>
         <input
@@ -76,6 +104,7 @@ function toDatetimeLocalString(date: Date): string {
           }
         </mat-autocomplete>
       </mat-form-field>
+      }
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>{{ 'appointments.form.startTime' | transloco }}</mat-label>
@@ -178,6 +207,12 @@ export class AppointmentFormComponent implements OnInit {
   protected readonly canDelete = this.auth.hasPermission('appointments', 'delete');
   protected readonly canViewTreatmentTypes = this.auth.hasPermission('treatments', 'view');
 
+  protected readonly canCreatePatients = this.auth.hasPermission('patients', 'create');
+  /** True while booking for someone not yet registered; the patient is created on save. */
+  protected readonly newPatient = signal(false);
+  protected newPatientName = '';
+  protected newPatientPhone = '';
+
   protected patientQuery = this.data.appointment?.patientName ?? this.data.initialPatientName ?? '';
   protected readonly patientResults = signal<PatientSummary[]>([]);
   private selectedPatientId: string | null =
@@ -196,6 +231,10 @@ export class AppointmentFormComponent implements OnInit {
   protected readonly overlapping = signal<AppointmentSummary[]>([]);
   private readonly dayAppointments = signal<AppointmentSummary[]>([]);
   private loadedDay: string | null = null;
+
+  protected setNewPatient(value: boolean): void {
+    this.newPatient.set(value);
+  }
 
   ngOnInit(): void {
     if (this.canViewTreatmentTypes) {
@@ -261,7 +300,12 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   protected canSave(): boolean {
-    return !!this.selectedPatientId && !!this.parsedStartTime() && this.durationMinutes > 0;
+    // In new-patient mode there is no id to check yet — the record is created on save — so the
+    // name and phone stand in for it. Both are required by the patients endpoint.
+    const patientReady = this.newPatient()
+      ? !!this.newPatientName.trim() && !!this.newPatientPhone.trim()
+      : !!this.selectedPatientId;
+    return patientReady && !!this.parsedStartTime() && this.durationMinutes > 0;
   }
 
   protected async onPatientQueryChange(value: string | PatientSummary): Promise<void> {
@@ -307,7 +351,12 @@ export class AppointmentFormComponent implements OnInit {
 
   async save(): Promise<void> {
     const start = this.parsedStartTime();
-    if (!this.selectedPatientId || !start) return;
+    if (!start) return;
+    if (this.newPatient()) {
+      if (!this.newPatientName.trim() || !this.newPatientPhone.trim()) return;
+    } else if (!this.selectedPatientId) {
+      return;
+    }
 
     // On a failed save, an exception propagates out of this `try` before `dialogRef.close(true)`
     // runs — the dialog stays open with every field's current value intact, so the user can retry
@@ -319,9 +368,23 @@ export class AppointmentFormComponent implements OnInit {
         .filter((o) => o.checked)
         .map((o) => o.id);
 
+      // Registering the patient first, then booking against the new id. Two calls rather than one
+      // combined endpoint: if the appointment fails to save, the patient record still exists and
+      // the visit can simply be booked again, which is far better than losing the details the
+      // receptionist just took over the phone.
+      let patientId = this.selectedPatientId;
+      if (this.newPatient()) {
+        const created = await this.patientsService.create({
+          fullName: this.newPatientName.trim(),
+          phone: this.newPatientPhone.trim(),
+        });
+        patientId = created.id;
+      }
+      if (!patientId) return;
+
       if (this.data.appointment) {
         await this.appointmentService.update(this.data.appointment.id, {
-          patientId: this.selectedPatientId,
+          patientId,
           startTime: start.toISOString(),
           durationMinutes: this.durationMinutes,
           status: this.status,
@@ -330,7 +393,7 @@ export class AppointmentFormComponent implements OnInit {
         });
       } else {
         await this.appointmentService.create({
-          patientId: this.selectedPatientId,
+          patientId,
           startTime: start.toISOString(),
           durationMinutes: this.durationMinutes,
           notes: this.notes.trim() || null,

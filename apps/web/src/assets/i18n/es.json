@@ -174,7 +174,8 @@
         "pin": "Marcador",
         "x": "X",
         "star": "Estrella",
-        "text": "Nota de texto"
+        "text": "Nota de texto",
+        "line": "Línea"
       },
       "views": {
         "front": "Frente",
@@ -197,8 +198,12 @@
       "usePhoto": "Usar foto",
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar esta foto? Esta acción no se puede deshacer.",
-      "empty": "No hay fotos"
-    }
+      "empty": "No hay fotos",
+      "uploadPhotos": "Subir fotos"
+    },
+    "copyFromHistoria": "Copiar de historia clínica",
+    "copyFromHistoriaHelp": "Reemplaza los dos campos con lo registrado en la historia clínica.",
+    "copyFromHistoriaEmpty": "La historia clínica no tiene estos campos capturados."
   },
   "photoTimeline": {
     "title": "Cronología de fotos",
@@ -324,7 +329,12 @@
       "notes": "Notas",
       "status": "Estado",
       "overlapWarning": "Esta cita se traslapa con",
-      "confirmDelete": "¿Eliminar esta cita? Esta acción no se puede deshacer."
+      "confirmDelete": "¿Eliminar esta cita? Esta acción no se puede deshacer.",
+      "existingPatient": "Paciente registrado",
+      "newPatient": "Paciente nuevo",
+      "newPatientName": "Nombre completo",
+      "newPatientPhone": "Teléfono",
+      "newPatientHelp": "Se creará el expediente del paciente al guardar la cita."
     },
     "status": {
       "SCHEDULED": "Agendada",

@@ -174,7 +174,8 @@
         "pin": "Pin",
         "x": "X",
         "star": "Star",
-        "text": "Text note"
+        "text": "Text note",
+        "line": "Line"
       },
       "views": {
         "front": "Front",
@@ -197,8 +198,12 @@
       "usePhoto": "Use photo",
       "delete": "Delete",
       "confirmDelete": "Delete this photo? This cannot be undone.",
-      "empty": "No photos yet"
-    }
+      "empty": "No photos yet",
+      "uploadPhotos": "Upload photos"
+    },
+    "copyFromHistoria": "Copy from clinical history",
+    "copyFromHistoriaHelp": "Replaces both fields with what the clinical history records.",
+    "copyFromHistoriaEmpty": "The clinical history has neither field filled in."
   },
   "photoTimeline": {
     "title": "Photo timeline",
@@ -324,7 +329,12 @@
       "notes": "Notes",
       "status": "Status",
       "overlapWarning": "This appointment overlaps with",
-      "confirmDelete": "Delete this appointment? This action cannot be undone."
+      "confirmDelete": "Delete this appointment? This action cannot be undone.",
+      "existingPatient": "Registered patient",
+      "newPatient": "New patient",
+      "newPatientName": "Full name",
+      "newPatientPhone": "Phone",
+      "newPatientHelp": "The patient record is created when the appointment is saved."
     },
     "status": {
       "SCHEDULED": "Scheduled",
