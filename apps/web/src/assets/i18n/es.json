@@ -204,7 +204,13 @@
     },
     "copyFromHistoria": "Copiar de historia clínica",
     "copyFromHistoriaHelp": "Reemplaza los dos campos con lo registrado en la historia clínica.",
-    "copyFromHistoriaEmpty": "La historia clínica no tiene estos campos capturados."
+    "copyFromHistoriaEmpty": "La historia clínica no tiene estos campos capturados.",
+    "sections": {
+      "visit": "Datos de la visita",
+      "diagrams": "Diagramas faciales",
+      "photos": "Fotografías"
+    },
+    "saving": "Guardando…"
   },
   "photoTimeline": {
     "title": "Cronología de fotos",

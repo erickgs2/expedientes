@@ -49,9 +49,27 @@ import type { PhotoDataSource } from './photo-data-source';
     `
       .photo-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 12px;
-        margin-top: 16px;
+        /* Ruled off from the capture controls above: without it the first thumbnail reads as part
+           of the button row. */
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+      }
+      .photo-item img {
+        transition: transform 150ms ease-out;
+      }
+      .photo-item:hover img {
+        transform: scale(1.02);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .photo-item img {
+          transition: none;
+        }
+        .photo-item:hover img {
+          transform: none;
+        }
       }
       .photo-item {
         position: relative;

@@ -204,7 +204,13 @@
     },
     "copyFromHistoria": "Copy from clinical history",
     "copyFromHistoriaHelp": "Replaces both fields with what the clinical history records.",
-    "copyFromHistoriaEmpty": "The clinical history has neither field filled in."
+    "copyFromHistoriaEmpty": "The clinical history has neither field filled in.",
+    "sections": {
+      "visit": "Visit details",
+      "diagrams": "Facial diagrams",
+      "photos": "Photographs"
+    },
+    "saving": "Saving…"
   },
   "photoTimeline": {
     "title": "Photo timeline",

@@ -49,7 +49,7 @@ const JPEG_QUALITY = 0.9;
             <span>{{ 'valoracion.photos.addPhotos' | transloco }}</span>
           </button>
           <button
-            class="add-photos"
+            class="add-photos secondary"
             type="button"
             [disabled]="disabled || busy"
             (click)="libraryInput.click()"
@@ -265,7 +265,18 @@ const JPEG_QUALITY = 0.9;
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
-        justify-content: center;
+        /* Left-aligned so the buttons line up with the photo grid below rather than floating in
+           the middle of the page under whatever happens to be above them. */
+        justify-content: flex-start;
+      }
+      /* One primary action per area: taking a photo is the common case, uploading the exception. */
+      .add-photos.secondary {
+        background: transparent;
+        color: var(--mat-sys-primary);
+        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+      }
+      .add-photos.secondary:hover:not(:disabled) {
+        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
       }
       .camera-error {
         color: var(--mat-sys-error, #b3261e);

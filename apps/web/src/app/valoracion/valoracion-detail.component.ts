@@ -46,7 +46,13 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
         {{ 'common.back' | transloco }}
       </a>
       <h1>{{ 'valoracion.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
-      <form [formGroup]="form" (ngSubmit)="save()">
+
+      <!-- Three distinct jobs on one page — record the visit, annotate the diagrams, manage the
+           photos — previously ran together with nothing between them, so the Guardar button looked
+           like it belonged to whatever followed it. Headings and rules say where each one ends. -->
+      <section class="page-section">
+        <h2 class="section-title">{{ 'valoracion.sections.visit' | transloco }}</h2>
+        <form [formGroup]="form" (ngSubmit)="save()">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ 'valoracion.fields.fecha' | transloco }}</mat-label>
           <input matInput type="date" formControlName="fecha" />
@@ -82,26 +88,50 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
           <mat-label>{{ 'valoracion.fields.notas' | transloco }}</mat-label>
           <textarea matInput formControlName="notas" rows="10"></textarea>
         </mat-form-field>
-        <button
-          *appHasPermission="'valoracion:edit'"
-          mat-flat-button
-          color="primary"
-          type="submit"
-          [disabled]="saving()"
-        >
-          {{ 'common.save' | transloco }}
-        </button>
-      </form>
-      <app-facial-diagram-views
-        [dataSource]="diagramDataSource"
-        permissionModule="valoracion"
-        [diagrams]="diagrams"
-      />
-      <app-photo-gallery [dataSource]="photoDataSource" permissionModule="valoracion" />
+          <button
+            *appHasPermission="'valoracion:edit'"
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="saving()"
+          >
+            {{ (saving() ? 'valoracion.saving' : 'common.save') | transloco }}
+          </button>
+        </form>
+      </section>
+
+      <section class="page-section">
+        <h2 class="section-title">{{ 'valoracion.sections.diagrams' | transloco }}</h2>
+        <app-facial-diagram-views
+          [dataSource]="diagramDataSource"
+          permissionModule="valoracion"
+          [diagrams]="diagrams"
+        />
+      </section>
+
+      <section class="page-section">
+        <h2 class="section-title">{{ 'valoracion.sections.photos' | transloco }}</h2>
+        <app-photo-gallery [dataSource]="photoDataSource" permissionModule="valoracion" />
+      </section>
     }
   `,
   styles: [
     `
+      /* A rule plus generous top spacing between sections: on a long record page the boundary has
+         to survive being scrolled past, which a gap alone does not. */
+      .page-section + .page-section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+      }
+      .section-title {
+        margin: 0 0 16px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .copy-row {
         display: flex;
         align-items: center;
