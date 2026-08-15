@@ -11,24 +11,25 @@ import { CameraCaptureComponent } from './camera-capture.component';
   imports: [MatButtonToggleModule, TranslocoModule, CameraCaptureComponent],
   template: `
     <div class="photo-capture">
-      <!-- Only while the camera panel is up, matching the pre-extraction behaviour: an idle
-           "add photos" screen should not carry a stray tag selector. Shown in both the live and
-           review steps, since the native-camera fallback skips the live step entirely and this is
-           the only place its user can pick a tag. -->
-      @if (camera.active()) {
-        <mat-button-toggle-group
-          class="tag-group"
-          [value]="tag()"
-          [hideSingleSelectionIndicator]="true"
-        >
-          <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
-            {{ 'valoracion.photos.before' | transloco }}
-          </mat-button-toggle>
-          <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
-            {{ 'valoracion.photos.after' | transloco }}
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-      }
+      <!-- Always visible, not just while the camera panel is open: it tags photos picked from the
+           library too, and those never open that panel. Hiding it there meant an upload silently
+           took whatever tag happened to be selected last. The label says which photos it applies
+           to, since it is now shown before anything has been captured. -->
+      <p class="tag-label" id="photo-tag-label">{{ 'valoracion.photos.tagLabel' | transloco }}</p>
+      <mat-button-toggle-group
+        class="tag-group"
+        [value]="tag()"
+        [hideSingleSelectionIndicator]="true"
+        [disabled]="uploading()"
+        aria-labelledby="photo-tag-label"
+      >
+        <mat-button-toggle value="BEFORE" (click)="setTag('BEFORE')">
+          {{ 'valoracion.photos.before' | transloco }}
+        </mat-button-toggle>
+        <mat-button-toggle value="AFTER" (click)="setTag('AFTER')">
+          {{ 'valoracion.photos.after' | transloco }}
+        </mat-button-toggle>
+      </mat-button-toggle-group>
       <app-camera-capture #camera [busy]="uploading()" (captured)="onCaptured($event)" />
     </div>
   `,
@@ -39,6 +40,11 @@ import { CameraCaptureComponent } from './camera-capture.component';
         flex-direction: column;
         align-items: center;
         gap: 16px;
+      }
+      .tag-label {
+        margin: 0;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
       }
       .tag-group {
         width: 100%;

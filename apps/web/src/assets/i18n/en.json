@@ -199,7 +199,8 @@
       "delete": "Delete",
       "confirmDelete": "Delete this photo? This cannot be undone.",
       "empty": "No photos yet",
-      "uploadPhotos": "Upload photos"
+      "uploadPhotos": "Upload photos",
+      "tagLabel": "Tag for the next photos"
     },
     "copyFromHistoria": "Copy from clinical history",
     "copyFromHistoriaHelp": "Replaces both fields with what the clinical history records.",

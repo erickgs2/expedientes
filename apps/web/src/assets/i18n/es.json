@@ -199,7 +199,8 @@
       "delete": "Eliminar",
       "confirmDelete": "¿Eliminar esta foto? Esta acción no se puede deshacer.",
       "empty": "No hay fotos",
-      "uploadPhotos": "Subir fotos"
+      "uploadPhotos": "Subir fotos",
+      "tagLabel": "Etiqueta para las siguientes fotos"
     },
     "copyFromHistoria": "Copiar de historia clínica",
     "copyFromHistoriaHelp": "Reemplaza los dos campos con lo registrado en la historia clínica.",
