@@ -334,7 +334,12 @@
       "newPatient": "New patient",
       "newPatientName": "Full name",
       "newPatientPhone": "Phone",
-      "newPatientHelp": "The patient record is created when the appointment is saved."
+      "newPatientHelp": "The patient record is created when the appointment is saved.",
+      "sectionPatient": "Patient",
+      "sectionWhen": "Date and duration",
+      "sectionTreatment": "Treatment",
+      "noTreatmentTypes": "No treatment types in the catalog yet.",
+      "saving": "Saving…"
     },
     "status": {
       "SCHEDULED": "Scheduled",

@@ -334,7 +334,12 @@
       "newPatient": "Paciente nuevo",
       "newPatientName": "Nombre completo",
       "newPatientPhone": "Teléfono",
-      "newPatientHelp": "Se creará el expediente del paciente al guardar la cita."
+      "newPatientHelp": "Se creará el expediente del paciente al guardar la cita.",
+      "sectionPatient": "Paciente",
+      "sectionWhen": "Fecha y duración",
+      "sectionTreatment": "Tratamiento",
+      "noTreatmentTypes": "Aún no hay tipos de tratamiento en el catálogo.",
+      "saving": "Guardando…"
     },
     "status": {
       "SCHEDULED": "Agendada",
