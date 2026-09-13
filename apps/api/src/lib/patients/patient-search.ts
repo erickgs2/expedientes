@@ -39,6 +39,11 @@ export async function getPatientById(id: string) {
 export interface UpdatePatientData {
   /** `null` clears a previously recorded CURP; omitted leaves it untouched. */
   documentId?: string | null;
+  /**
+   * Never null: the column is non-null and the number drives WhatsApp appointment reminders, so
+   * clearing it would silently switch those off for this patient. Omitted leaves it untouched.
+   */
+  phone?: string;
 }
 
 export async function updatePatient(id: string, data: UpdatePatientData) {

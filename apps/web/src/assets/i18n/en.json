@@ -90,7 +90,9 @@
     "openRecord": "Open patient record",
     "continueWith": "Continue with",
     "curp": "CURP (Mexican population registry ID)",
-    "selectPatientFirst": "Select a patient to open that section."
+    "selectPatientFirst": "Select a patient to open that section.",
+    "phoneHint": "Used for WhatsApp appointment reminders.",
+    "phoneRequired": "The phone number cannot be empty."
   },
   "historiaClinica": {
     "title": "Clinical history",

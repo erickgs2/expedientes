@@ -90,7 +90,9 @@
     "openRecord": "Abrir expediente del paciente",
     "continueWith": "Continuar con",
     "curp": "Clave Única de Registro de Población (CURP)",
-    "selectPatientFirst": "Seleccione un paciente para abrir esa sección."
+    "selectPatientFirst": "Seleccione un paciente para abrir esa sección.",
+    "phoneHint": "Se usa para los recordatorios de cita por WhatsApp.",
+    "phoneRequired": "El teléfono no puede quedar vacío."
   },
   "historiaClinica": {
     "title": "Historia clínica",

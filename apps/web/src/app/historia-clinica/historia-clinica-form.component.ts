@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ReactiveFormsModule, FormsModule, FormBuilder } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -130,11 +130,21 @@ import {
             <mat-panel-title>{{ 'historiaClinica.sections.personalInfo' | transloco }}</mat-panel-title>
           </mat-expansion-panel-header>
 
-          <!-- Lives on the Patient record, not the clinical history, but this is where it gets
-               filled in: it is optional at registration, so most patients arrive without one. -->
+          <!-- These two live on the Patient record rather than the clinical history, but this is
+               where they get corrected: the CURP because it is optional at registration, the phone
+               because it gets mistyped or changes. The name is deliberately not editable here. -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>{{ 'patientDrive.curp' | transloco }}</mat-label>
             <input matInput formControlName="documentId" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ 'patientDrive.phone' | transloco }}</mat-label>
+            <input matInput type="tel" autocomplete="tel" formControlName="phone" />
+            <mat-hint>{{ 'patientDrive.phoneHint' | transloco }}</mat-hint>
+            @if (form.controls.phone.hasError('required') && form.controls.phone.touched) {
+              <mat-error>{{ 'patientDrive.phoneRequired' | transloco }}</mat-error>
+            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -398,6 +408,9 @@ export class HistoriaClinicaFormComponent implements OnInit {
 
   protected readonly form = this.fb.group({
     documentId: [''],
+    // Required, unlike the CURP: the column is non-null and a blank number would quietly stop this
+    // patient's WhatsApp appointment reminders.
+    phone: ['', Validators.required],
     ocupacion: [''],
     fechaNacimiento: [''],
     sexo: [''],
@@ -449,7 +462,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
     // Patched outside the try below on purpose: that block returns early when the patient has no
     // clinical history yet, and the CURP lives on the patient record — a brand-new patient is
     // exactly who still needs to have theirs filled in.
-    this.form.patchValue({ documentId: patient.documentId ?? '' });
+    this.form.patchValue({ documentId: patient.documentId ?? '', phone: patient.phone });
 
     // Fire-and-forget: the widgets are a convenience, so a failed count must not stop the record
     // itself from loading. The error interceptor still reports it.
@@ -562,6 +575,15 @@ export class HistoriaClinicaFormComponent implements OnInit {
     const patient = this.patient();
     if (!patient) return;
 
+    // Stop rather than save partially. Without this, blanking the required phone still wrote the
+    // clinical history while the phone change was quietly dropped — the user would leave believing
+    // they had cleared a field that cannot be cleared. Marking touched is what makes the error
+    // visible on a field the user may never have focused.
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     this.saving.set(true);
     const raw = this.form.value;
     const input = {
@@ -586,6 +608,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
     };
 
     const documentId = raw.documentId?.trim() ?? '';
+    const phone = raw.phone?.trim() ?? '';
 
     try {
       if (this.exists()) {
@@ -595,12 +618,17 @@ export class HistoriaClinicaFormComponent implements OnInit {
         this.exists.set(true);
       }
 
-      // The CURP belongs to the patient record, so it needs its own call. Only sent when it
-      // actually changed, to avoid a pointless write and audit entry on every save of this form.
-      if (documentId !== (patient.documentId ?? '')) {
-        const updated = await this.patientsService.updateDocumentId(patient.id, documentId);
-        // Re-select so the banner and anything else reading the active patient show the new value
-        // rather than the stale one this page was opened with.
+      // The CURP and phone belong to the patient record, so they need their own call. Only the
+      // fields that actually changed are sent, so an ordinary save of this form does not generate
+      // a pointless write and audit entry against the patient.
+      const changes: { documentId?: string; phone?: string } = {};
+      if (documentId !== (patient.documentId ?? '')) changes.documentId = documentId;
+      if (phone && phone !== patient.phone) changes.phone = phone;
+
+      if (Object.keys(changes).length > 0) {
+        const updated = await this.patientsService.updateDetails(patient.id, changes);
+        // Re-select so the banner, the search list and anything else reading the active patient
+        // show the new values rather than the stale ones this page was opened with.
         this.activePatient.select(updated);
       }
     } finally {

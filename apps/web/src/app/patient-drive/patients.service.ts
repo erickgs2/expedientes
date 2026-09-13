@@ -29,10 +29,17 @@ export class PatientsService {
     ).then((r) => r.summary);
   }
 
-  /** Empty string clears the stored CURP; the server normalizes it to NULL. */
-  updateDocumentId(patientId: string, documentId: string): Promise<PatientSummary> {
+  /**
+   * Corrects fields on the patient record itself. Each is optional and independent: omit one and
+   * its stored value is left alone. An empty `documentId` clears the stored CURP; an empty `phone`
+   * is rejected by the server, since the number drives WhatsApp appointment reminders.
+   */
+  updateDetails(
+    patientId: string,
+    changes: { documentId?: string; phone?: string }
+  ): Promise<PatientSummary> {
     return firstValueFrom(
-      this.http.patch<{ patient: PatientSummary }>(`/api/patients/${patientId}`, { documentId })
+      this.http.patch<{ patient: PatientSummary }>(`/api/patients/${patientId}`, changes)
     ).then((r) => r.patient);
   }
 
