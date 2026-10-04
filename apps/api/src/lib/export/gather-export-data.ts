@@ -16,7 +16,7 @@ export interface ExportModulesSelection {
 }
 
 export interface ExportDiagramRef {
-  view: 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE';
+  view: 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE' | 'EYES' | 'NOSE' | 'LIPS';
   /**
    * The `multipart/form-data` field name the client-rendered PNG for this diagram was uploaded
    * under — e.g. `diagram_valoracion_<id>_FRONT` or `diagram_treatmentItem_<id>_FRONT`. The route

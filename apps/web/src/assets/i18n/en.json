@@ -182,7 +182,20 @@
       "views": {
         "front": "Front",
         "leftProfile": "Left profile",
-        "rightProfile": "Right profile"
+        "rightProfile": "Right profile",
+        "eyes": "Eye contour",
+        "nose": "Nose",
+        "lips": "Lips"
+      },
+      "unsaved": {
+        "title": "Unsaved changes",
+        "message": "You have unsaved changes to the diagram. Do you want to keep editing or leave without saving?",
+        "keepEditing": "Keep editing",
+        "discard": "Leave without saving"
+      },
+      "closeUps": {
+        "label": "Close-ups",
+        "full": "Full face"
       },
       "reference": {
         "toggle": "Show reference from a past visit",

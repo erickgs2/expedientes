@@ -182,7 +182,20 @@
       "views": {
         "front": "Frente",
         "leftProfile": "Perfil izquierdo",
-        "rightProfile": "Perfil derecho"
+        "rightProfile": "Perfil derecho",
+        "eyes": "Contorno de ojos",
+        "nose": "Nariz",
+        "lips": "Labios"
+      },
+      "unsaved": {
+        "title": "Cambios sin guardar",
+        "message": "Tienes modificaciones sin guardar en el diagrama. ¿Quieres seguir editando o salir sin guardar?",
+        "keepEditing": "Seguir editando",
+        "discard": "Salir sin guardar"
+      },
+      "closeUps": {
+        "label": "Acercamientos",
+        "full": "Rostro completo"
       },
       "reference": {
         "toggle": "Mostrar visita anterior de referencia",

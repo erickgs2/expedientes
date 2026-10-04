@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
   },
   itemBlock: { marginBottom: 8 },
   itemTitle: { fontWeight: 'bold' },
-  diagramRow: { flexDirection: 'row', marginTop: 6, marginBottom: 6 },
-  diagramImage: { width: 130, height: 162, marginRight: 8 },
+  diagramRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, marginBottom: 6 },
+  diagramImage: { marginRight: 8, marginBottom: 8 },
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
 });
@@ -57,6 +57,19 @@ function Field({ label, value }: { label: string; value: string | null }) {
     </View>
   );
 }
+
+/**
+ * Printed size per view, matching each view's canvas aspect ratio in the web editor (full views are
+ * 480×600; the close-ups are cropped to their own shape) so no diagram is stretched.
+ */
+const DIAGRAM_IMAGE_SIZES: Record<ExportDiagramRef['view'], { width: number; height: number }> = {
+  FRONT: { width: 130, height: 162 },
+  LEFT_PROFILE: { width: 130, height: 162 },
+  RIGHT_PROFILE: { width: 130, height: 162 },
+  EYES: { width: 220, height: 110 },
+  NOSE: { width: 104, height: 130 },
+  LIPS: { width: 176, height: 110 },
+};
 
 function DiagramImages({
   diagrams,
@@ -72,7 +85,7 @@ function DiagramImages({
       {present.map((d) => (
         <Image
           key={d.imageKey}
-          style={styles.diagramImage}
+          style={[styles.diagramImage, DIAGRAM_IMAGE_SIZES[d.view]]}
           src={{ data: diagramImages.get(d.imageKey) as Buffer, format: 'png' }}
         />
       ))}
