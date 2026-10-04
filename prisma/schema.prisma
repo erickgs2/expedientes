@@ -154,6 +154,10 @@ enum DiagramView {
   FRONT
   LEFT_PROFILE
   RIGHT_PROFILE
+  // Close-ups of the front view, each with its own annotations.
+  EYES
+  NOSE
+  LIPS
 }
 
 model ValoracionDiagram {

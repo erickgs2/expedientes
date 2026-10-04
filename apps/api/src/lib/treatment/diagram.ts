@@ -5,6 +5,9 @@ export interface DiagramViewsUpdate {
   front?: Prisma.InputJsonValue | null;
   leftProfile?: Prisma.InputJsonValue | null;
   rightProfile?: Prisma.InputJsonValue | null;
+  eyes?: Prisma.InputJsonValue | null;
+  nose?: Prisma.InputJsonValue | null;
+  lips?: Prisma.InputJsonValue | null;
 }
 
 /**
@@ -16,6 +19,9 @@ export const VIEW_KEY_TO_ENUM: Record<keyof DiagramViewsUpdate, DiagramView> = {
   front: 'FRONT',
   leftProfile: 'LEFT_PROFILE',
   rightProfile: 'RIGHT_PROFILE',
+  eyes: 'EYES',
+  nose: 'NOSE',
+  lips: 'LIPS',
 };
 
 export async function getTreatmentItemDiagrams(treatmentItemId: string) {

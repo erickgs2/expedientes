@@ -7,6 +7,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import type { DiagramView, DiagramViewRecord, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { renderDiagramToBlob } from './diagram-render.util';
+import { CLOSE_UP_VIEWS, DIAGRAM_CANVAS_SIZES } from './diagram-geometry';
 import {
   FacialDiagramEditDialogComponent,
   type FacialDiagramEditDialogData,
@@ -15,11 +16,15 @@ import {
 import type { DiagramDataSource, DiagramReferenceOption } from './diagram-data-source';
 
 const VIEW_ORDER: DiagramView[] = ['FRONT', 'LEFT_PROFILE', 'RIGHT_PROFILE'];
+const ALL_VIEWS: DiagramView[] = [...VIEW_ORDER, ...CLOSE_UP_VIEWS];
 
 const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
   FRONT: 'valoracion.diagram.views.front',
   LEFT_PROFILE: 'valoracion.diagram.views.leftProfile',
   RIGHT_PROFILE: 'valoracion.diagram.views.rightProfile',
+  EYES: 'valoracion.diagram.views.eyes',
+  NOSE: 'valoracion.diagram.views.nose',
+  LIPS: 'valoracion.diagram.views.lips',
 };
 
 /**
@@ -27,6 +32,9 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
  * Edit/View button that opens the interactive canvas in a large dialog. Drawing never happens
  * inline — on phones the fixed-coordinate canvas needs the dialog's full width, and previews keep
  * the page scrollable without touch/draw conflicts.
+ *
+ * The three full views are always shown; close-ups (eyes, nose, lips — created from the front
+ * view's editor) only appear once they have annotations, so an unused close-up adds no clutter.
  */
 @Component({
   selector: 'app-facial-diagram-views',
@@ -34,7 +42,7 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
   imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslocoModule],
   template: `
     <div class="diagram-views">
-      @for (view of viewOrder; track view) {
+      @for (view of shownViews(); track view) {
         <div class="diagram-view-card">
           <div class="diagram-view-header">
             <span class="diagram-view-label">{{ viewLabelKey(view) | transloco }}</span>
@@ -46,12 +54,13 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
           @if (previewUrls()[view]; as url) {
             <img
               class="diagram-preview"
+              [style.aspect-ratio]="aspectRatio(view)"
               [src]="url"
               [alt]="viewLabelKey(view) | transloco"
               (click)="openEditor(view)"
             />
           } @else {
-            <div class="diagram-preview diagram-preview-loading">
+            <div class="diagram-preview diagram-preview-loading" [style.aspect-ratio]="aspectRatio(view)">
               <mat-spinner diameter="32"></mat-spinner>
             </div>
           }
@@ -83,7 +92,6 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
       }
       .diagram-preview {
         width: 100%;
-        aspect-ratio: 480 / 600;
         object-fit: contain;
         border: 1px solid var(--mat-sys-outline-variant, #ccc);
         border-radius: 8px;
@@ -107,8 +115,9 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
 
-  protected readonly viewOrder = VIEW_ORDER;
   protected canEdit = false;
+  /** Full views always; close-ups only when they hold data. */
+  protected readonly shownViews = signal<DiagramView[]>(VIEW_ORDER);
 
   protected readonly previewUrls = signal<Partial<Record<DiagramView, string>>>({});
   private readonly pastOptions = signal<DiagramReferenceOption[]>([]);
@@ -141,13 +150,26 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
     return VIEW_LABEL_KEYS[view];
   }
 
+  protected aspectRatio(view: DiagramView): string {
+    const { width, height } = DIAGRAM_CANVAS_SIZES[view];
+    return `${width} / ${height}`;
+  }
+
+  private updateShownViews(): void {
+    this.shownViews.set([
+      ...VIEW_ORDER,
+      ...CLOSE_UP_VIEWS.filter((view) => this.dataFor(view) !== null),
+    ]);
+  }
+
   private dataFor(view: DiagramView): Record<string, unknown> | null {
     if (view in this.currentData) return this.currentData[view] ?? null;
     return this.diagrams.find((d) => d.view === view)?.data ?? null;
   }
 
   private async renderAllPreviews(): Promise<void> {
-    await Promise.all(VIEW_ORDER.map((view) => this.renderPreview(view)));
+    this.updateShownViews();
+    await Promise.all(this.shownViews().map((view) => this.renderPreview(view)));
   }
 
   private async renderPreview(view: DiagramView): Promise<void> {
@@ -162,10 +184,10 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   protected openEditor(view: DiagramView): void {
     const data: FacialDiagramEditDialogData = {
       view,
-      viewLabelKey: VIEW_LABEL_KEYS[view],
+      viewLabelKeys: VIEW_LABEL_KEYS,
       permissionModule: this.permissionModule,
       canEdit: this.canEdit,
-      initialData: this.dataFor(view),
+      initialData: Object.fromEntries(ALL_VIEWS.map((v) => [v, this.dataFor(v)])),
       dataSource: this.dataSource,
       referenceOptions: this.pastOptions(),
     };
@@ -179,13 +201,22 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       // or two rows beside the canvas rather than wrapping into a stack that pushes it off screen.
       width: 'min(96vw, 900px)',
       maxWidth: '96vw',
+      // A fixed height (not just a max) so the editor can lay itself out to fit exactly: toolbar on
+      // top, canvas scaled into the rest — no scrolling inside the dialog.
+      height: '95dvh',
       maxHeight: '95dvh',
       autoFocus: false,
     });
     ref.afterClosed().subscribe((result) => {
       if (!result?.saved) return;
-      this.currentData[view] = result.data;
-      void this.renderPreview(view);
+      const savedViews = Object.keys(result.views) as DiagramView[];
+      for (const saved of savedViews) {
+        this.currentData[saved] = result.views[saved] ?? null;
+      }
+      this.updateShownViews();
+      for (const saved of savedViews) {
+        void this.renderPreview(saved);
+      }
     });
   }
 }
