@@ -222,7 +222,7 @@ const JPEG_QUALITY = 0.9;
         appearance: none;
       }
       .review-secondary {
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--plate-line-strong);
         background: transparent;
         color: var(--mat-sys-on-surface);
       }
@@ -273,13 +273,13 @@ const JPEG_QUALITY = 0.9;
       .add-photos.secondary {
         background: transparent;
         color: var(--mat-sys-primary);
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--plate-line-strong);
       }
       .add-photos.secondary:hover:not(:disabled) {
-        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        background: var(--mat-sys-surface-container-low);
       }
       .camera-error {
-        color: var(--mat-sys-error, #b3261e);
+        color: var(--mat-sys-error);
       }
       .visually-hidden {
         position: absolute;

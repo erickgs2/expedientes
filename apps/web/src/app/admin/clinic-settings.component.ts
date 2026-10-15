@@ -189,7 +189,7 @@ import { ClinicSettingsService } from './clinic-settings.service';
       }
       .hint {
         margin: -8px 0 16px;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
       .restore-row {
         display: flex;
@@ -207,7 +207,7 @@ import { ClinicSettingsService } from './clinic-settings.service';
         max-width: 600px;
         display: block;
         margin-bottom: 8px;
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--plate-line-strong);
       }
       .logo-image {
         max-width: 320px;
@@ -217,7 +217,7 @@ import { ClinicSettingsService } from './clinic-settings.service';
         /* Checkerboard so a transparent PNG reads as transparent rather than as a white block. */
         background:
           repeating-conic-gradient(rgba(0, 0, 0, 0.06) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--plate-line-strong);
       }
       .visually-hidden {
         position: absolute;

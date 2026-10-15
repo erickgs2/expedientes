@@ -83,8 +83,8 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
         display: flex;
         gap: 12px;
         padding: 12px;
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 12px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
       }
       .product-thumb {
         width: 72px;
@@ -114,7 +114,7 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
         margin-top: 4px;
       }
       .empty-state {
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
     `,
   ],

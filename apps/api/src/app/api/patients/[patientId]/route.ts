@@ -4,6 +4,7 @@ import {
   updatePatient,
   type UpdatePatientData,
 } from '../../../../lib/patients/patient-search';
+import { deletePatient } from '../../../../lib/patients/patient-delete';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
@@ -90,5 +91,30 @@ export const PATCH = withApiErrors(
     });
 
     return NextResponse.json({ patient });
+  }
+);
+
+/**
+ * Permanently deletes the patient and all of their records and uploaded files. Irreversible, so it
+ * has its own `patients:delete` permission rather than riding on `edit`. The audit entry is written
+ * after the delete and outlives it — `AuditLog` keeps the patient id with no foreign key.
+ */
+export const DELETE = withApiErrors(
+  async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
+    const userId = await requireAuth(request, 'patients', 'delete');
+
+    const { patientId } = await params;
+    const deleted = await deletePatient(patientId);
+    if (!deleted) return apiError('NOT_FOUND', 'Patient not found', 404);
+
+    await writeAuditLogSafe({
+      userId,
+      action: 'delete',
+      entity: 'Patient',
+      entityId: patientId,
+      patientId,
+    });
+
+    return new NextResponse(null, { status: 204 });
   }
 );

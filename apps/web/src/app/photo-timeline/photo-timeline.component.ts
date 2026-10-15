@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
@@ -19,12 +18,8 @@ interface PhotoTimelineGroup {
 @Component({
   selector: 'app-photo-timeline',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, TranslocoModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, TranslocoModule],
   template: `
-    <a mat-button class="back-link" routerLink="/historia-clinica">
-      <mat-icon>arrow_back</mat-icon>
-      {{ 'common.backToHistoria' | transloco }}
-    </a>
     <h1>{{ 'photoTimeline.title' | transloco }} — {{ patient()?.fullName }}</h1>
     @if (loading()) {
       <p>{{ 'common.loading' | transloco }}</p>

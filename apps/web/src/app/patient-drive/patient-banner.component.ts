@@ -22,7 +22,7 @@ import { ActivePatientStore } from './active-patient.store';
         <a
           *appHasPermission="'historia-clinica:view'"
           class="banner-link"
-          routerLink="/historia-clinica"
+          [routerLink]="['/pacientes', patient.id, 'historia-clinica']"
           [attr.aria-label]="'patientDrive.openRecord' | transloco"
         >
           <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>
@@ -50,11 +50,12 @@ import { ActivePatientStore } from './active-patient.store';
         align-items: center;
         gap: 10px;
         padding: 6px 16px;
-        background: var(--mat-sys-surface-variant, #fce4e8);
+        background: var(--mat-sys-surface-container-low);
         color: var(--mat-sys-on-surface-variant);
-        border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-bottom: 1px solid var(--plate-line);
       }
       .banner-link {
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -68,11 +69,23 @@ import { ActivePatientStore } from './active-patient.store';
         color: var(--mat-sys-primary);
       }
       .banner-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         font-weight: 600;
         color: var(--mat-sys-on-surface);
       }
       .banner-meta {
         font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      /* On a phone the CURP gives way: the name is what identifies the patient at a glance. */
+      @media (max-width: 599px) {
+        .banner-meta {
+          display: none;
+        }
       }
       .banner-chevron {
         color: var(--mat-sys-primary);

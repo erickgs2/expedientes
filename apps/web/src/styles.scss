@@ -1,4 +1,4 @@
-// Rose/red Material 3 theme, switchable between light and dark via the `data-theme`
+// Facial-mapping chart Material 3 theme (pearl plate, graphite ink, one rose mark), switchable between light and dark via the `data-theme`
 // attribute on <html> (set by ThemeService). See `./styles/_palette.scss` for why this
 // uses the M3 `mat.theme()` system-tokens API instead of the classic M2 theming mixins.
 @use '@angular/material' as mat;
@@ -13,7 +13,13 @@ html {
         tertiary: theme-colors.$tertiary-palette,
         theme-type: light,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: ('Hanken Grotesk', 'Helvetica Neue', sans-serif),
+        brand-family: ('Hanken Grotesk', 'Helvetica Neue', sans-serif),
+        bold-weight: 600,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
       density: 0,
     )
   );
@@ -52,8 +58,10 @@ body {
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
-  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  -webkit-font-smoothing: antialiased;
 
   // Reset the user agent margin.
   margin: 0;
@@ -62,19 +70,20 @@ body {
 
 // ---------------------------------------------------------------------------
 // Typography: plain heading elements fall outside Material's component theming,
-// so give them an explicit scale (Figtree for headings, loaded in index.html).
+// so give them an explicit scale (Hanken Grotesk throughout, loaded in index.html).
 // ---------------------------------------------------------------------------
 h1,
 h2,
 h3 {
-  font-family: Figtree, Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', sans-serif;
   color: var(--mat-sys-on-surface);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-size: 1.875rem;
+  font-weight: 700;
   line-height: 1.25;
   margin: 0 0 20px;
 }
@@ -98,6 +107,54 @@ h3 {
 :focus-visible {
   outline: 2px solid var(--mat-sys-primary);
   outline-offset: 2px;
+}
+
+// ---------------------------------------------------------------------------
+// The plate: tokens the whole app shares. Corners are small and the same everywhere; surfaces are
+// flat paper separated by one hairline in the ink colour at low strength, never by shadow.
+// ---------------------------------------------------------------------------
+:root {
+  --plate-line: color-mix(in srgb, var(--mat-sys-on-surface) 14%, transparent);
+  --plate-line-strong: color-mix(in srgb, var(--mat-sys-on-surface) 32%, transparent);
+  // The mark: the rose dot of an injection-point map. Only for position, selection and action.
+  --plate-mark: var(--mat-sys-primary);
+  --plate-radius: 10px;
+  --mat-sys-corner-medium: 10px;
+  --mat-sys-corner-large: 14px;
+  --mat-sys-corner-extra-large: 18px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--mat-sys-primary) 22%, transparent);
+  color: inherit;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--plate-line-strong) transparent;
+}
+
+// Dialogs, menus and sheets sit on the plate with a hairline instead of a heavy drop shadow.
+.mat-mdc-dialog-surface,
+.mat-mdc-menu-panel {
+  border: 1px solid var(--plate-line);
+}
+
+// Expansion panels read as ruled sections of one plate, not stacked floating cards.
+mat-accordion .mat-expansion-panel,
+.mat-expansion-panel {
+  box-shadow: none !important;
+  border: 1px solid var(--plate-line);
+  border-radius: var(--plate-radius) !important;
+  background: var(--mat-sys-surface-container-lowest, var(--mat-sys-surface));
+}
+
+.mat-mdc-card {
+  --mat-card-elevated-container-color: var(--mat-sys-surface);
+  --mat-card-elevated-container-shape: var(--plate-radius);
+  --mat-card-elevated-container-elevation: 0 0 0 0 transparent;
+  box-shadow: none !important;
+  border: 1px solid var(--plate-line);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,8 +196,8 @@ h3 {
   padding: 40px 16px;
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
-  border: 1px dashed var(--mat-sys-outline-variant);
-  border-radius: 12px;
+  border: 1px dashed var(--plate-line-strong);
+  border-radius: var(--plate-radius);
 
   mat-icon {
     font-size: 36px;
@@ -157,8 +214,33 @@ h3 {
 // Data tables: soften edges and fill the page column.
 table.mat-mdc-table {
   width: 100%;
-  border-radius: 12px;
+  border-radius: var(--plate-radius);
   overflow: hidden;
+}
+
+// Tables are ruled like a chart: a heavier rule under the header, hairlines between rows, no fill.
+table.mat-mdc-table {
+  --mat-table-background-color: transparent;
+  --mat-table-row-item-outline-color: var(--plate-line);
+  --mat-table-header-headline-color: var(--mat-sys-on-surface-variant);
+  --mat-table-header-headline-weight: 600;
+  border: 1px solid var(--plate-line);
+
+  .mat-mdc-header-row {
+    border-bottom: 1px solid var(--plate-line-strong);
+  }
+
+  .mat-mdc-row {
+    transition: background-color 150ms ease-out;
+
+    &:hover {
+      background: var(--mat-sys-surface-container-low);
+    }
+  }
+
+  .mat-mdc-cell {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 // Horizontal-scroll wrapper for wide content (tables, grids) on narrow screens — the page body

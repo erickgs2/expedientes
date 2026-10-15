@@ -86,9 +86,9 @@ export interface RoleFormDialogData {
         gap: 12px;
       }
       .module-card {
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 12px;
-        padding: 12px 14px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+        padding: 14px 16px;
       }
       .module-header {
         display: flex;
@@ -116,12 +116,13 @@ export interface RoleFormDialogData {
         font-size: 12px;
         font-variant-numeric: tabular-nums;
         padding: 2px 8px;
-        border-radius: 999px;
-        background: var(--mat-sys-primary-container, #ffd9dd);
-        color: var(--mat-sys-on-primary-container, inherit);
+        border-radius: 6px;
+        background: var(--mat-sys-secondary-container);
+        color: var(--mat-sys-on-secondary-container);
       }
       .module-count.none {
-        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.06));
+        background: transparent;
+        border: 1px solid var(--plate-line);
         color: var(--mat-sys-on-surface-variant);
       }
       .module-actions {

@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T21:35:35.330845Z",
+  "title": "Design System: Expedientes",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Mark Rose",
+        "canonical": "#af0641",
+        "tonalRamp": [
+          "#40000c",
+          "#68001a",
+          "#920028",
+          "#be0037",
+          "#e6224b",
+          "#ff8890",
+          "#ffdada",
+          "#fff8f7"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Blush Paper",
+        "canonical": "#fff8f7",
+        "tonalRamp": [
+          "#190a0b",
+          "#281718",
+          "#3f2b2c",
+          "#705959",
+          "#a58a8b",
+          "#debfc0",
+          "#ffedec",
+          "#fff8f7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles (h1)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Forms and content."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "press",
+        "value": "150ms ease-out",
+        "purpose": "Tile hover and press transitions."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action.",
+      "html": "<button class=\"ds-btn\">Guardar</button>",
+      "css": ".ds-btn{background:#be0037;color:#fff;border:none;border-radius:20px;padding:10px 24px;font:500 14px Roboto,sans-serif;cursor:pointer}.ds-btn:hover{background:#a8002f}.ds-btn:focus-visible{outline:2px solid #be0037;outline-offset:2px}"
+    },
+    {
+      "name": "Quick Action Tile",
+      "kind": "card",
+      "refersTo": "quick-action",
+      "description": "Record section shortcut.",
+      "html": "<a class=\"ds-tile\">Valoraciones</a>",
+      "css": ".ds-tile{display:flex;align-items:center;justify-content:center;min-height:92px;padding:16px 12px;border:1px solid #e5bdbe;border-radius:12px;background:#fff0f0;color:#281718;font:500 14px Roboto,sans-serif}.ds-tile:hover{background:#ffe1e1}.ds-tile:focus-visible{outline:2px solid #be0037;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Facial Map",
+    "overview": "A printed anatomical chart for an aesthetic-medicine practice: pearl plate, graphite ink, one rose mark.",
+    "keyCharacteristics": [
+      "Tonal, flat surfaces; no decorative shadows.",
+      "One rose accent for actions, focus and selection.",
+      "Tablet-first touch sizing.",
+      "Light and dark parity through M3 tokens."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Rose marks what is actionable or selected. Never use it as decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces carry no shadow at rest.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use --mat-sys-* tokens for every color.",
+      "Do keep touch targets at least 44px high."
+    ],
+    "donts": [
+      "Don't add shadows to resting surfaces.",
+      "Don't introduce a second accent color."
+    ]
+  }
+}

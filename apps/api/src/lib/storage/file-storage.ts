@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { existsSync, realpathSync } from 'fs';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { extname, join, resolve, sep } from 'path';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 function storageRoot(): string {
   return process.env.STORAGE_ROOT ?? './storage';
@@ -136,4 +136,22 @@ export async function readStoredFile(relativePath: string): Promise<Buffer> {
     throw new Error(`Empty response body for storage key: ${relativePath}`);
   }
   return Buffer.from(await response.Body.transformToByteArray());
+}
+
+/**
+ * Removes a stored file, from S3 or the local disk depending on configuration. A file that is
+ * already gone is not an error — deleting must be safe to repeat.
+ */
+export async function deleteStoredFile(relativePath: string): Promise<void> {
+  const bucket = s3Bucket();
+  if (!bucket) {
+    await rm(resolveFilePath(relativePath), { force: true });
+    return;
+  }
+
+  if (relativePath.includes('..') || relativePath.startsWith('/')) {
+    throw new InvalidFilePathError(`Invalid storage key: ${relativePath}`);
+  }
+  // S3 DeleteObject succeeds on a missing key, so no existence check is needed.
+  await s3().send(new DeleteObjectCommand({ Bucket: bucket, Key: relativePath }));
 }

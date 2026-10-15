@@ -93,8 +93,8 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
       .diagram-preview {
         width: 100%;
         object-fit: contain;
-        border: 1px solid var(--mat-sys-outline-variant, #ccc);
-        border-radius: 8px;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: var(--plate-radius);
         background: #ffffff;
         cursor: pointer;
         display: block;

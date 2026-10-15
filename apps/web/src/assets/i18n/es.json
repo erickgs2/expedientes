@@ -12,7 +12,10 @@
       "treatments": "Tratamientos",
       "clinicSettings": "Datos de la clínica",
       "calendar": "Calendario",
-      "export": "Exportar"
+      "export": "Exportar",
+      "today": "Hoy",
+      "admin": "Administración",
+      "treatmentCatalog": "Catálogo de tratamientos"
     }
   },
   "common": {
@@ -92,7 +95,14 @@
     "curp": "Clave Única de Registro de Población (CURP)",
     "selectPatientFirst": "Seleccione un paciente para abrir esa sección.",
     "phoneHint": "Se usa para los recordatorios de cita por WhatsApp.",
-    "phoneRequired": "El teléfono no puede quedar vacío."
+    "phoneRequired": "El teléfono no puede quedar vacío.",
+    "delete": {
+      "action": "Eliminar paciente",
+      "title": "Eliminar paciente",
+      "message": "Se eliminará de forma permanente a {{ name }} junto con su historia clínica, valoraciones, tratamientos, consentimientos, citas y fotografías. Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "notFound": "No se encontró ese paciente."
   },
   "historiaClinica": {
     "title": "Historia clínica",
@@ -369,6 +379,12 @@
       "COMPLETED": "Completada",
       "CANCELLED": "Cancelada",
       "NO_SHOW": "No se presentó"
+    },
+    "quick": {
+      "openRecord": "Abrir expediente",
+      "valoraciones": "Valoraciones",
+      "edit": "Editar cita",
+      "close": "Cerrar"
     }
   },
   "export": {
@@ -382,5 +398,23 @@
     "generate": "Generar PDF",
     "generating": "Generando...",
     "generateFailed": "No se pudo generar el PDF. Inténtelo de nuevo."
+  },
+  "workspace": {
+    "tabsLabel": "Secciones del paciente",
+    "tabs": {
+      "record": "Historia clínica",
+      "valoraciones": "Valoraciones",
+      "treatments": "Tratamientos",
+      "photos": "Fotos",
+      "export": "Exportar"
+    }
+  },
+  "today": {
+    "title": "Hoy",
+    "agenda": "Agenda de hoy",
+    "next": "Siguiente",
+    "noAppointments": "No hay citas para hoy",
+    "noResults": "Ningún paciente coincide",
+    "results": "Resultados de búsqueda"
   }
 }

@@ -55,7 +55,7 @@ import type { PhotoDataSource } from './photo-data-source';
            of the button row. */
         margin-top: 20px;
         padding-top: 20px;
-        border-top: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-top: 1px solid var(--plate-line);
       }
       .photo-item img {
         transition: transform 150ms ease-out;
@@ -80,9 +80,9 @@ import type { PhotoDataSource } from './photo-data-source';
         width: 100%;
         aspect-ratio: 1;
         object-fit: cover;
-        border-radius: 8px;
+        border-radius: var(--plate-radius);
         display: block;
-        background: var(--mat-sys-surface-container-high, #eee);
+        background: var(--mat-sys-surface-container);
       }
       .photo-tag {
         position: absolute;
@@ -120,7 +120,7 @@ import type { PhotoDataSource } from './photo-data-source';
         transition: background-color 150ms ease-out;
       }
       .photo-delete:hover {
-        background: var(--mat-sys-error, #b3261e);
+        background: var(--mat-sys-error);
       }
       .photo-delete mat-icon {
         font-size: 20px;

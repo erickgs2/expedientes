@@ -153,9 +153,9 @@ interface TreatmentItemForm {
          it rather than running together with the next treatment down the page. */
       .item-row {
         margin-bottom: 12px;
-        padding: 12px 14px;
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
       }
       /* Chips rather than bare text links: they read as tappable and keep a comfortable touch
          target when they wrap on a phone. */
@@ -171,9 +171,9 @@ interface TreatmentItemForm {
         gap: 6px;
         min-height: 44px;
         padding: 0 14px;
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 999px;
-        background: var(--mat-sys-surface-container-low, transparent);
+        border: 1px solid var(--plate-line);
+        border-radius: 8px;
+        background: transparent;
         color: var(--mat-sys-on-surface);
         font-size: 14px;
         font-weight: 500;
@@ -181,11 +181,11 @@ interface TreatmentItemForm {
         transition: background-color 150ms ease-out, border-color 150ms ease-out;
       }
       .item-action:hover {
-        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
-        border-color: var(--mat-sys-primary);
+        background: var(--mat-sys-surface-container-low);
+        border-color: var(--plate-line-strong);
       }
       .item-action mat-icon {
-        color: var(--mat-sys-primary);
+        color: var(--mat-sys-on-surface-variant);
         font-size: 20px;
         width: 20px;
         height: 20px;
@@ -196,11 +196,11 @@ interface TreatmentItemForm {
       .inactive-badge {
         margin-left: 8px;
         font-size: 12px;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
       .notes-readonly {
         margin: 4px 0 0;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
       .item-readonly {
         display: inline-block;
@@ -212,7 +212,7 @@ interface TreatmentItemForm {
       .consent-locked-badge {
         margin-left: 8px;
         font-size: 12px;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
     `,
   ],

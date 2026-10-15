@@ -12,7 +12,10 @@
       "treatments": "Treatments",
       "clinicSettings": "Clinic details",
       "calendar": "Calendar",
-      "export": "Export"
+      "export": "Export",
+      "today": "Today",
+      "admin": "Administration",
+      "treatmentCatalog": "Treatment catalog"
     }
   },
   "common": {
@@ -92,7 +95,14 @@
     "curp": "CURP (Mexican population registry ID)",
     "selectPatientFirst": "Select a patient to open that section.",
     "phoneHint": "Used for WhatsApp appointment reminders.",
-    "phoneRequired": "The phone number cannot be empty."
+    "phoneRequired": "The phone number cannot be empty.",
+    "delete": {
+      "action": "Delete patient",
+      "title": "Delete patient",
+      "message": "{{ name }} will be permanently deleted along with their clinical history, valoraciones, treatments, consents, appointments and photos. This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "notFound": "That patient was not found."
   },
   "historiaClinica": {
     "title": "Clinical history",
@@ -369,6 +379,12 @@
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled",
       "NO_SHOW": "No-show"
+    },
+    "quick": {
+      "openRecord": "Open record",
+      "valoraciones": "Assessments",
+      "edit": "Edit appointment",
+      "close": "Close"
     }
   },
   "export": {
@@ -382,5 +398,23 @@
     "generate": "Generate PDF",
     "generating": "Generating...",
     "generateFailed": "Couldn't generate the PDF. Please try again."
+  },
+  "workspace": {
+    "tabsLabel": "Patient sections",
+    "tabs": {
+      "record": "Medical history",
+      "valoraciones": "Assessments",
+      "treatments": "Treatments",
+      "photos": "Photos",
+      "export": "Export"
+    }
+  },
+  "today": {
+    "title": "Today",
+    "agenda": "Today's schedule",
+    "next": "Next",
+    "noAppointments": "No appointments today",
+    "noResults": "No patient matches",
+    "results": "Search results"
   }
 }

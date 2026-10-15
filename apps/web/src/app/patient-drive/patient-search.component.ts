@@ -38,7 +38,7 @@ import { ActivePatientStore } from './active-patient.store';
       <a
         *appHasPermission="'historia-clinica:view'"
         class="active-patient-card"
-        routerLink="/historia-clinica"
+        [routerLink]="['/pacientes', current.id, 'historia-clinica']"
       >
         <mat-icon aria-hidden="true">folder_shared</mat-icon>
         <span class="active-patient-text">
@@ -196,7 +196,7 @@ export class PatientSearchComponent {
 
   selectPatient(patient: PatientSummary): void {
     this.activePatient.select(patient);
-    this.router.navigate(['/historia-clinica']);
+    this.router.navigate(['/pacientes', patient.id, 'historia-clinica']);
   }
 
   async createPatient(): Promise<void> {
@@ -209,6 +209,6 @@ export class PatientSearchComponent {
     });
     this.activePatient.select(patient);
     this.createForm.reset();
-    this.router.navigate(['/historia-clinica']);
+    this.router.navigate(['/pacientes', patient.id, 'historia-clinica']);
   }
 }
