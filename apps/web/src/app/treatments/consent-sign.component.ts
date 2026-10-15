@@ -106,7 +106,7 @@ import { ConsentService } from './consent.service';
         gap: 8px;
       }
       .signed-at {
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
       }
       h3 {
         margin-top: 24px;

@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -13,12 +14,13 @@ import {
 } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { AllergyOption, PatientSummaryStats } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { PatientsService } from '../patient-drive/patients.service';
+import { DeletePatientDialogComponent } from '../patient-drive/delete-patient-dialog.component';
 import { HistoriaClinicaService } from './historia-clinica.service';
 import {
   AppointmentFormComponent,
@@ -40,7 +42,6 @@ import {
     MatAutocompleteModule,
     MatIconModule,
     MatDialogModule,
-    RouterLink,
     TranslocoModule,
     HasPermissionDirective,
   ],
@@ -99,29 +100,17 @@ import {
           </div>
         </section>
       }
-      <nav class="quick-actions" [attr.aria-label]="'historiaClinica.quickActions' | transloco">
-        <a *appHasPermission="'valoracion:view'" class="quick-action" routerLink="/valoracion">
-          <mat-icon aria-hidden="true">assignment</mat-icon>
-          <span>{{ 'historiaClinica.viewValoraciones' | transloco }}</span>
-        </a>
-        <a *appHasPermission="'valoracion:view'" class="quick-action" routerLink="/photos">
-          <mat-icon aria-hidden="true">photo_library</mat-icon>
-          <span>{{ 'photoTimeline.navLink' | transloco }}</span>
-        </a>
-        <a *appHasPermission="'treatments:view'" class="quick-action" routerLink="/treatments">
-          <mat-icon aria-hidden="true">medical_services</mat-icon>
-          <span>{{ 'historiaClinica.viewTreatments' | transloco }}</span>
-        </a>
+      <div class="record-actions">
         <button
           *appHasPermission="'appointments:create'"
-          class="quick-action"
+          mat-stroked-button
           type="button"
           (click)="openAppointmentDialog()"
         >
           <mat-icon aria-hidden="true">event_available</mat-icon>
-          <span>{{ 'historiaClinica.scheduleAppointment' | transloco }}</span>
+          {{ 'historiaClinica.scheduleAppointment' | transloco }}
         </button>
-      </nav>
+      </div>
       <form [formGroup]="form" (ngSubmit)="save()">
         <!-- mat-accordion (multi=false by default) keeps a single section open at a time -->
         <mat-accordion>
@@ -291,10 +280,26 @@ import {
           {{ 'common.save' | transloco }}
         </button>
       </form>
+
+      <button
+        *appHasPermission="'patients:delete'"
+        mat-stroked-button
+        color="warn"
+        type="button"
+        class="delete-patient"
+        [disabled]="saving()"
+        (click)="deletePatient()"
+      >
+        <mat-icon aria-hidden="true">delete</mat-icon>
+        {{ 'patientDrive.delete.action' | transloco }}
+      </button>
     }
   `,
   styles: [
     `
+    .delete-patient {
+      margin-top: 32px;
+    }
     .mt-2 {
       margin-top: 5px;
     }
@@ -315,13 +320,14 @@ import {
         display: flex;
         flex-direction: column;
         gap: 2px;
-        padding: 10px 14px;
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 12px;
-        background: var(--mat-sys-surface-container-low, transparent);
+        padding: 12px 14px 12px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+        background: transparent;
       }
       .summary-label {
         font-size: 12px;
+        font-weight: 500;
         color: var(--mat-sys-on-surface-variant);
         /* A long shortcut name must not widen the track and break the alignment below. */
         overflow: hidden;
@@ -329,55 +335,19 @@ import {
         white-space: nowrap;
       }
       .summary-value {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 600;
         line-height: 1.1;
-        color: var(--mat-sys-primary);
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        color: var(--mat-sys-on-surface);
       }
       .summary-meta {
         font-size: 12px;
         color: var(--mat-sys-on-surface-variant);
       }
-      .quick-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-        gap: 12px;
+      .record-actions {
         margin: 0 0 24px;
-      }
-      .quick-action {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        gap: 8px;
-        min-height: 92px;
-        padding: 16px 12px;
-        border: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
-        border-radius: 12px;
-        background: var(--mat-sys-surface-container-low, transparent);
-        color: var(--mat-sys-on-surface);
-        font: inherit;
-        font-weight: 500;
-        line-height: 1.3;
-        text-decoration: none;
-        cursor: pointer;
-        appearance: none;
-        transition: background-color 150ms ease-out, border-color 150ms ease-out,
-          transform 150ms ease-out;
-      }
-      .quick-action mat-icon {
-        color: var(--mat-sys-primary);
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
-      }
-      .quick-action:hover {
-        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
-        border-color: var(--mat-sys-primary);
-      }
-      .quick-action:active {
-        transform: scale(0.97);
       }
       .computed-field {
         margin: 0 0 16px 0;
@@ -395,6 +365,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly patientsService = inject(PatientsService);
+  private readonly router = inject(Router);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -529,6 +500,27 @@ export class HistoriaClinicaFormComponent implements OnInit {
 
   protected removeAllergy(name: string): void {
     this.allergyNames.update((names) => names.filter((n) => n !== name));
+  }
+
+  protected async deletePatient(): Promise<void> {
+    const patient = this.patient();
+    if (!patient) return;
+
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open<DeletePatientDialogComponent, { fullName: string }, boolean>(
+          DeletePatientDialogComponent,
+          { data: { fullName: patient.fullName } }
+        )
+        .afterClosed()
+    );
+    if (!confirmed) return;
+
+    await this.patientsService.delete(patient.id);
+    // The active patient no longer exists; drop it so the banner and guarded routes stop pointing
+    // at a record the server would answer 404 for.
+    this.activePatient.clear();
+    await this.router.navigateByUrl('/pacientes');
   }
 
   protected openAppointmentDialog(): void {

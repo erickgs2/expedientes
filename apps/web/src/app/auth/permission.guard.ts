@@ -25,6 +25,6 @@ export function permissionGuard(module: string, action: string): CanActivateFn {
       return true;
     }
 
-    return router.createUrlTree(['/patients']);
+    return router.createUrlTree(['/pacientes']);
   };
 }

@@ -28,7 +28,11 @@ import { AuthService } from '../auth/auth.service';
       <mat-card class="login-card">
         <mat-card-content>
           <div class="login-brand">
-            <mat-icon aria-hidden="true">spa</mat-icon>
+            <svg class="login-mark" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8" />
+              <path d="M12 1.5v6M12 16.5v6M1.5 12h6M16.5 12h6" />
+              <circle cx="12" cy="12" r="2" class="dot" />
+            </svg>
             <h1>Expedientes</h1>
           </div>
           <form [formGroup]="form" (ngSubmit)="submit()">
@@ -72,20 +76,26 @@ import { AuthService } from '../auth/auth.service';
       .login-card {
         width: 100%;
         max-width: 400px;
-        padding: 8px;
+        padding: 12px 8px 8px;
       }
       .login-brand {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
-        margin: 8px 0 24px;
+        gap: 10px;
+        margin: 12px 0 28px;
       }
-      .login-brand mat-icon {
-        font-size: 40px;
-        width: 40px;
-        height: 40px;
-        color: var(--mat-sys-primary);
+      .login-mark {
+        width: 44px;
+        height: 44px;
+        fill: none;
+        stroke: var(--mat-sys-on-surface);
+        stroke-width: 1.1;
+        stroke-linecap: round;
+      }
+      .login-mark .dot {
+        fill: var(--plate-mark);
+        stroke: none;
       }
       .login-brand h1 {
         margin: 0;

@@ -67,7 +67,7 @@ import { ExportService, type ExportDiagramImage } from './export.service';
   styles: [
     `
       .export-card {
-        max-width: 480px;
+        max-width: 560px;
       }
       .module-list {
         display: flex;
@@ -78,7 +78,7 @@ import { ExportService, type ExportDiagramImage } from './export.service';
         margin-top: 20px;
       }
       .error-message {
-        color: var(--mat-sys-error, #b3261e);
+        color: var(--mat-sys-error);
         margin: 16px 0 0;
       }
     `,

@@ -48,4 +48,9 @@ export class PatientsService {
       this.http.post<{ patient: PatientSummary }>('/api/patients', input)
     ).then((r) => r.patient);
   }
+
+  /** Permanently deletes the patient and every record and file stored under them. */
+  delete(patientId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/patients/${patientId}`));
+  }
 }

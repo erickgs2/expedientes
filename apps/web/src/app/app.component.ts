@@ -26,47 +26,42 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
     PatientBannerComponent,
   ],
   template: `
-    <mat-toolbar color="primary" class="app-toolbar">
+    <mat-menu #adminMenu="matMenu">
+      <a *appHasPermission="'rbac-admin:view'" mat-menu-item routerLink="/admin/users">
+        <mat-icon>manage_accounts</mat-icon>{{ 'shell.nav.users' | transloco }}
+      </a>
+      <a *appHasPermission="'rbac-admin:view'" mat-menu-item routerLink="/admin/roles">
+        <mat-icon>admin_panel_settings</mat-icon>{{ 'shell.nav.roles' | transloco }}
+      </a>
+      <a *appHasPermission="'treatments:view'" mat-menu-item routerLink="/admin/treatments">
+        <mat-icon>medical_services</mat-icon>{{ 'shell.nav.treatmentCatalog' | transloco }}
+      </a>
+      <a *appHasPermission="'clinic-settings:view'" mat-menu-item routerLink="/admin/clinic">
+        <mat-icon>business</mat-icon>{{ 'shell.nav.clinicSettings' | transloco }}
+      </a>
+    </mat-menu>
+    <mat-toolbar class="app-toolbar">
       <a routerLink="/patients" class="brand">
-        <mat-icon aria-hidden="true">spa</mat-icon>
+        <!-- The registration mark: a ringed cross, the dot a practitioner places on a face map. -->
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 1.5v6M12 16.5v6M1.5 12h6M16.5 12h6" />
+          <circle cx="12" cy="12" r="2" class="dot" />
+        </svg>
         <span>{{ 'shell.title' | transloco }}</span>
       </a>
       @if (auth.currentUser()) {
-        <nav class="desktop-nav">
-          <a mat-button routerLink="/patients" routerLinkActive="active-link">
+        <nav class="desktop-nav" [attr.aria-label]="'shell.menu' | transloco">
+          <a
+            mat-button
+            routerLink="/"
+            routerLinkActive="active-link"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            {{ 'shell.nav.today' | transloco }}
+          </a>
+          <a mat-button routerLink="/pacientes" routerLinkActive="active-link">
             {{ 'shell.nav.patients' | transloco }}
-          </a>
-          <a
-            *appHasPermission="'rbac-admin:view'"
-            mat-button
-            routerLink="/admin/users"
-            routerLinkActive="active-link"
-          >
-            {{ 'shell.nav.users' | transloco }}
-          </a>
-          <a
-            *appHasPermission="'rbac-admin:view'"
-            mat-button
-            routerLink="/admin/roles"
-            routerLinkActive="active-link"
-          >
-            {{ 'shell.nav.roles' | transloco }}
-          </a>
-          <a
-            *appHasPermission="'treatments:view'"
-            mat-button
-            routerLink="/admin/treatments"
-            routerLinkActive="active-link"
-          >
-            {{ 'shell.nav.treatments' | transloco }}
-          </a>
-          <a
-            *appHasPermission="'clinic-settings:view'"
-            mat-button
-            routerLink="/admin/clinic"
-            routerLinkActive="active-link"
-          >
-            {{ 'shell.nav.clinicSettings' | transloco }}
           </a>
           <a
             *appHasPermission="'appointments:view'"
@@ -76,14 +71,18 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
           >
             {{ 'shell.nav.calendar' | transloco }}
           </a>
-          <a
-            *appHasPermission="'export:view'"
-            mat-button
-            routerLink="/export"
-            routerLinkActive="active-link"
-          >
-            {{ 'shell.nav.export' | transloco }}
-          </a>
+          @if (canAdminister()) {
+            <button
+              mat-button
+              type="button"
+              class="admin-trigger"
+              [class.active-link]="adminActive()"
+              [matMenuTriggerFor]="adminMenu"
+            >
+              {{ 'shell.nav.admin' | transloco }}
+              <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
+            </button>
+          }
         </nav>
       }
       <span class="spacer"></span>
@@ -97,28 +96,22 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
           <mat-icon>menu</mat-icon>
         </button>
         <mat-menu #navMenu="matMenu">
-          <a mat-menu-item routerLink="/patients">
+          <a mat-menu-item routerLink="/">
+            <mat-icon>today</mat-icon>{{ 'shell.nav.today' | transloco }}
+          </a>
+          <a mat-menu-item routerLink="/pacientes">
             <mat-icon>group</mat-icon>{{ 'shell.nav.patients' | transloco }}
-          </a>
-          <a *appHasPermission="'rbac-admin:view'" mat-menu-item routerLink="/admin/users">
-            <mat-icon>manage_accounts</mat-icon>{{ 'shell.nav.users' | transloco }}
-          </a>
-          <a *appHasPermission="'rbac-admin:view'" mat-menu-item routerLink="/admin/roles">
-            <mat-icon>admin_panel_settings</mat-icon>{{ 'shell.nav.roles' | transloco }}
-          </a>
-          <a *appHasPermission="'treatments:view'" mat-menu-item routerLink="/admin/treatments">
-            <mat-icon>medical_services</mat-icon>{{ 'shell.nav.treatments' | transloco }}
-          </a>
-          <a *appHasPermission="'clinic-settings:view'" mat-menu-item routerLink="/admin/clinic">
-            <mat-icon>business</mat-icon>{{ 'shell.nav.clinicSettings' | transloco }}
           </a>
           <a *appHasPermission="'appointments:view'" mat-menu-item routerLink="/calendar">
             <mat-icon>calendar_month</mat-icon>{{ 'shell.nav.calendar' | transloco }}
           </a>
-          <a *appHasPermission="'export:view'" mat-menu-item routerLink="/export">
-            <mat-icon>download</mat-icon>{{ 'shell.nav.export' | transloco }}
-          </a>
+          @if (canAdminister()) {
+            <a mat-menu-item [matMenuTriggerFor]="adminMenu">
+              <mat-icon>settings</mat-icon>{{ 'shell.nav.admin' | transloco }}
+            </a>
+          }
         </mat-menu>
+
       }
       <button
         mat-icon-button
@@ -152,6 +145,9 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         top: 0;
         z-index: 100;
         gap: 4px;
+        background: var(--mat-sys-surface);
+        color: var(--mat-sys-on-surface);
+        border-bottom: 1px solid var(--plate-line);
         padding-top: env(safe-area-inset-top);
         padding-left: max(16px, env(safe-area-inset-left));
         padding-right: max(16px, env(safe-area-inset-right));
@@ -160,29 +156,67 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
       .brand {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         color: inherit;
         text-decoration: none;
-        font-family: Figtree, Roboto, sans-serif;
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 1.125rem;
+        letter-spacing: -0.02em;
         white-space: nowrap;
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        fill: none;
+        stroke: var(--mat-sys-on-surface);
+        stroke-width: 1.25;
+        stroke-linecap: round;
+      }
+      .brand-mark .dot {
+        fill: var(--plate-mark);
+        stroke: none;
       }
       .spacer {
         flex: 1 1 auto;
       }
       .desktop-nav {
-        margin-left: 24px;
+        margin-left: 28px;
         display: flex;
         align-items: center;
+        gap: 2px;
       }
-      .desktop-nav a {
-        opacity: 0.85;
+      .desktop-nav a,
+      .desktop-nav .admin-trigger {
+        position: relative;
+        color: var(--mat-sys-on-surface-variant);
+        letter-spacing: 0;
       }
+      .desktop-nav a:hover {
+        color: var(--mat-sys-on-surface);
+      }
+      /* The active page carries the mark: a small rose dot under the label, like a point on the map. */
       .desktop-nav a.active-link {
-        opacity: 1;
+        color: var(--mat-sys-on-surface);
         font-weight: 600;
-        box-shadow: inset 0 -3px 0 currentColor;
-        border-radius: 0;
+      }
+      .desktop-nav .admin-trigger {
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .desktop-nav .admin-trigger.active-link {
+        color: var(--mat-sys-on-surface);
+        font-weight: 600;
+      }
+      .desktop-nav a.active-link::after,
+      .desktop-nav .admin-trigger.active-link::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: 6px;
+        width: 5px;
+        height: 5px;
+        margin-left: -2.5px;
+        border-radius: 50%;
+        background: var(--plate-mark);
       }
       .mobile-nav-trigger {
         display: none;
@@ -196,7 +230,7 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         }
       }
       .page-content {
-        max-width: 1080px;
+        max-width: 1120px;
         margin: 0 auto;
         padding: 24px;
         padding-left: calc(24px + env(safe-area-inset-left));
@@ -225,6 +259,18 @@ export class AppComponent {
 
   protected setLang(lang: 'es' | 'en'): void {
     this.transloco.setActiveLang(lang);
+  }
+
+  protected canAdminister(): boolean {
+    return (
+      this.auth.hasPermission('rbac-admin', 'view') ||
+      this.auth.hasPermission('treatments', 'view') ||
+      this.auth.hasPermission('clinic-settings', 'view')
+    );
+  }
+
+  protected adminActive(): boolean {
+    return this.router.url.startsWith('/admin');
   }
 
   protected async logout(): Promise<void> {

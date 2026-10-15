@@ -122,7 +122,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
       .page-section + .page-section {
         margin-top: 32px;
         padding-top: 24px;
-        border-top: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-top: 1px solid var(--plate-line);
       }
       .section-title {
         margin: 0 0 16px;
@@ -149,7 +149,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
         width: 100%;
       }
       .load-error {
-        color: var(--mat-sys-error, #b3261e);
+        color: var(--mat-sys-error);
       }
     `,
   ],

@@ -261,7 +261,7 @@ function toDatetimeLocalString(date: Date): string {
         padding-bottom: 8px;
       }
       .form-section + .form-section {
-        border-top: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-top: 1px solid var(--plate-line);
         padding-top: 16px;
       }
       .section-title {
@@ -300,8 +300,8 @@ function toDatetimeLocalString(date: Date): string {
       .duration-chip {
         min-height: 44px;
         padding: 0 16px;
-        border-radius: 22px;
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border-radius: 8px;
+        border: 1px solid var(--plate-line-strong);
         background: transparent;
         color: var(--mat-sys-on-surface);
         font: inherit;
@@ -309,7 +309,7 @@ function toDatetimeLocalString(date: Date): string {
         transition: background-color 150ms ease-out, border-color 150ms ease-out;
       }
       .duration-chip:hover {
-        background: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        background: var(--mat-sys-surface-container-low);
       }
       .duration-chip.selected {
         background: var(--mat-sys-primary);
@@ -343,9 +343,9 @@ function toDatetimeLocalString(date: Date): string {
         gap: 8px;
         margin: 0 0 8px;
         padding: 12px;
-        border-radius: 8px;
-        background: var(--mat-sys-error-container, #fdecea);
-        color: var(--mat-sys-on-error-container, #5f1412);
+        border-radius: var(--plate-radius);
+        background: var(--mat-sys-error-container);
+        color: var(--mat-sys-on-error-container);
         font-size: 13px;
       }
       .overlap-warning mat-icon {

@@ -82,13 +82,15 @@ import { TreatmentTypeFormDialogComponent } from './treatment-type-form-dialog.c
         flex-direction: column;
       }
       .type-row {
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 8px 16px;
-        padding: 12px 4px;
-        border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        padding: 14px 4px;
+        min-height: 56px;
+        border-bottom: 1px solid var(--plate-line);
       }
       .type-name {
         flex: 1 1 200px;
