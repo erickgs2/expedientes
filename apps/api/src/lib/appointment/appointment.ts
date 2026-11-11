@@ -9,6 +9,7 @@ function toDetail(appointment: {
   durationMinutes: number;
   status: AppointmentStatus;
   notes: string | null;
+  arrivedAt: Date | null;
   treatmentTypes: { treatmentTypeId: string; treatmentType: { name: string } }[];
 }) {
   return {
@@ -19,6 +20,7 @@ function toDetail(appointment: {
     durationMinutes: appointment.durationMinutes,
     status: appointment.status,
     notes: appointment.notes,
+    arrivedAt: appointment.arrivedAt,
     treatmentTypeIds: appointment.treatmentTypes.map((t) => t.treatmentTypeId),
     treatmentTypeNames: appointment.treatmentTypes.map((t) => t.treatmentType.name),
   };
@@ -75,6 +77,8 @@ export async function getAppointment(id: string) {
 }
 
 export interface UpdateAppointmentData {
+  /** Front-desk check-in time; `null` undoes it. */
+  arrivedAt?: Date | null;
   patientId?: string;
   startTime?: Date;
   durationMinutes?: number;
@@ -98,8 +102,11 @@ export async function updateAppointment(id: string, data: UpdateAppointmentData)
     data: {
       ...rest,
       // Rescheduling must re-arm the reminder — otherwise an appointment whose reminder already
-      // went out for its old time would silently never get one for the new time.
-      ...(rest.startTime !== undefined ? { reminderSentAt: null } : {}),
+      // went out for its old time would silently never get one for the new time. A check-in
+      // belongs to the old slot too, unless this same request sets it.
+      ...(rest.startTime !== undefined
+        ? { reminderSentAt: null, ...(rest.arrivedAt === undefined ? { arrivedAt: null } : {}) }
+        : {}),
     },
   });
 

@@ -71,8 +71,13 @@ export interface ExportTreatmentItem {
      * chrome (the one-line annex reference, the annex footer) shows too.
      */
     signedDate: string;
-    patientSignatureImagePath: string;
+    method: 'DIGITAL' | 'PAPER';
+    /** Null for a paper-signed consent — its evidence is the scan pages. */
+    patientSignatureImagePath: string | null;
     witnessSignatureImagePath: string | null;
+    scanId: string | null;
+    /** Stored paths of the scanned pages, in order; empty for a digital consent. */
+    scanPagePaths: string[];
   } | null;
 }
 
@@ -157,8 +162,11 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
             consent = {
               blocks: detail.consentDocument,
               signedDate: detail.consent.signedDateSnapshot,
+              method: detail.consent.signatureMethod,
               patientSignatureImagePath: detail.consent.patientSignatureImagePath,
               witnessSignatureImagePath: detail.consent.witnessSignatureImagePath,
+              scanId: detail.consent.scanId,
+              scanPagePaths: detail.consent.scanPages,
             };
           }
           return {

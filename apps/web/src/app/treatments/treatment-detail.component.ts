@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -6,12 +6,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslocoModule } from '@jsverse/transloco';
+import { firstValueFrom } from 'rxjs';
 import type { Treatment, TreatmentType } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { TreatmentsService } from './treatments.service';
 import { TreatmentTypesService } from './treatment-types.service';
+import { ConsentService } from './consent.service';
+import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
+import {
+  ConsentScanDialogComponent,
+  type ConsentScanDialogData,
+} from './consent-scan-dialog.component';
 
 interface TreatmentItemForm {
   treatmentTypeId: string;
@@ -115,6 +123,17 @@ interface TreatmentItemForm {
                     <span>{{ 'treatments.signConsent' | transloco }}</span>
                   </a>
                 }
+                @if (!item.hasConsent) {
+                  <button
+                    type="button"
+                    class="item-action"
+                    [disabled]="printingItemId() === item.itemId"
+                    (click)="printBlank(item)"
+                  >
+                    <mat-icon aria-hidden="true">print</mat-icon>
+                    <span>{{ 'treatments.printBlank' | transloco }}</span>
+                  </button>
+                }
                 <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'diagram']">
                   <mat-icon aria-hidden="true">face</mat-icon>
                   <span>{{
@@ -139,6 +158,15 @@ interface TreatmentItemForm {
         </div>
       } @empty {
         <p>{{ 'treatments.noActiveTypes' | transloco }}</p>
+      }
+      @if (actionError()) {
+        <p class="action-error" role="alert">{{ actionError()! | transloco }}</p>
+      }
+      @if (canEdit && pendingItems().length > 0) {
+        <button mat-stroked-button type="button" class="scan-button" (click)="registerScan()">
+          <mat-icon aria-hidden="true">document_scanner</mat-icon>
+          {{ 'treatments.registerScan' | transloco }}
+        </button>
       }
       @if (canEdit) {
         <button mat-flat-button color="primary" [disabled]="saving()" (click)="save()">
@@ -193,6 +221,15 @@ interface TreatmentItemForm {
       .full-width {
         width: 100%;
       }
+      button.item-action {
+        cursor: pointer;
+      }
+      .scan-button {
+        margin-right: 8px;
+      }
+      .action-error {
+        color: var(--mat-sys-error);
+      }
       .inactive-badge {
         margin-left: 8px;
         font-size: 12px;
@@ -224,6 +261,8 @@ export class TreatmentDetailComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly consentService = inject(ConsentService);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -231,6 +270,12 @@ export class TreatmentDetailComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly fecha = signal('');
   protected readonly items = signal<TreatmentItemForm[]>([]);
+  protected readonly printingItemId = signal<string | null>(null);
+  protected readonly actionError = signal<string | null>(null);
+  /** Saved, selected items still waiting for a signed consent — what a scan can cover. */
+  protected readonly pendingItems = computed(() =>
+    this.items().filter((i) => i.selected && i.itemId && !i.hasConsent)
+  );
   // Plain field, not a signal: matches the established pattern used by
   // FacialDiagramViewsComponent/PhotoGalleryComponent for the same read-only-vs-editable split —
   // permissions don't change mid-session, so a one-time check in ngOnInit is sufficient.
@@ -297,6 +342,54 @@ export class TreatmentDetailComponent implements OnInit {
     this.items.update((current) =>
       current.map((i) => (i.treatmentTypeId === item.treatmentTypeId ? { ...i, selected } : i))
     );
+  }
+
+  protected async printBlank(item: TreatmentItemForm): Promise<void> {
+    if (!item.itemId) return;
+    this.printingItemId.set(item.itemId);
+    this.actionError.set(null);
+    try {
+      const blob = await this.consentService.printBlank(item.itemId);
+      const safeName = item.name.replace(/[^a-zA-Z0-9]+/g, '-') || 'consentimiento';
+      await deliverPdf(blob, `consentimiento-${safeName}.pdf`);
+    } catch (error) {
+      console.error('Failed to print the blank consent', error);
+      this.actionError.set('treatments.printBlankFailed');
+    } finally {
+      this.printingItemId.set(null);
+    }
+  }
+
+  protected async registerScan(): Promise<void> {
+    const pending = this.pendingItems();
+    if (pending.length === 0) return;
+    this.actionError.set(null);
+    try {
+      // The dialog's defaults (place, identification) come from the same detail the sign page reads.
+      const detail = await this.consentService.getItem(pending[0].itemId as string);
+      const ref = this.dialog.open<ConsentScanDialogComponent, ConsentScanDialogData, string[]>(
+        ConsentScanDialogComponent,
+        {
+          width: '520px',
+          data: {
+            treatmentId: this.treatmentId,
+            pending: pending.map((p) => ({ itemId: p.itemId as string, name: p.name })),
+            defaultPlace: detail.defaultPlace,
+            patientDocumentId: detail.patientDocumentId,
+          },
+        }
+      );
+      const registeredIds = await firstValueFrom(ref.afterClosed());
+      if (registeredIds?.length) {
+        const registered = new Set(registeredIds);
+        this.items.update((current) =>
+          current.map((i) => (i.itemId && registered.has(i.itemId) ? { ...i, hasConsent: true } : i))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to open the scan registration', error);
+      this.actionError.set('common.loadError');
+    }
   }
 
   async save(): Promise<void> {

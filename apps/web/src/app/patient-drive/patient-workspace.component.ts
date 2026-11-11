@@ -1,100 +1,76 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
+import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
-import { HasPermissionDirective } from '../auth/has-permission.directive';
+import { ActivePatientStore } from './active-patient.store';
 
 /**
- * The frame every patient screen sits in. The tab bar is the patient's own navigation — record,
- * valoraciones, treatments, photos, export — so moving between them no longer means going back to
- * a hub page first, and "Exportar" stops pretending to be a clinic-wide menu item.
+ * The frame every patient screen sits in. There is no tab bar any more: the overview
+ * (`resumen`) is the patient's hub — clinical card plus timeline — and every other screen
+ * (historia clínica, a valoración, a treatment, photos, export) shows a single way back to it.
  *
  * Routing and the loaded patient are owned by `patientRouteGuard`; this component only draws.
- * Links are relative to the `/pacientes/:patientId` route, so they follow the patient in the URL.
  */
 @Component({
   selector: 'app-patient-workspace',
   standalone: true,
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    MatTabsModule,
-    TranslocoModule,
-    HasPermissionDirective,
-  ],
+  imports: [RouterOutlet, RouterLink, MatIconModule, TranslocoModule],
   template: `
-    <nav
-      mat-tab-nav-bar
-      class="workspace-tabs"
-      [tabPanel]="panel"
-      [attr.aria-label]="'workspace.tabsLabel' | transloco"
-    >
-      <a
-        *appHasPermission="'historia-clinica:view'"
-        mat-tab-link
-        routerLink="historia-clinica"
-        routerLinkActive
-        #hc="routerLinkActive"
-        [active]="hc.isActive"
-      >
-        {{ 'workspace.tabs.record' | transloco }}
-      </a>
-      <a
-        *appHasPermission="'valoracion:view'"
-        mat-tab-link
-        routerLink="valoracion"
-        routerLinkActive
-        #va="routerLinkActive"
-        [active]="va.isActive"
-      >
-        {{ 'workspace.tabs.valoraciones' | transloco }}
-      </a>
-      <a
-        *appHasPermission="'treatments:view'"
-        mat-tab-link
-        routerLink="treatments"
-        routerLinkActive
-        #tr="routerLinkActive"
-        [active]="tr.isActive"
-      >
-        {{ 'workspace.tabs.treatments' | transloco }}
-      </a>
-      <a
-        *appHasPermission="'valoracion:view'"
-        mat-tab-link
-        routerLink="photos"
-        routerLinkActive
-        #ph="routerLinkActive"
-        [active]="ph.isActive"
-      >
-        {{ 'workspace.tabs.photos' | transloco }}
-      </a>
-      <a
-        *appHasPermission="'export:view'"
-        mat-tab-link
-        routerLink="export"
-        routerLinkActive
-        #ex="routerLinkActive"
-        [active]="ex.isActive"
-      >
-        {{ 'workspace.tabs.export' | transloco }}
-      </a>
-    </nav>
-    <mat-tab-nav-panel #panel class="workspace-panel">
-      <router-outlet></router-outlet>
-    </mat-tab-nav-panel>
+    @if (!onOverview()) {
+      <nav class="back" [attr.aria-label]="'workspace.tabsLabel' | transloco">
+        <a routerLink="resumen" class="back-link">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          <span>
+            {{ 'workspace.backTo' | transloco }}
+            @if (activePatient.patient(); as p) {
+              <strong>{{ p.fullName }}</strong>
+            }
+          </span>
+        </a>
+      </nav>
+    }
+    <router-outlet></router-outlet>
   `,
   styles: [
     `
-      .workspace-tabs {
-        margin-bottom: 24px;
-        border-bottom: 1px solid var(--plate-line);
+      .back {
+        margin-bottom: 20px;
       }
-      .workspace-panel {
-        display: block;
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 14px 0 8px;
+        border: 1px solid var(--plate-line);
+        border-radius: 22px;
+        color: var(--mat-sys-on-surface);
+        text-decoration: none;
+        transition: border-color 150ms ease-out, background-color 150ms ease-out;
+      }
+      .back-link:hover,
+      .back-link:focus-visible {
+        border-color: var(--plate-line-strong);
+        background: var(--mat-sys-surface-container-low);
+      }
+      .back-link mat-icon {
+        color: var(--mat-sys-on-surface-variant);
       }
     `,
   ],
 })
-export class PatientWorkspaceComponent {}
+export class PatientWorkspaceComponent {
+  private readonly router = inject(Router);
+  protected readonly activePatient = inject(ActivePatientStore);
+
+  protected readonly onOverview = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      startWith(null),
+      map(() => /\/resumen(?:[?#]|$)/.test(this.router.url))
+    ),
+    { initialValue: true }
+  );
+}

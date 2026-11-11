@@ -22,7 +22,7 @@ import { ActivePatientStore } from './active-patient.store';
         <a
           *appHasPermission="'historia-clinica:view'"
           class="banner-link"
-          [routerLink]="['/pacientes', patient.id, 'historia-clinica']"
+          [routerLink]="['/pacientes', patient.id, 'resumen']"
           [attr.aria-label]="'patientDrive.openRecord' | transloco"
         >
           <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>

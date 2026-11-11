@@ -102,7 +102,56 @@
       "message": "{{ name }} will be permanently deleted along with their clinical history, valoraciones, treatments, consents, appointments and photos. This cannot be undone.",
       "confirm": "Delete"
     },
-    "notFound": "That patient was not found."
+    "notFound": "That patient was not found.",
+    "browse": {
+      "title": "Patients",
+      "new": "New",
+      "open": "Open record",
+      "listLabel": "Find a patient",
+      "listsLabel": "Patient lists",
+      "tabToday": "Today",
+      "tabRecent": "Recent",
+      "tabAll": "All",
+      "empty": {
+        "today": "No patients have an appointment today.",
+        "recent": "You haven't opened any records yet.",
+        "all": "No patients registered yet."
+      },
+      "enterHint": "Type to search every record. Enter opens the first result; double-click opens the record.",
+      "previewLabel": "Record preview",
+      "pickOne": "Pick a patient from the list to see their summary.",
+      "previewFailed": "Couldn't load this patient's summary.",
+      "since": "Patient since {{date}}",
+      "age": "{{age}} years",
+      "noCurp": "No CURP",
+      "allergy": "Allergy on file · see clinical history",
+      "noHistoria": "This patient has no clinical history yet.",
+      "startHistoria": "Start history",
+      "nextAppointment": "Next appointment",
+      "noAppointment": "Nothing scheduled",
+      "valoraciones": "Assessments",
+      "treatments": "Treatments",
+      "photos": "Photos",
+      "photosMeta": "Before and after",
+      "last": "Last: {{date}}",
+      "none": "None yet",
+      "lastTreatment": "Last treatment · {{date}}",
+      "treatment": "Treatment",
+      "productLot": "Product and lot",
+      "lot": "lot",
+      "expiry": "exp.",
+      "consent": "Consent",
+      "consentState": {
+        "digital": "Signed digitally",
+        "paper": "Signed on paper",
+        "missing": "No consent"
+      },
+      "goTo": "Go to",
+      "export": "Export PDF",
+      "openedAt": "Opened {{when}}",
+      "todayAt": "Today {{time}}",
+      "createFailed": "Couldn't create the patient. Please try again."
+    }
   },
   "historiaClinica": {
     "title": "Clinical history",
@@ -154,6 +203,26 @@
       "noneScheduled": "No upcoming appointments",
       "valoraciones": "Assessments",
       "treatments": "Treatments"
+    },
+    "interview": {
+      "steps": "Clinical history steps",
+      "saving": "Saving…",
+      "savedAt": "Saved {{time}}",
+      "readOnly": "Read only",
+      "autosaveHint": "Saved every time you move to another step.",
+      "previous": "‹ Previous",
+      "close": "Close",
+      "next": "Next ›",
+      "saveNext": "Save and continue ›",
+      "finish": "Save and finish",
+      "finishReadOnly": "Back to record",
+      "stepOf": "Step {{n}} of {{total}}",
+      "hint": {
+        "personalInfo": "Contact details, allergies and what the patient is looking for.",
+        "medicalInfo": "Ask about conditions, medications and previous treatments.",
+        "personalHistory": "Tap the answer for closed questions; leave blank what doesn't apply.",
+        "familyHistory": "Relevant conditions in close family."
+      }
     }
   },
   "valoracion": {
@@ -292,8 +361,85 @@
       "clearPending": "Will be removed on save.",
       "confirmationTemplate": "Confirmation template",
       "reminderTemplate": "Reminder template",
-      "templateLanguage": "Template language"
-    }
+      "templateLanguage": "Template language",
+      "enabled": "Send WhatsApp messages to patients",
+      "enabledOn": "On: a confirmation is sent on booking and a reminder 2 hours before.",
+      "enabledOff": "Off: nothing is sent to patients. Tests still work.",
+      "test": {
+        "open": "Test WhatsApp",
+        "openHelp": "Sends the confirmation or reminder to a number you choose, without touching real patients.",
+        "title": "Test WhatsApp messages",
+        "help": "Sends the saved template with sample values (\"Paciente de prueba\", tomorrow at 10:00).",
+        "unsaved": "You have unsaved changes. The test uses the saved settings; save first to test your changes.",
+        "switchOff": "Messages to patients are switched off. This test will still be sent.",
+        "kind": "Message",
+        "confirmation": "Confirmation",
+        "reminder": "Reminder",
+        "phone": "WhatsApp number",
+        "phoneHint": "10 digits for Mexico, or include the country code, e.g. 52 55 1234 5678",
+        "send": "Send test",
+        "sending": "Sending…",
+        "close": "Close",
+        "requestFailed": "The test couldn't run. Check your connection or permissions.",
+        "result": {
+          "sent": "Sent. Check that number's WhatsApp.",
+          "disabled": "Messages are switched off.",
+          "not_configured": "The access token or phone number ID is missing.",
+          "invalid_phone": "The number is not valid.",
+          "send_failed": "Meta rejected the send. Details:",
+          "too_soon": "Wait a few minutes before sending again."
+        }
+      },
+      "step1": "1 · Connect to Meta",
+      "step2": "2 · Templates",
+      "step3": "3 · Test before switching on",
+      "paramsHint": "Each template receives 3 values: patient name, appointment date and time."
+    },
+    "subtitle": "What appears on every consent and on the exported record PDF.",
+    "status": {
+      "label": "Setup status",
+      "logo": "Logo",
+      "doctor": "Doctor and licence",
+      "declarations": "Declarations",
+      "signature": "Doctor's signature",
+      "whatsapp": "WhatsApp",
+      "values": {
+        "logoOk": "Uploaded",
+        "logoMissing": "Not uploaded",
+        "doctorOk": "Ready",
+        "doctorMissing": "Missing — blocks consents",
+        "declarationsSuggested": "Suggested text",
+        "declarationsCustom": "Customised",
+        "declarationsMissing": "Missing",
+        "signatureOk": "Ready",
+        "signatureMissing": "Not drawn yet",
+        "whatsappNotConfigured": "Not configured",
+        "whatsappOff": "Configured · off",
+        "whatsappOn": "On"
+      }
+    },
+    "doctorHelp": "No consent can be signed without the doctor's name and licence number.",
+    "assetsTitle": "Logo and signature",
+    "keepSignature": "Keep the current signature",
+    "declarationsTitle": "Consent declarations",
+    "insertLabel": "Insert field:",
+    "placeholders": {
+      "patientName": "Patient name",
+      "doctorTitle": "Doctor's title",
+      "doctorName": "Doctor's name",
+      "doctorLicense": "Licence",
+      "clinicName": "Clinic name"
+    },
+    "signedUnaffected": "Inserted fields fill in when signing. Already signed consents never change.",
+    "preview": {
+      "label": "Consent preview",
+      "title": "How a consent will look",
+      "sample": "Sample data",
+      "noSignature": "No signature",
+      "note": "Updates as you edit. Consents always print in Spanish."
+    },
+    "unsaved": "Unsaved changes",
+    "allSaved": "All saved"
   },
   "treatments": {
     "listTitle": "Treatments",
@@ -339,7 +485,23 @@
     "addProduct": "Add product",
     "editProduct": "Edit product",
     "deleteProduct": "Delete product",
-    "confirmDeleteProduct": "Remove this product from the treatment?"
+    "confirmDeleteProduct": "Remove this product from the treatment?",
+    "printBlank": "Print unsigned",
+    "printBlankFailed": "The letter could not be generated.",
+    "registerScan": "Register signed scan",
+    "scanDialogTitle": "Register signed scan",
+    "scanCovers": "Letters covered by this scan",
+    "scanSignedDate": "Signing date",
+    "scanPages": "Scanned pages (JPG or PNG)",
+    "scanRemovePage": "Remove page",
+    "scanRegister": "Register",
+    "scanRegisterFailed": "The scan could not be registered.",
+    "scanSignedOnPaper": "Signed on paper",
+    "scanPageAlt": "Signed scan page",
+    "scanTakePhoto": "Take photo",
+    "scanChooseImages": "Choose images",
+    "scanTooManyPages": "A scan can have at most 20 pages.",
+    "scanImageUnreadable": "One of the images could not be read."
   },
   "appointments": {
     "calendarTitle": "Calendar",
@@ -407,7 +569,8 @@
       "treatments": "Treatments",
       "photos": "Photos",
       "export": "Export"
-    }
+    },
+    "backTo": "Back to the record of"
   },
   "today": {
     "title": "Today",
@@ -415,6 +578,157 @@
     "next": "Next",
     "noAppointments": "No appointments today",
     "noResults": "No patient matches",
-    "results": "Search results"
+    "results": "Search results",
+    "desk": {
+      "searchLabel": "Search patient by name, phone or CURP",
+      "agenda": "Agenda",
+      "filter": {
+        "label": "Filter appointments",
+        "all": "All",
+        "action": "Needs action",
+        "open": "To attend",
+        "done": "Done"
+      },
+      "emptyFilter": "No appointments match this filter",
+      "noTreatment": "No treatment specified",
+      "col": {
+        "time": "Time",
+        "patient": "Patient",
+        "treatment": "Treatment",
+        "reminder": "Reminder",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "flag": {
+        "allergy": "Allergy on file",
+        "noHistoria": "No clinical history",
+        "consent": "Consent to sign"
+      },
+      "action": {
+        "remind": "Send reminder",
+        "arrive": "Check in",
+        "unarrive": "Undo check-in",
+        "record": "Open record",
+        "startHistoria": "Start history",
+        "reschedule": "Reschedule",
+        "edit": "Edit appointment",
+        "more": "More actions"
+      },
+      "phase": {
+        "unconfirmed": "Unconfirmed",
+        "confirmed": "Confirmed",
+        "arrived": "Arrived · {{time}}",
+        "inConsult": "In consultation",
+        "done": "Done",
+        "noShow": "No-show",
+        "cancelled": "Cancelled"
+      },
+      "reminder": {
+        "sent": "Reminder sent · {{time}}",
+        "confirmationSent": "Confirmation sent",
+        "off": "WhatsApp off",
+        "notSent": "Not sent"
+      },
+      "kpi": {
+        "today": "Appointments today",
+        "todayMeta": "{{done}} done · {{inConsult}} in consultation",
+        "confirmed": "Confirmed",
+        "confirmedMeta": "{{count}} unconfirmed",
+        "needsAction": "Needs action",
+        "needsActionMeta": "{{unconfirmed}} unconfirmed · {{consent}} consent · {{historia}} no history",
+        "tomorrow": "Tomorrow",
+        "tomorrowMeta": "{{count}} unconfirmed"
+      },
+      "side": {
+        "pending": "Follow-ups",
+        "tomorrowUnconfirmed": "Tomorrow's unconfirmed appointments",
+        "afterPhotos": "Missing “after” photos (30 days)",
+        "noShows": "No-shows this week",
+        "whatsappOff": "WhatsApp messages to patients are switched off in Clinic settings.",
+        "recent": "Recently opened",
+        "recentEmpty": "You haven't opened any records yet."
+      },
+      "retry": "Retry",
+      "result": {
+        "sent": "Reminder sent to {{name}}",
+        "disabled": "Not sent: WhatsApp messages are switched off",
+        "not_configured": "Not sent: WhatsApp is not configured",
+        "invalid_phone": "Not sent: {{name}}'s phone number is invalid",
+        "send_failed": "Couldn't send the reminder. Please try again.",
+        "too_soon": "A reminder was already sent less than 30 minutes ago",
+        "request_failed": "Couldn't complete the action. Please try again.",
+        "arrived": "{{name}} checked in",
+        "unarrived": "Check-in undone for {{name}}"
+      }
+    }
+  },
+  "patientOverview": {
+    "export": "Export PDF",
+    "register": "Record",
+    "newValoracion": "New assessment",
+    "newTreatment": "New treatment",
+    "more": "More actions",
+    "cardLabel": "Clinical card",
+    "beforeTreating": "Before treating",
+    "noneRecorded": "None recorded",
+    "notRecorded": "Not recorded",
+    "notRecordedShort": "Not recorded",
+    "pregnancy": "Pregnancy",
+    "acne": "Acne (3 months)",
+    "previousAesthetic": "Previous aesthetics",
+    "noHistoria": "No clinical history yet. Start the interview before the first treatment.",
+    "edit": "Edit",
+    "start": "Start",
+    "reason": "Reason for visit",
+    "complete": "Complete",
+    "partial": "{{filled}} of {{total}}",
+    "consents": "Consents",
+    "timeline": "Timeline",
+    "filterLabel": "Filter the timeline",
+    "filter": {
+      "all": "All",
+      "appointment": "Appointments",
+      "valoracion": "Assessments",
+      "treatment": "Treatments",
+      "photos": "Photos"
+    },
+    "timelineFailed": "Couldn't load the timeline.",
+    "timelineEmpty": "Nothing to show with this filter.",
+    "kind": {
+      "appointment": "Appointment",
+      "valoracion": "Assessment",
+      "treatment": "Treatment"
+    },
+    "appointmentNoTreatment": "Appointment with no treatment specified",
+    "startValoracion": "Start assessment",
+    "valoracionTitle": "Facial assessment · {{views}} views · {{photos}} photos",
+    "photoAlt": {
+      "BEFORE": "Before photo",
+      "AFTER": "After photo"
+    },
+    "open": "Open",
+    "treatmentEmpty": "Visit with no treatments recorded",
+    "created": "{{date}} · Patient registered",
+    "today": "Today"
+  },
+  "companions": {
+    "toggle": "Their WhatsApp notices go to a companion",
+    "pickerLabel": "Companion who receives the notices",
+    "pickerHint": "Partner, mother, daughter… Search by name or phone.",
+    "change": "Change",
+    "dialogTitle": "WhatsApp notices",
+    "dialogIntro": "Which number should receive {{name}}'s confirmations and reminders?",
+    "own": "Their own number",
+    "viaContact": "A companion's",
+    "viaContactHelp": "Messages still name this patient; only the receiving number changes.",
+    "hasDependents": "This patient already receives notices for {{names}}, so must keep their own number.",
+    "ownPhoneOptional": "Own phone (optional)",
+    "ownPhoneHint": "Notices will go to the companion. Leave blank if they have no phone.",
+    "via": "Notices via {{name}}",
+    "noticesTo": "WhatsApp notices to:",
+    "noticesVia": "WhatsApp notices via {{name}} · {{phone}}",
+    "receivesFor": "Also receives notices for {{names}}",
+    "noPhone": "no phone",
+    "linkCompanion": "Send to a companion"
   }
 }

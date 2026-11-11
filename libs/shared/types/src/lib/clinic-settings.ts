@@ -12,6 +12,8 @@ export interface ClinicSettings {
   whatsappConfirmationTemplate: string | null;
   whatsappReminderTemplate: string | null;
   whatsappTemplateLanguage: string | null;
+  /** Master switch for WhatsApp messages to real patients (confirmations and reminders). */
+  whatsappNotificationsEnabled: boolean;
   /**
    * Whether an access token is stored. The token itself is write-only and never returned — a read
    * endpoint that echoed a credential would let anyone who can open the settings screen copy it.
@@ -26,6 +28,8 @@ export interface ClinicSettingsInput {
   whatsappConfirmationTemplate: string;
   whatsappReminderTemplate: string;
   whatsappTemplateLanguage: string;
+  /** Sent as `'true'` / `'false'` in the multipart form. */
+  whatsappNotificationsEnabled: string;
   doctorTitle: string;
   doctorName: string;
   doctorLicense: string;

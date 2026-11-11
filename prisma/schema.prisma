@@ -50,8 +50,15 @@ model RolePermission {
 model Patient {
   id              String           @id @default(uuid())
   fullName        String
+  /// Empty when the patient receives WhatsApp notices through `contactPatient` instead.
   phone           String
   documentId      String?
+  /// Another patient — usually who they come with (partner, mother, daughter) — whose phone receives
+  /// this patient's appointment confirmations and reminders. One level only: a contact never has a
+  /// contact of their own. Cleared automatically if that patient is deleted.
+  contactPatientId String?
+  contactPatient   Patient?        @relation("NotificationContact", fields: [contactPatientId], references: [id], onDelete: SetNull)
+  dependents       Patient[]       @relation("NotificationContact")
   historiaClinica HistoriaClinica?
   valoraciones    Valoracion[]
   treatments      Treatment[]
@@ -62,6 +69,7 @@ model Patient {
   @@index([fullName])
   @@index([phone])
   @@index([documentId])
+  @@index([contactPatientId])
 }
 
 model AuditLog {
@@ -231,10 +239,18 @@ model TreatmentItem {
   @@unique([treatmentId, treatmentTypeId])
 }
 
+enum ConsentSignatureMethod {
+  DIGITAL
+  PAPER
+}
+
 model Consent {
-  id                        String        @id @default(uuid())
-  treatmentItemId           String        @unique
-  treatmentItem             TreatmentItem @relation(fields: [treatmentItemId], references: [id])
+  id                        String                 @id @default(uuid())
+  treatmentItemId           String                 @unique
+  treatmentItem             TreatmentItem          @relation(fields: [treatmentItemId], references: [id])
+  signatureMethod           ConsentSignatureMethod @default(DIGITAL)
+  scanId                    String?
+  scan                      ConsentScan?           @relation(fields: [scanId], references: [id])
   place                     String
   signedDateSnapshot        String
   patientNameSnapshot       String
@@ -246,10 +262,35 @@ model Consent {
   declarationBeforeSnapshot String
   declarationAfterSnapshot  String
   sections                  Json
-  patientSignatureImagePath String
+  patientSignatureImagePath String?
   witnessName               String?
   witnessSignatureImagePath String?
-  signedAt                  DateTime      @default(now())
+  signedAt                  DateTime               @default(now())
+
+  @@index([scanId])
+}
+
+/// One scanned (photographed) set of pages carrying the handwritten signatures of one or more
+/// consents signed the same day. `patientId` is a plain column, like TreatmentItemPhoto's.
+model ConsentScan {
+  id         String            @id @default(uuid())
+  patientId  String
+  signedDate String
+  createdAt  DateTime          @default(now())
+  pages      ConsentScanPage[]
+  consents   Consent[]
+
+  @@index([patientId])
+}
+
+model ConsentScanPage {
+  id       String      @id @default(uuid())
+  scanId   String
+  scan     ConsentScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  position Int
+  filePath String
+
+  @@unique([scanId, position])
 }
 
 model TreatmentItemDiagram {
@@ -309,6 +350,11 @@ model Appointment {
   status          AppointmentStatus          @default(SCHEDULED)
   notes           String?
   reminderSentAt  DateTime?
+  /// When the booking-confirmation WhatsApp went out successfully. Null = never sent (or failed).
+  confirmationSentAt DateTime?
+  /// When reception registered that the patient arrived. Kept as a timestamp rather than a new
+  /// `AppointmentStatus` so the calendar and the reminder sweep keep working unchanged.
+  arrivedAt       DateTime?
   treatmentTypes  AppointmentTreatmentType[]
   createdAt       DateTime                   @default(now())
   updatedAt       DateTime                   @updatedAt
@@ -346,6 +392,10 @@ model ClinicSettings {
   whatsappConfirmationTemplate String?
   whatsappReminderTemplate     String?
   whatsappTemplateLanguage     String?
+  /// Master switch for messages sent to real patients (booking confirmation, automatic and manual
+  /// reminders). Off by default so a clinic can configure and test the templates first; the
+  /// settings screen's test sends ignore it, because they go to a number the user types.
+  whatsappNotificationsEnabled Boolean @default(false)
 
   updatedAt           DateTime @updatedAt
 }

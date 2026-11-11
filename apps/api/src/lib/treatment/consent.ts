@@ -1,9 +1,9 @@
-import type { Prisma } from '@prisma/client';
 import type { ConsentBlock, ConsentSection } from '@expedientes/shared-types';
 import { prisma } from '../prisma/client';
 import { saveFile } from '../storage/file-storage';
 import { getClinicSettings, hasUsableDoctorIdentity } from '../clinic/clinic-settings';
-import { buildConsentDocument, interpolate, localSigningDate } from '../consent/build-consent-document';
+import { buildConsentDocument, localSigningDate } from '../consent/build-consent-document';
+import { buildConsentSnapshot } from '../consent/consent-snapshot';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 
 export function sectionsFromTreatmentType(type: {
@@ -28,7 +28,7 @@ export async function getTreatmentItemDetail(id: string) {
     include: {
       treatmentType: true,
       treatment: { include: { patient: true } },
-      consent: true,
+      consent: { include: { scan: { include: { pages: { orderBy: { position: 'asc' } } } } } },
       diagrams: true,
     },
   });
@@ -89,11 +89,15 @@ export async function getTreatmentItemDetail(id: string) {
     notes: item.notes,
     patientId: item.treatment.patientId,
     patientDocumentId: patient.documentId ?? '',
+    patientName: patient.fullName,
     consentPreview,
     consentDocument,
     consent: item.consent
       ? {
           id: item.consent.id,
+          signatureMethod: item.consent.signatureMethod,
+          scanId: item.consent.scanId,
+          scanPages: item.consent.scan?.pages.map((p) => p.filePath) ?? [],
           place: item.consent.place,
           patientIdentification: item.consent.patientIdentification,
           witnessName: item.consent.witnessName,
@@ -147,14 +151,6 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
 
   const patientId = item.treatment.patientId;
   const patientName = item.treatment.patient.fullName;
-  const values = {
-    clinicName: settings.clinicName,
-    doctorTitle: settings.doctorTitle,
-    doctorName: settings.doctorName,
-    doctorLicense: settings.doctorLicense,
-    patientName,
-  };
-
   const patientSignatureImagePath = await saveFile(
     input.patientSignature,
     'consents',
@@ -168,22 +164,17 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
   const consent = await prisma.consent.create({
     data: {
       treatmentItemId,
-      place: input.place,
-      signedDateSnapshot: localSigningDate(),
-      patientNameSnapshot: patientName,
-      patientIdentification: input.patientIdentification,
-      clinicNameSnapshot: settings.clinicName,
-      doctorTitleSnapshot: settings.doctorTitle,
-      doctorNameSnapshot: settings.doctorName,
-      doctorLicenseSnapshot: settings.doctorLicense,
-      declarationBeforeSnapshot: interpolate(settings.declarationBefore, values),
-      declarationAfterSnapshot: interpolate(settings.declarationAfter, values),
-      // Prisma types a Json column as `InputJsonValue`, which a named interface array doesn't
-      // structurally satisfy even though its shape is plain JSON. The cast is safe: `ConsentSection`
-      // is `{ key, body }` with string members and no optional or non-serializable fields.
-      sections: sectionsFromTreatmentType(item.treatmentType) as unknown as Prisma.InputJsonValue,
+      signatureMethod: 'DIGITAL',
+      ...buildConsentSnapshot({
+        settings,
+        patientName,
+        patientIdentification: input.patientIdentification,
+        place: input.place,
+        signedDate: localSigningDate(),
+        witnessName: input.witnessName,
+        sections: sectionsFromTreatmentType(item.treatmentType),
+      }),
       patientSignatureImagePath,
-      witnessName: input.witnessName,
       witnessSignatureImagePath,
     },
   });

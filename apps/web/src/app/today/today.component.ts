@@ -1,13 +1,13 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AppointmentSummary, PatientSummary } from '@expedientes/shared-types';
+import type { AppointmentSummary, TodayAppointment, TodayDesk } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { AppointmentService } from '../appointments/appointment.service';
@@ -16,357 +16,260 @@ import {
   type AppointmentFormDialogData,
 } from '../appointments/appointment-form.component';
 import { AppointmentQuickViewComponent } from '../appointments/appointment-quick-view.component';
-import { PatientsService } from '../patient-drive/patients.service';
+import { DeskAgendaComponent, type DeskFilter, type DeskRowEvent } from './desk-agenda.component';
+import { DeskKpisComponent } from './desk-kpis.component';
+import { DeskSideComponent } from './desk-side.component';
+import { PatientQuickSearchComponent } from './patient-quick-search.component';
+import { TodayDeskService } from './today-desk.service';
+
+const REFRESH_MS = 60_000;
+const FILTERS: DeskFilter[] = ['all', 'accion', 'pendientes', 'terminadas'];
 
 /**
- * Where the working day starts. The doctor's first questions are "who is next?" and "find this
- * patient" — so both are answered here, instead of landing on an empty patient search.
- *
- * Search is first because it is the most frequent action; the agenda sits right under it with the
- * next appointment marked. Every agenda row goes straight to the record.
+ * "Hoy · Mostrador": where the working day starts. Search first (the most frequent action), then
+ * the day in four numbers, then the agenda with one next step per row. Everything below the
+ * header comes from `GET /api/today` in one call, refreshed every minute and when the tab regains
+ * focus, so phases ("in consult") move on their own while the screen sits open on a tablet.
  */
 @Component({
   selector: 'app-today',
   standalone: true,
   imports: [
-    FormsModule,
     RouterLink,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     TranslocoModule,
     HasPermissionDirective,
+    PatientQuickSearchComponent,
+    DeskKpisComponent,
+    DeskAgendaComponent,
+    DeskSideComponent,
   ],
   template: `
-    <header class="today-header">
-      <h1>{{ 'today.title' | transloco }}</h1>
-      <p class="today-date">{{ dateLabel() }}</p>
+    <header class="desk-header">
+      <div class="title">
+        <h1>{{ 'today.title' | transloco }}</h1>
+        <p class="date">{{ dateLabel() }}</p>
+      </div>
+      <app-patient-quick-search class="search"></app-patient-quick-search>
+      <div class="actions">
+        <a mat-stroked-button routerLink="/pacientes">
+          <mat-icon>person_add</mat-icon> {{ 'patientDrive.newPatient' | transloco }}
+        </a>
+        <button
+          *appHasPermission="'appointments:create'"
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="newAppointment()"
+        >
+          <mat-icon>event_available</mat-icon> {{ 'appointments.new' | transloco }}
+        </button>
+      </div>
     </header>
 
-    <mat-form-field appearance="outline" class="search">
-      <mat-label>{{ 'patientDrive.search' | transloco }}</mat-label>
-      <mat-icon matPrefix>search</mat-icon>
-      <input
-        matInput
-        [ngModel]="query()"
-        (ngModelChange)="onQueryChange($event)"
-        (keydown.enter)="openFirst()"
-        autocomplete="off"
-      />
-    </mat-form-field>
-
-    @if (query().trim()) {
-      <ul class="results" [attr.aria-label]="'today.results' | transloco">
-        @for (patient of results(); track patient.id) {
-          <li>
-            <a class="result-row" [routerLink]="['/pacientes', patient.id]">
-              <span class="result-name">{{ patient.fullName }}</span>
-              <span class="result-meta">
-                {{ patient.phone }}{{ patient.documentId ? ' · ' + patient.documentId : '' }}
-              </span>
-            </a>
-          </li>
-        } @empty {
-          @if (!searching()) {
-            <li class="no-results">{{ 'today.noResults' | transloco }}</li>
-          }
-        }
-      </ul>
-    }
-
-    <div class="quick-buttons">
-      <a mat-stroked-button routerLink="/pacientes">
-        <mat-icon>person_add</mat-icon> {{ 'patientDrive.newPatient' | transloco }}
-      </a>
-      <button
-        *appHasPermission="'appointments:create'"
-        mat-stroked-button
-        type="button"
-        (click)="newAppointment()"
-      >
-        <mat-icon>event_available</mat-icon> {{ 'appointments.new' | transloco }}
-      </button>
-    </div>
-
     @if (canSeeAgenda) {
-      <section class="agenda" [attr.aria-label]="'today.agenda' | transloco">
-        <h2>{{ 'today.agenda' | transloco }}</h2>
-        @if (loading()) {
-          <p>{{ 'common.loading' | transloco }}</p>
-        } @else if (loadFailed()) {
+      @if (desk(); as d) {
+        <app-desk-kpis [kpis]="d.kpis"></app-desk-kpis>
+        <div class="desk-body">
+          <app-desk-agenda
+            class="main"
+            [appointments]="d.appointments"
+            [whatsappEnabled]="d.whatsappEnabled"
+            [filter]="filter()"
+            (action)="onRowAction($event)"
+          ></app-desk-agenda>
+          <app-desk-side class="side" [desk]="d"></app-desk-side>
+        </div>
+      } @else if (loadFailed()) {
+        <div class="state">
           <p>{{ 'common.loadError' | transloco }}</p>
-        } @else {
-          <ul class="agenda-list">
-            @for (appt of appointments(); track appt.id) {
-              <li class="agenda-row" [class.is-next]="appt.id === nextId()">
-                <button type="button" class="agenda-main" (click)="openQuickView(appt)">
-                  <span class="agenda-time">{{ timeLabel(appt) }}</span>
-                  <span class="agenda-who">
-                    <span class="agenda-name">{{ appt.patientName }}</span>
-                    @if (appt.treatmentTypeNames.length > 0) {
-                      <span class="agenda-treatments">{{ appt.treatmentTypeNames.join(', ') }}</span>
-                    }
-                  </span>
-                  @if (appt.id === nextId()) {
-                    <span class="next-mark">{{ 'today.next' | transloco }}</span>
-                  }
-                  @if (appt.status !== 'SCHEDULED') {
-                    <span class="agenda-status">{{ 'appointments.status.' + appt.status | transloco }}</span>
-                  }
-                </button>
-                <a
-                  *appHasPermission="'historia-clinica:view'"
-                  mat-stroked-button
-                  class="agenda-open"
-                  [routerLink]="['/pacientes', appt.patientId, 'historia-clinica']"
-                >
-                  {{ 'appointments.quick.openRecord' | transloco }}
-                </a>
-              </li>
-            } @empty {
-              <li class="empty-state">
-                <mat-icon>event_available</mat-icon>
-                <p>{{ 'today.noAppointments' | transloco }}</p>
-              </li>
-            }
-          </ul>
-        }
-      </section>
+          <button mat-stroked-button type="button" (click)="reload()">
+            {{ 'today.desk.retry' | transloco }}
+          </button>
+        </div>
+      } @else {
+        <div class="state skeleton" aria-busy="true">
+          <p>{{ 'common.loading' | transloco }}</p>
+        </div>
+      }
     }
   `,
   styles: [
     `
-      .today-header {
-        margin-bottom: 20px;
+      :host {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
       }
-      .today-header h1 {
-        margin-bottom: 2px;
+      .desk-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px 24px;
       }
-      .today-date {
+      .title {
+        flex: 1 1 220px;
+      }
+      .title h1 {
+        margin: 0;
+      }
+      .date {
         margin: 0;
         color: var(--mat-sys-on-surface-variant);
+        font-variant-numeric: tabular-nums;
       }
-      .today-date::first-letter {
+      .date::first-letter {
         text-transform: uppercase;
       }
       .search {
-        width: 100%;
+        flex: 2 1 320px;
       }
-      .results {
-        list-style: none;
-        margin: -8px 0 16px;
-        padding: 0;
-        border: 1px solid var(--plate-line);
-        border-radius: var(--plate-radius);
-      }
-      .result-row {
-        box-sizing: border-box;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-        gap: 4px 12px;
-        min-height: 56px;
-        padding: 12px 16px;
-        color: inherit;
-        text-decoration: none;
-      }
-      .results li + li {
-        border-top: 1px solid var(--plate-line);
-      }
-      .result-row:hover,
-      .result-row:focus-visible {
-        background: var(--mat-sys-surface-container-low);
-      }
-      .result-name {
-        font-weight: 600;
-      }
-      .result-meta {
-        color: var(--mat-sys-on-surface-variant);
-        font-variant-numeric: tabular-nums;
-      }
-      .no-results {
-        padding: 16px;
-        color: var(--mat-sys-on-surface-variant);
-      }
-      .quick-buttons {
+      .actions {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 8px;
       }
-      .agenda-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-      .agenda-row {
+      .desk-body {
         display: flex;
-        align-items: stretch;
-        gap: 12px;
-        border-bottom: 1px solid var(--plate-line);
+        flex-wrap: wrap;
+        gap: 24px;
+        align-items: flex-start;
       }
-      .agenda-main {
-        box-sizing: border-box;
-        flex: 1;
+      .main {
+        flex: 999 1 600px;
         min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        min-height: 64px;
-        padding: 12px 8px;
-        border: 0;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-        transition: background-color 150ms ease-out;
       }
-      .agenda-main:hover,
-      .agenda-main:focus-visible {
-        background: var(--mat-sys-surface-container-low);
+      .side {
+        flex: 1 1 280px;
+        min-width: 0;
       }
-      .agenda-time {
-        flex: none;
-        width: 5.5ch;
-        font-size: 1.125rem;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-      }
-      .agenda-who {
+      .state {
         display: flex;
         flex-direction: column;
-        min-width: 0;
-        flex: 1;
-      }
-      .agenda-name {
-        font-weight: 600;
-        overflow-wrap: anywhere;
-      }
-      .agenda-treatments {
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 13px;
-      }
-      /* The next appointment carries the rose mark: the one point on today's map that matters most. */
-      .next-mark {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--mat-sys-primary);
-      }
-      .next-mark::before {
-        content: '';
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--plate-mark);
-      }
-      .agenda-status {
-        font-size: 12px;
-        color: var(--mat-sys-on-surface-variant);
+        align-items: flex-start;
+        gap: 12px;
+        min-height: 320px;
+        padding: 24px;
         border: 1px dashed var(--plate-line-strong);
-        border-radius: 6px;
-        padding: 2px 8px;
-      }
-      .agenda-open {
-        align-self: center;
-        flex: none;
-      }
-      @media (max-width: 599px) {
-        .agenda-row {
-          flex-direction: column;
-          gap: 0;
-          padding-bottom: 8px;
-        }
-        .agenda-open {
-          align-self: stretch;
-          margin: 0 8px;
-        }
+        border-radius: 14px;
+        color: var(--mat-sys-on-surface-variant);
       }
     `,
   ],
 })
 export class TodayComponent implements OnInit {
+  private readonly deskService = inject(TodayDeskService);
   private readonly appointmentService = inject(AppointmentService);
-  private readonly patientsService = inject(PatientsService);
   private readonly dialog = inject(MatDialog);
-  private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly canSeeAgenda = this.auth.hasPermission('appointments', 'view');
 
-  protected readonly query = signal('');
-  protected readonly results = signal<PatientSummary[]>([]);
-  protected readonly searching = signal(false);
-  protected readonly appointments = signal<AppointmentSummary[]>([]);
-  protected readonly loading = signal(true);
+  protected readonly desk = signal<TodayDesk | null>(null);
   protected readonly loadFailed = signal(false);
+  private readonly now = signal(new Date());
 
-  /** The first appointment that has not started yet (or is still running), among live ones. */
-  protected readonly nextId = computed(() => {
-    const now = Date.now();
-    const upcoming = this.appointments().find(
-      (a) =>
-        (a.status === 'SCHEDULED' || a.status === 'CONFIRMED') &&
-        new Date(a.startTime).getTime() + a.durationMinutes * 60_000 > now
-    );
-    return upcoming?.id ?? null;
-  });
-
-  protected readonly dateLabel = computed(() =>
-    new Date().toLocaleDateString(this.transloco.getActiveLang(), {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    })
+  protected readonly filter = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => {
+        const value = params.get('filtro') as DeskFilter | null;
+        return value && FILTERS.includes(value) ? value : 'all';
+      })
+    ),
+    { initialValue: 'all' as DeskFilter }
   );
 
-  private latestSearch: Promise<void> = Promise.resolve();
-  private searchSeq = 0;
+  protected readonly dateLabel = computed(() => {
+    const now = this.now();
+    const lang = this.transloco.getActiveLang();
+    const day = now.toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+    const time = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} · ${time}`;
+  });
 
-  async ngOnInit(): Promise<void> {
-    if (this.canSeeAgenda) await this.loadAgenda();
-  }
+  ngOnInit(): void {
+    if (!this.canSeeAgenda) return;
+    void this.reload();
 
-  protected onQueryChange(value: string): void {
-    this.query.set(value);
-    const seq = ++this.searchSeq;
-    if (!value.trim()) {
-      this.results.set([]);
-      this.searching.set(false);
-      return;
-    }
-    this.searching.set(true);
-    this.latestSearch = this.patientsService
-      .search(value)
-      .then((patients) => {
-        // Only the newest keystroke may write results; an older, slower response must not win.
-        if (seq === this.searchSeq) this.results.set(patients);
-      })
-      .catch(() => {
-        if (seq === this.searchSeq) this.results.set([]);
-      })
-      .finally(() => {
-        if (seq === this.searchSeq) this.searching.set(false);
-      });
-  }
-
-  protected async openFirst(): Promise<void> {
-    await this.latestSearch;
-    const first = this.results()[0];
-    if (first) await this.router.navigate(['/pacientes', first.id]);
-  }
-
-  protected timeLabel(appt: AppointmentSummary): string {
-    return new Date(appt.startTime).toLocaleTimeString(this.transloco.getActiveLang(), {
-      hour: '2-digit',
-      minute: '2-digit',
+    const timer = setInterval(() => {
+      this.now.set(new Date());
+      void this.reload({ quiet: true });
+    }, REFRESH_MS);
+    // A tablet left on the desk comes back to a stale screen; refresh as soon as it is looked at.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        this.now.set(new Date());
+        void this.reload({ quiet: true });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    this.destroyRef.onDestroy(() => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     });
+  }
+
+  /** `quiet` keeps the current data on screen if a background refresh fails. */
+  protected async reload({ quiet = false } = {}): Promise<void> {
+    try {
+      this.desk.set(await this.deskService.load());
+      this.loadFailed.set(false);
+    } catch (error) {
+      console.error('Failed to load the front desk', error);
+      if (!quiet || !this.desk()) {
+        this.desk.set(null);
+        this.loadFailed.set(true);
+      }
+    }
+  }
+
+  protected async onRowAction({ action, appointment }: DeskRowEvent): Promise<void> {
+    switch (action) {
+      case 'remind':
+        return this.remind(appointment);
+      case 'arrive':
+      case 'unarrive':
+        return this.setArrived(appointment, action === 'arrive');
+      case 'edit':
+      case 'reschedule':
+        return this.editAppointment(appointment.id);
+      case 'details':
+        return this.openQuickView(appointment);
+    }
+  }
+
+  private async remind(appt: TodayAppointment): Promise<void> {
+    try {
+      const outcome = await this.deskService.sendReminder(appt.id);
+      this.toast(`today.desk.result.${outcome.result}`, { name: appt.patientName });
+      if (outcome.result === 'sent') await this.reload({ quiet: true });
+    } catch (error) {
+      console.error('Failed to send reminder', error);
+      this.toast('today.desk.result.request_failed');
+    }
+  }
+
+  private async setArrived(appt: TodayAppointment, arrived: boolean): Promise<void> {
+    try {
+      await this.deskService.setArrived(appt.id, arrived);
+      this.toast(arrived ? 'today.desk.result.arrived' : 'today.desk.result.unarrived', {
+        name: appt.patientName,
+      });
+      await this.reload({ quiet: true });
+    } catch (error) {
+      console.error('Failed to update arrival', error);
+      this.toast('today.desk.result.request_failed');
+    }
+  }
+
+  private toast(key: string, params?: Record<string, unknown>): void {
+    this.snackBar.open(this.transloco.translate(key, params), undefined, { duration: 4000 });
   }
 
   protected newAppointment(): void {
@@ -376,49 +279,43 @@ export class TodayComponent implements OnInit {
       })
       .afterClosed()
       .subscribe((saved) => {
-        if (saved) void this.loadAgenda();
+        if (saved) void this.reload({ quiet: true });
       });
   }
 
-  protected openQuickView(appt: AppointmentSummary): void {
+  private async editAppointment(id: string): Promise<void> {
+    try {
+      const appointment = await this.appointmentService.get(id);
+      this.dialog
+        .open(AppointmentFormComponent, { data: { appointment } as AppointmentFormDialogData })
+        .afterClosed()
+        .subscribe((saved) => {
+          if (saved) void this.reload({ quiet: true });
+        });
+    } catch (error) {
+      console.error('Failed to load appointment', error);
+      this.toast('today.desk.result.request_failed');
+    }
+  }
+
+  private openQuickView(appt: TodayAppointment): void {
+    const summary: AppointmentSummary = {
+      id: appt.id,
+      patientId: appt.patientId,
+      patientName: appt.patientName,
+      startTime: appt.startTime,
+      durationMinutes: appt.durationMinutes,
+      status: appt.status,
+      treatmentTypeNames: appt.treatmentTypeNames,
+    };
     this.dialog
       .open<AppointmentQuickViewComponent, AppointmentSummary, 'edit' | undefined>(
         AppointmentQuickViewComponent,
-        { data: appt }
+        { data: summary }
       )
       .afterClosed()
-      .subscribe(async (result) => {
-        if (result !== 'edit') return;
-        try {
-          const appointment = await this.appointmentService.get(appt.id);
-          this.dialog
-            .open(AppointmentFormComponent, { data: { appointment } as AppointmentFormDialogData })
-            .afterClosed()
-            .subscribe((saved) => {
-              if (saved) void this.loadAgenda();
-            });
-        } catch (error) {
-          console.error('Failed to load appointment', error);
-        }
+      .subscribe((result) => {
+        if (result === 'edit') void this.editAppointment(appt.id);
       });
-  }
-
-  private async loadAgenda(): Promise<void> {
-    this.loading.set(true);
-    this.loadFailed.set(false);
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    try {
-      const all = await this.appointmentService.list(start, end);
-      this.appointments.set(
-        [...all].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-      );
-    } catch {
-      this.loadFailed.set(true);
-    } finally {
-      this.loading.set(false);
-    }
   }
 }

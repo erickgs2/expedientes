@@ -15,10 +15,6 @@ const WHATSAPP_API_VERSION = 'v21.0';
  */
 let warnedMissingCredentials = false;
 
-export async function isWhatsAppConfigured(): Promise<boolean> {
-  return (await resolveWhatsAppConfig()) !== null;
-}
-
 export async function sendTemplateMessage(
   to: string,
   templateName: string,

@@ -38,6 +38,7 @@ export interface PdfLabels {
     consent: string;
     consentSignedOn: string;
     consentAnnexRef: string;
+    consentScan: { title: string; covers: string; signedOn: string };
     consentPageOf: string;
     products: string;
     productBrand: string;
@@ -87,6 +88,11 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       consent: 'Consentimiento',
       consentSignedOn: 'Consentimiento firmado el',
       consentAnnexRef: 'ver anexo',
+      consentScan: {
+        title: 'Consentimiento firmado en papel',
+        covers: 'Cartas que ampara',
+        signedOn: 'Firmado el',
+      },
       consentPageOf: 'Página {{n}} de {{total}}',
       products: 'Productos utilizados',
       productBrand: 'Marca',
@@ -134,6 +140,11 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       consent: 'Consent',
       consentSignedOn: 'Consent signed on',
       consentAnnexRef: 'see annex',
+      consentScan: {
+        title: 'Consent signed on paper',
+        covers: 'Letters covered',
+        signedOn: 'Signed on',
+      },
       consentPageOf: 'Page {{n}} of {{total}}',
       products: 'Products used',
       productBrand: 'Brand',

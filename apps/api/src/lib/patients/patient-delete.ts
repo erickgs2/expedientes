@@ -3,8 +3,8 @@ import { deleteStoredFile } from '../storage/file-storage';
 
 /**
  * Permanently removes a patient and everything recorded under them: clinical history, valoraciones
- * and their diagrams and photos, treatments with their consents, products and photos, and
- * appointments. The schema declares no cascade from `Patient` to those tables, so they are removed
+ * and their diagrams and photos, treatments with their consents (and paper-signed scans), products and
+ * photos, and appointments. The schema declares no cascade from `Patient` to those tables, so they are removed
  * explicitly, children first, in one transaction — either the whole record goes or none of it does.
  *
  * Uploaded files (photos, product labels, signatures) are removed only after the transaction
@@ -22,7 +22,7 @@ export async function deletePatient(patientId: string): Promise<boolean> {
     if (!patient) return null;
 
     const itemWhere = { treatmentItem: { treatment: { patientId } } };
-    const [valoracionPhotos, itemPhotos, products, consents] = await Promise.all([
+    const [valoracionPhotos, itemPhotos, products, consents, scanPages] = await Promise.all([
       tx.photo.findMany({ where: { patientId }, select: { filePath: true } }),
       tx.treatmentItemPhoto.findMany({ where: { patientId }, select: { filePath: true } }),
       tx.treatmentItemProduct.findMany({
@@ -33,10 +33,13 @@ export async function deletePatient(patientId: string): Promise<boolean> {
         where: itemWhere,
         select: { patientSignatureImagePath: true, witnessSignatureImagePath: true },
       }),
+      tx.consentScanPage.findMany({ where: { scan: { patientId } }, select: { filePath: true } }),
     ]);
 
-    // TreatmentItem's diagrams, photos and products cascade; its consent does not.
+    // TreatmentItem's diagrams, photos and products cascade; its consent does not. Consents go
+    // before their scans because they reference them; a scan's pages cascade with it.
     await tx.consent.deleteMany({ where: itemWhere });
+    await tx.consentScan.deleteMany({ where: { patientId } });
     await tx.treatmentItem.deleteMany({ where: { treatment: { patientId } } });
     await tx.treatment.deleteMany({ where: { patientId } });
 
@@ -53,6 +56,7 @@ export async function deletePatient(patientId: string): Promise<boolean> {
       ...itemPhotos.map((p) => p.filePath),
       ...products.map((p) => p.photoPath),
       ...consents.flatMap((c) => [c.patientSignatureImagePath, c.witnessSignatureImagePath]),
+      ...scanPages.map((p) => p.filePath),
     ].filter((path): path is string => !!path);
   });
 

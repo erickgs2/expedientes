@@ -22,6 +22,7 @@ export interface ClinicSettingsUpdate {
   whatsappConfirmationTemplate?: string | null;
   whatsappReminderTemplate?: string | null;
   whatsappTemplateLanguage?: string | null;
+  whatsappNotificationsEnabled?: boolean;
 }
 
 /**

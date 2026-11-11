@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { ConsentBlock, ConsentSignatureRole } from '@expedientes/shared-types';
+import { consentFooterText } from '../consent/consent-footer-text';
 
 const styles = StyleSheet.create({
   page: { padding: 48, paddingTop: 72, paddingBottom: 64, fontSize: 10, fontFamily: 'Helvetica' },
@@ -189,7 +190,7 @@ export function ConsentPage({ blocks, header, footer, signatures }: ConsentPageP
         style={styles.footer}
         fixed
         render={({ subPageNumber, subPageTotalPages }) =>
-          `${footer.patientName} — ${footer.signedOn} — ${footer.pageLabel(subPageNumber, subPageTotalPages)}`
+          consentFooterText(footer, subPageNumber, subPageTotalPages)
         }
       />
       {renderBlocks(blocks, signatures)}

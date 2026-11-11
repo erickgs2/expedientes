@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readStoredFile } from '../../../../lib/storage/file-storage';
-import { isJpeg } from '../../../../lib/storage/image-signature';
+import { inlineImageType } from '../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
@@ -44,15 +44,16 @@ export const GET = withApiErrors(
       patientId,
     });
 
-    // Only a file whose actual bytes are a real JPEG is served inline — never the client's
+    // Only a file whose actual bytes are a real JPEG or PNG is served inline — never the client's
     // declared content-type or the storage category in the path, which are both
     // attacker-controllable. Everything else keeps the locked-down default: an opaque, forced
     // download instead of letting the browser sniff and render (or execute) it inline in this
     // app's own origin, with the viewer's session cookie.
-    if (isJpeg(buffer)) {
+    const imageType = inlineImageType(buffer);
+    if (imageType) {
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
-          'Content-Type': 'image/jpeg',
+          'Content-Type': imageType,
           'X-Content-Type-Options': 'nosniff',
           // Defense in depth, matching how user-content-hosting services isolate uploaded bytes:
           // even if a browser edge case treated this response as a document, it could load nothing
