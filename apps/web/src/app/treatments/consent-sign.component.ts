@@ -12,6 +12,7 @@ import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { SignaturePadComponent } from '../shared/signature-pad/signature-pad.component';
 import { ConsentBlocksComponent } from '../shared/consent/consent-blocks.component';
 import { ConsentService } from './consent.service';
+import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
 
 @Component({
   selector: 'app-consent-sign',
@@ -38,8 +39,25 @@ import { ConsentService } from './consent.service';
           [blocks]="item()!.consentDocument!"
           [signatureUrls]="signatureUrls()"
         ></app-consent-blocks>
+        @if (consent.signatureMethod === 'PAPER') {
+          <h3>{{ 'treatments.scanSignedOnPaper' | transloco }}</h3>
+          <div class="scan-pages">
+            @for (page of consent.scanPages; track page) {
+              <img
+                class="scan-page"
+                [src]="'/api/files/' + page"
+                [alt]="'treatments.scanPageAlt' | transloco"
+              />
+            }
+          </div>
+        }
         <p class="signed-at">
-          {{ 'treatments.signedAt' | transloco }} {{ consent.signedAt.substring(0, 10) }}
+          {{ 'treatments.signedAt' | transloco }}
+          {{
+            consent.signatureMethod === 'PAPER'
+              ? consent.signedDateSnapshot
+              : consent.signedAt.substring(0, 10)
+          }}
         </p>
       } @else if (item()!.canSign === false) {
         <p>{{ 'treatments.clinicSettingsIncomplete' | transloco }}</p>
@@ -87,6 +105,14 @@ import { ConsentService } from './consent.service';
         <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
         <p>{{ 'treatments.consentNotYetSigned' | transloco }}</p>
       }
+      @if (!signedConsent() && item()!.canSign !== false) {
+        <button mat-stroked-button [disabled]="printing()" (click)="printBlank()">
+          {{ 'treatments.printBlank' | transloco }}
+        </button>
+        @if (printFailed()) {
+          <p class="print-error" role="alert">{{ 'treatments.printBlankFailed' | transloco }}</p>
+        }
+      }
       <button mat-button (click)="back()">{{ 'common.back' | transloco }}</button>
     }
   `,
@@ -104,6 +130,19 @@ import { ConsentService } from './consent.service';
         margin: 8px 0;
         display: flex;
         gap: 8px;
+      }
+      .scan-pages {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 700px;
+      }
+      .scan-page {
+        width: 100%;
+        border: 1px solid var(--plate-line);
+      }
+      .print-error {
+        color: var(--mat-sys-error);
       }
       .signed-at {
         color: var(--mat-sys-on-surface-variant);
@@ -125,6 +164,8 @@ export class ConsentSignComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   protected readonly signing = signal(false);
+  protected readonly printing = signal(false);
+  protected readonly printFailed = signal(false);
   protected readonly item = signal<TreatmentItemDetail | null>(null);
   protected readonly signedConsent = signal<Consent | null>(null);
   // Plain field, not a signal: matches the established pattern used by
@@ -191,6 +232,8 @@ export class ConsentSignComponent implements OnInit {
   protected readonly signatureUrls = () => {
     const consent = this.signedConsent();
     if (!consent) return {} as Partial<Record<ConsentSignatureRole, string>>;
+    // A paper-signed consent has no signature images — its scan pages are shown instead.
+    if (!consent.patientSignatureImagePath) return {} as Partial<Record<ConsentSignatureRole, string>>;
     const urls: Partial<Record<ConsentSignatureRole, string>> = {
       patient: `/api/files/${consent.patientSignatureImagePath}`,
     };
@@ -234,6 +277,23 @@ export class ConsentSignComponent implements OnInit {
       this.signedConsent.set(result.consent);
     } finally {
       this.signing.set(false);
+    }
+  }
+
+  protected async printBlank(): Promise<void> {
+    const item = this.item();
+    if (!item) return;
+    this.printing.set(true);
+    this.printFailed.set(false);
+    try {
+      const blob = await this.consentService.printBlank(this.itemId);
+      const safeName = item.treatmentTypeName.replace(/[^a-zA-Z0-9]+/g, '-') || 'consentimiento';
+      await deliverPdf(blob, `consentimiento-${safeName}.pdf`);
+    } catch (error) {
+      console.error('Failed to print the blank consent', error);
+      this.printFailed.set(true);
+    } finally {
+      this.printing.set(false);
     }
   }
 

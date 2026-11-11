@@ -176,11 +176,13 @@ export const POST = withApiErrors(
       {
         consent: {
           id: result.consent.id,
+          signatureMethod: result.consent.signatureMethod,
           place: result.consent.place,
           patientIdentification: result.consent.patientIdentification,
           witnessName: result.consent.witnessName,
           patientSignatureImagePath: result.consent.patientSignatureImagePath,
           witnessSignatureImagePath: result.consent.witnessSignatureImagePath,
+          scanPages: [],
           signedAt: result.consent.signedAt,
         },
         consentDocument,

@@ -9,7 +9,13 @@ import { legacyPatientRedirect, patientRouteGuard } from './patient-drive/patien
  * redirects at the bottom, because internal links and bookmarks still point at them.
  */
 const patientChildren: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'historia-clinica' },
+  { path: '', pathMatch: 'full', redirectTo: 'resumen' },
+  {
+    path: 'resumen',
+    canActivate: [permissionGuard('patients', 'view')],
+    loadComponent: () =>
+      import('./patient-drive/patient-overview.component').then((m) => m.PatientOverviewComponent),
+  },
   {
     path: 'historia-clinica',
     canActivate: [permissionGuard('historia-clinica', 'view')],

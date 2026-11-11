@@ -1,12 +1,18 @@
 import type { DiagramViewRecord } from './diagram.js';
 
+export type ConsentSignatureMethod = 'DIGITAL' | 'PAPER';
+
 export interface Consent {
   id: string;
+  signatureMethod: ConsentSignatureMethod;
   place: string;
   patientIdentification: string;
   witnessName: string | null;
-  patientSignatureImagePath: string;
+  /** Null for a paper-signed consent — its signatures are on the scan pages instead. */
+  patientSignatureImagePath: string | null;
   witnessSignatureImagePath: string | null;
+  /** Stored paths of the scanned pages, in order. Empty for a digital consent. */
+  scanPages: string[];
   /**
    * The date the document itself prints as its FECHA: a `YYYY-MM-DD` string resolved in the
    * clinic's local timezone at signing and frozen. Not derived from `signedAt`, which is the UTC
@@ -27,6 +33,7 @@ export interface TreatmentItemDetail {
   notes: string | null;
   patientId: string;
   patientDocumentId: string;
+  patientName: string;
   /** Blocks for an unsigned item, built from live settings + catalog. Null once signed. */
   consentPreview: ConsentBlock[] | null;
   /** Blocks rebuilt from the signed snapshot. Null when unsigned. */

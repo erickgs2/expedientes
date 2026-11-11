@@ -120,6 +120,13 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
     }
   }
 
+  // Absent leaves the stored switch alone, so an older client that doesn't know about it can't
+  // flip messages on or off by accident.
+  const notificationsEnabled = formData.get('whatsappNotificationsEnabled');
+  if (notificationsEnabled === 'true' || notificationsEnabled === 'false') {
+    data.whatsappNotificationsEnabled = notificationsEnabled === 'true';
+  }
+
   // Write-only. The form cannot show the stored token, so it submits an empty field whenever the
   // user isn't deliberately changing it — treating that as "clear the token" would silently switch
   // notifications off on every unrelated save. Clearing is explicit, via `whatsappAccessTokenClear`.

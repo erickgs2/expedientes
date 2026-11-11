@@ -1,4 +1,4 @@
-# Dev stack for a Raspberry Pi on a home network, reached through a DuckDNS hostname.
+  # Dev stack for a Raspberry Pi on a home network, reached through a DuckDNS hostname.
 #
 # Differences from the QA stack, all consequences of where it runs:
 #   * Images are BUILT here, not pulled. The Pi is arm64; cross-building for it on GitHub's amd64

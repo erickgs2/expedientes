@@ -3,8 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
   CreatePatientRequest,
+  PatientPreview,
   PatientSummary,
   PatientSummaryStats,
+  PatientTimeline,
+  RecentPatient,
 } from '@expedientes/shared-types';
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +26,27 @@ export class PatientsService {
     ).then((r) => r.patient);
   }
 
+  /** The search screen's preview pane: identity, counts, flags and the last treatment. */
+  getPreview(patientId: string): Promise<PatientPreview> {
+    return firstValueFrom(
+      this.http.get<{ preview: PatientPreview }>(`/api/patients/${patientId}/preview`)
+    ).then((r) => r.preview);
+  }
+
+  /** Appointments, valoraciones and treatments in one list, upcoming first then newest first. */
+  getTimeline(patientId: string): Promise<PatientTimeline> {
+    return firstValueFrom(
+      this.http.get<{ timeline: PatientTimeline }>(`/api/patients/${patientId}/timeline`)
+    ).then((r) => r.timeline);
+  }
+
+  /** Patients the current user opened most recently, newest first. */
+  recent(): Promise<RecentPatient[]> {
+    return firstValueFrom(
+      this.http.get<{ patients: RecentPatient[] }>('/api/patients/recent')
+    ).then((r) => r.patients);
+  }
+
   getSummary(patientId: string): Promise<PatientSummaryStats> {
     return firstValueFrom(
       this.http.get<{ summary: PatientSummaryStats }>(`/api/patients/${patientId}/summary`)
@@ -36,7 +60,7 @@ export class PatientsService {
    */
   updateDetails(
     patientId: string,
-    changes: { documentId?: string; phone?: string }
+    changes: { documentId?: string; phone?: string; contactPatientId?: string | null }
   ): Promise<PatientSummary> {
     return firstValueFrom(
       this.http.patch<{ patient: PatientSummary }>(`/api/patients/${patientId}`, changes)

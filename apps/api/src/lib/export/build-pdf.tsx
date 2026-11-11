@@ -2,6 +2,8 @@ import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@
 import type { ConsentSignatureRole } from '@expedientes/shared-types';
 import { readStoredFile } from '../storage/file-storage';
 import { isPng } from '../storage/image-signature';
+import { groupPaperScans } from './group-paper-scans';
+import { ConsentScanPages } from './consent-scan-pdf';
 import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 import { ConsentPage } from './consent-document-pdf';
@@ -299,6 +301,8 @@ export async function buildExportPdf(
   const signatureImages = new Map<string, Buffer>();
   for (const entry of data.consents ?? []) {
     const id = entry.treatmentItemId;
+    // A paper-signed consent has no signature image — its evidence is the scan, read below.
+    if (entry.consent.method !== 'DIGITAL' || !entry.consent.patientSignatureImagePath) continue;
     try {
       const buffer = await readStoredFile(entry.consent.patientSignatureImagePath);
       signatureImages.set(`${id}:patient`, buffer);
@@ -313,6 +317,23 @@ export async function buildExportPdf(
         console.error(`Failed to read witness signature image for treatment item ${id}`, error);
       }
     }
+  }
+
+  // Each scan is read once however many letters it covers; an unreadable page is skipped (logged)
+  // rather than failing the export, like every other stored image here.
+  const paperGroups = groupPaperScans(data.consents ?? []);
+  const scanImages = new Map<string, Array<{ data: Buffer; format: 'jpg' | 'png' }>>();
+  for (const group of paperGroups.values()) {
+    const images: Array<{ data: Buffer; format: 'jpg' | 'png' }> = [];
+    for (const path of group.pagePaths) {
+      try {
+        const data = await readStoredFile(path);
+        images.push({ data, format: isPng(data) ? 'png' : 'jpg' });
+      } catch (error) {
+        console.error(`Failed to read scan page ${path}`, error);
+      }
+    }
+    scanImages.set(group.scanId, images);
   }
 
   // Read once — the same physician signature is stamped onto every signed consent in the export.
@@ -344,7 +365,27 @@ export async function buildExportPdf(
     </View>
   ) : null;
 
+  const emittedScans = new Set<string>();
   const consentPages = (data.consents ?? []).map((entry) => {
+    if (entry.consent.method === 'PAPER' && entry.consent.scanId) {
+      // A scan covering several letters is printed once, after the first letter it covers.
+      const scanId = entry.consent.scanId;
+      const group = paperGroups.get(scanId);
+      if (emittedScans.has(scanId) || !group) return null;
+      emittedScans.add(scanId);
+      return (
+        <ConsentScanPages
+          key={`scan-${scanId}`}
+          title={labels.treatments.consentScan.title}
+          coversLabel={labels.treatments.consentScan.covers}
+          signedOnLabel={labels.treatments.consentScan.signedOn}
+          signedDate={group.signedDate}
+          treatmentTypeNames={group.treatmentTypeNames}
+          images={scanImages.get(scanId) ?? []}
+        />
+      );
+    }
+
     const signatures: Partial<Record<ConsentSignatureRole, Buffer>> = {};
     const patientSignature = signatureImages.get(`${entry.treatmentItemId}:patient`);
     if (patientSignature) signatures.patient = patientSignature;
@@ -401,7 +442,7 @@ export async function buildExportPdf(
             treatments={data.treatments}
             diagramImages={diagramImages}
             labels={labels}
-            annexIncluded={consentPages.length > 0}
+            annexIncluded={(data.consents ?? []).length > 0}
           />
         )}
       </Page>

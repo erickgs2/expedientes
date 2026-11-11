@@ -102,7 +102,56 @@
       "message": "Se eliminará de forma permanente a {{ name }} junto con su historia clínica, valoraciones, tratamientos, consentimientos, citas y fotografías. Esta acción no se puede deshacer.",
       "confirm": "Eliminar"
     },
-    "notFound": "No se encontró ese paciente."
+    "notFound": "No se encontró ese paciente.",
+    "browse": {
+      "title": "Pacientes",
+      "new": "Nuevo",
+      "open": "Abrir expediente",
+      "listLabel": "Buscar paciente",
+      "listsLabel": "Listas de pacientes",
+      "tabToday": "Cita hoy",
+      "tabRecent": "Recientes",
+      "tabAll": "Todos",
+      "empty": {
+        "today": "No hay pacientes con cita hoy.",
+        "recent": "Aún no has abierto expedientes.",
+        "all": "Todavía no hay pacientes registrados."
+      },
+      "enterHint": "Escribe para buscar en todos los expedientes. Enter abre el primer resultado; doble clic abre el expediente.",
+      "previewLabel": "Vista previa del expediente",
+      "pickOne": "Elige un paciente de la lista para ver su resumen.",
+      "previewFailed": "No se pudo cargar el resumen de este paciente.",
+      "since": "Paciente desde {{date}}",
+      "age": "{{age}} años",
+      "noCurp": "Sin CURP",
+      "allergy": "Alergia registrada · ver historia clínica",
+      "noHistoria": "Este paciente aún no tiene historia clínica.",
+      "startHistoria": "Iniciar historia",
+      "nextAppointment": "Próxima cita",
+      "noAppointment": "Sin cita agendada",
+      "valoraciones": "Valoraciones",
+      "treatments": "Tratamientos",
+      "photos": "Fotos",
+      "photosMeta": "Antes y después",
+      "last": "Última: {{date}}",
+      "none": "Ninguna aún",
+      "lastTreatment": "Último tratamiento · {{date}}",
+      "treatment": "Tratamiento",
+      "productLot": "Producto y lote",
+      "lot": "lote",
+      "expiry": "cad.",
+      "consent": "Consentimiento",
+      "consentState": {
+        "digital": "Firmado digitalmente",
+        "paper": "Firmado en papel",
+        "missing": "Sin consentimiento"
+      },
+      "goTo": "Ir a",
+      "export": "Exportar PDF",
+      "openedAt": "Abierto {{when}}",
+      "todayAt": "Hoy {{time}}",
+      "createFailed": "No se pudo crear el paciente. Inténtalo de nuevo."
+    }
   },
   "historiaClinica": {
     "title": "Historia clínica",
@@ -154,6 +203,26 @@
       "noneScheduled": "Sin citas próximas",
       "valoraciones": "Valoraciones",
       "treatments": "Tratamientos"
+    },
+    "interview": {
+      "steps": "Pasos de la historia clínica",
+      "saving": "Guardando…",
+      "savedAt": "Guardado {{time}}",
+      "readOnly": "Solo lectura",
+      "autosaveHint": "Se guarda cada vez que avanzas de paso.",
+      "previous": "‹ Anterior",
+      "close": "Cerrar",
+      "next": "Siguiente ›",
+      "saveNext": "Guardar y seguir ›",
+      "finish": "Guardar y terminar",
+      "finishReadOnly": "Volver al expediente",
+      "stepOf": "Paso {{n}} de {{total}}",
+      "hint": {
+        "personalInfo": "Datos de contacto, alergias y lo que la paciente busca.",
+        "medicalInfo": "Pregunta por enfermedades, medicamentos y tratamientos previos.",
+        "personalHistory": "Toca la respuesta en las preguntas cerradas; lo que no aplique, déjalo en blanco.",
+        "familyHistory": "Enfermedades relevantes en la familia directa."
+      }
     }
   },
   "valoracion": {
@@ -292,8 +361,85 @@
       "clearPending": "Se eliminará al guardar.",
       "confirmationTemplate": "Plantilla de confirmación",
       "reminderTemplate": "Plantilla de recordatorio",
-      "templateLanguage": "Idioma de la plantilla"
-    }
+      "templateLanguage": "Idioma de la plantilla",
+      "enabled": "Enviar mensajes de WhatsApp a pacientes",
+      "enabledOn": "Encendido: se envían la confirmación al agendar y el recordatorio 2 horas antes.",
+      "enabledOff": "Apagado: no se envía nada a pacientes. Las pruebas sí funcionan.",
+      "test": {
+        "open": "Probar WhatsApp",
+        "openHelp": "Envía la confirmación o el recordatorio a un número que tú elijas, sin tocar pacientes reales.",
+        "title": "Probar mensajes de WhatsApp",
+        "help": "Se envía la plantilla guardada con datos de ejemplo (\"Paciente de prueba\", mañana a las 10:00).",
+        "unsaved": "Tienes cambios sin guardar. La prueba usa la configuración guardada; guarda primero si quieres probar los cambios.",
+        "switchOff": "Los mensajes a pacientes están apagados. Esta prueba sí se enviará.",
+        "kind": "Mensaje",
+        "confirmation": "Confirmación",
+        "reminder": "Recordatorio",
+        "phone": "Número de WhatsApp",
+        "phoneHint": "10 dígitos para México o con código de país, p. ej. 52 55 1234 5678",
+        "send": "Enviar prueba",
+        "sending": "Enviando…",
+        "close": "Cerrar",
+        "requestFailed": "No se pudo hacer la prueba. Revisa tu conexión o tus permisos.",
+        "result": {
+          "sent": "Enviado. Revisa el WhatsApp de ese número.",
+          "disabled": "Los mensajes están apagados.",
+          "not_configured": "Falta configurar el token de acceso o el ID del número.",
+          "invalid_phone": "El número no es válido.",
+          "send_failed": "Meta rechazó el envío. Revisa el detalle:",
+          "too_soon": "Espera unos minutos antes de volver a enviar."
+        }
+      },
+      "step1": "1 · Conectar con Meta",
+      "step2": "2 · Plantillas",
+      "step3": "3 · Probar antes de encender",
+      "paramsHint": "Se envían 3 datos a cada plantilla: nombre del paciente, fecha y hora de la cita."
+    },
+    "subtitle": "Lo que aparece en cada consentimiento y en el PDF del expediente.",
+    "status": {
+      "label": "Estado de la configuración",
+      "logo": "Logotipo",
+      "doctor": "Médico y cédula",
+      "declarations": "Declaraciones",
+      "signature": "Firma del médico",
+      "whatsapp": "WhatsApp",
+      "values": {
+        "logoOk": "Cargado",
+        "logoMissing": "Falta cargarlo",
+        "doctorOk": "Listos",
+        "doctorMissing": "Faltan — bloquea consentimientos",
+        "declarationsSuggested": "Texto sugerido",
+        "declarationsCustom": "Personalizadas",
+        "declarationsMissing": "Faltan",
+        "signatureOk": "Lista",
+        "signatureMissing": "Falta dibujarla",
+        "whatsappNotConfigured": "Sin configurar",
+        "whatsappOff": "Configurado · apagado",
+        "whatsappOn": "Encendido"
+      }
+    },
+    "doctorHelp": "Sin nombre y cédula no se puede firmar ningún consentimiento.",
+    "assetsTitle": "Logotipo y firma",
+    "keepSignature": "Conservar la firma actual",
+    "declarationsTitle": "Declaraciones del consentimiento",
+    "insertLabel": "Insertar dato:",
+    "placeholders": {
+      "patientName": "Nombre del paciente",
+      "doctorTitle": "Título del médico",
+      "doctorName": "Nombre del médico",
+      "doctorLicense": "Cédula",
+      "clinicName": "Nombre de la clínica"
+    },
+    "signedUnaffected": "Los datos insertados se llenan solos al firmar. Lo ya firmado no cambia.",
+    "preview": {
+      "label": "Vista previa del consentimiento",
+      "title": "Así se verá un consentimiento",
+      "sample": "Datos de ejemplo",
+      "noSignature": "Falta firma",
+      "note": "Cambia mientras editas. Los consentimientos siempre se imprimen en español."
+    },
+    "unsaved": "Hay cambios sin guardar",
+    "allSaved": "Todo guardado"
   },
   "treatments": {
     "listTitle": "Tratamientos",
@@ -339,7 +485,23 @@
     "addProduct": "Agregar producto",
     "editProduct": "Editar producto",
     "deleteProduct": "Eliminar producto",
-    "confirmDeleteProduct": "¿Eliminar este producto del tratamiento?"
+    "confirmDeleteProduct": "¿Eliminar este producto del tratamiento?",
+    "printBlank": "Imprimir sin firma",
+    "printBlankFailed": "No se pudo generar la carta para imprimir.",
+    "registerScan": "Registrar escaneo firmado",
+    "scanDialogTitle": "Registrar escaneo firmado",
+    "scanCovers": "Cartas que cubre este escaneo",
+    "scanSignedDate": "Fecha de firma",
+    "scanPages": "Páginas escaneadas (JPG o PNG)",
+    "scanRemovePage": "Quitar página",
+    "scanRegister": "Registrar",
+    "scanRegisterFailed": "No se pudo registrar el escaneo.",
+    "scanSignedOnPaper": "Firmada en papel",
+    "scanPageAlt": "Página del escaneo firmado",
+    "scanTakePhoto": "Tomar foto",
+    "scanChooseImages": "Elegir imágenes",
+    "scanTooManyPages": "Un escaneo admite hasta 20 páginas.",
+    "scanImageUnreadable": "No se pudo leer una de las imágenes."
   },
   "appointments": {
     "calendarTitle": "Calendario",
@@ -407,7 +569,8 @@
       "treatments": "Tratamientos",
       "photos": "Fotos",
       "export": "Exportar"
-    }
+    },
+    "backTo": "Volver al expediente de"
   },
   "today": {
     "title": "Hoy",
@@ -415,6 +578,157 @@
     "next": "Siguiente",
     "noAppointments": "No hay citas para hoy",
     "noResults": "Ningún paciente coincide",
-    "results": "Resultados de búsqueda"
+    "results": "Resultados de búsqueda",
+    "desk": {
+      "searchLabel": "Buscar paciente por nombre, teléfono o CURP",
+      "agenda": "Agenda",
+      "filter": {
+        "label": "Filtrar citas",
+        "all": "Todas",
+        "action": "Requiere acción",
+        "open": "Por atender",
+        "done": "Terminadas"
+      },
+      "emptyFilter": "Ninguna cita coincide con este filtro",
+      "noTreatment": "Sin tratamiento indicado",
+      "col": {
+        "time": "Hora",
+        "patient": "Paciente",
+        "treatment": "Tratamiento",
+        "reminder": "Recordatorio",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "flag": {
+        "allergy": "Alergia registrada",
+        "noHistoria": "Sin historia clínica",
+        "consent": "Consentimiento por firmar"
+      },
+      "action": {
+        "remind": "Enviar recordatorio",
+        "arrive": "Registrar llegada",
+        "unarrive": "Deshacer llegada",
+        "record": "Abrir expediente",
+        "startHistoria": "Iniciar historia",
+        "reschedule": "Reagendar",
+        "edit": "Editar cita",
+        "more": "Más acciones"
+      },
+      "phase": {
+        "unconfirmed": "Por confirmar",
+        "confirmed": "Confirmada",
+        "arrived": "Llegó · {{time}}",
+        "inConsult": "En consulta",
+        "done": "Terminada",
+        "noShow": "No asistió",
+        "cancelled": "Cancelada"
+      },
+      "reminder": {
+        "sent": "Recordatorio enviado · {{time}}",
+        "confirmationSent": "Confirmación enviada",
+        "off": "WhatsApp apagado",
+        "notSent": "No enviado"
+      },
+      "kpi": {
+        "today": "Citas hoy",
+        "todayMeta": "{{done}} terminadas · {{inConsult}} en consulta",
+        "confirmed": "Confirmadas",
+        "confirmedMeta": "{{count}} por confirmar",
+        "needsAction": "Requiere acción",
+        "needsActionMeta": "{{unconfirmed}} sin confirmar · {{consent}} consentimiento · {{historia}} sin historia",
+        "tomorrow": "Mañana",
+        "tomorrowMeta": "{{count}} sin confirmar"
+      },
+      "side": {
+        "pending": "Pendientes",
+        "tomorrowUnconfirmed": "Citas de mañana sin confirmar",
+        "afterPhotos": "Fotos “después” faltantes (30 días)",
+        "noShows": "No asistieron esta semana",
+        "whatsappOff": "Los mensajes de WhatsApp a pacientes están apagados en Configuración de la clínica.",
+        "recent": "Abiertos recientemente",
+        "recentEmpty": "Aún no has abierto expedientes."
+      },
+      "retry": "Reintentar",
+      "result": {
+        "sent": "Recordatorio enviado a {{name}}",
+        "disabled": "No se envió: los mensajes de WhatsApp están apagados",
+        "not_configured": "No se envió: WhatsApp no está configurado",
+        "invalid_phone": "No se envió: el teléfono de {{name}} no es válido",
+        "send_failed": "No se pudo enviar el recordatorio. Inténtalo de nuevo.",
+        "too_soon": "Ya se envió un recordatorio hace menos de 30 minutos",
+        "request_failed": "No se pudo completar la acción. Inténtalo de nuevo.",
+        "arrived": "Llegada de {{name}} registrada",
+        "unarrived": "Se deshizo la llegada de {{name}}"
+      }
+    }
+  },
+  "patientOverview": {
+    "export": "Exportar PDF",
+    "register": "Registrar",
+    "newValoracion": "Nueva valoración",
+    "newTreatment": "Nuevo tratamiento",
+    "more": "Más acciones",
+    "cardLabel": "Ficha clínica",
+    "beforeTreating": "Antes de tratar",
+    "noneRecorded": "Ninguna registrada",
+    "notRecorded": "Sin registrar",
+    "notRecordedShort": "Sin registrar",
+    "pregnancy": "Embarazo",
+    "acne": "Acné (3 meses)",
+    "previousAesthetic": "Estéticos previos",
+    "noHistoria": "Aún no hay historia clínica. Inicia la entrevista antes del primer tratamiento.",
+    "edit": "Editar",
+    "start": "Iniciar",
+    "reason": "Motivo de consulta",
+    "complete": "Completa",
+    "partial": "{{filled}} de {{total}}",
+    "consents": "Consentimientos",
+    "timeline": "Línea de tiempo",
+    "filterLabel": "Filtrar la línea de tiempo",
+    "filter": {
+      "all": "Todo",
+      "appointment": "Citas",
+      "valoracion": "Valoraciones",
+      "treatment": "Tratamientos",
+      "photos": "Fotos"
+    },
+    "timelineFailed": "No se pudo cargar la línea de tiempo.",
+    "timelineEmpty": "Nada que mostrar con este filtro.",
+    "kind": {
+      "appointment": "Cita",
+      "valoracion": "Valoración",
+      "treatment": "Tratamiento"
+    },
+    "appointmentNoTreatment": "Cita sin tratamiento indicado",
+    "startValoracion": "Iniciar valoración",
+    "valoracionTitle": "Valoración facial · {{views}} vistas · {{photos}} fotos",
+    "photoAlt": {
+      "BEFORE": "Foto antes",
+      "AFTER": "Foto después"
+    },
+    "open": "Abrir",
+    "treatmentEmpty": "Visita sin tratamientos registrados",
+    "created": "{{date}} · Alta del paciente",
+    "today": "Hoy"
+  },
+  "companions": {
+    "toggle": "Sus avisos de WhatsApp llegan a un acompañante",
+    "pickerLabel": "Acompañante que recibe los avisos",
+    "pickerHint": "Pareja, madre, hija… Busca por nombre o teléfono.",
+    "change": "Cambiar",
+    "dialogTitle": "Avisos de WhatsApp",
+    "dialogIntro": "¿A qué número enviamos las confirmaciones y recordatorios de {{name}}?",
+    "own": "Su propio número",
+    "viaContact": "El de un acompañante",
+    "viaContactHelp": "Los mensajes siguen diciendo el nombre de este paciente; solo cambia el número que los recibe.",
+    "hasDependents": "Este paciente ya recibe los avisos de {{names}}, así que debe conservar su propio número.",
+    "ownPhoneOptional": "Teléfono propio (opcional)",
+    "ownPhoneHint": "Los avisos irán al acompañante. Déjalo vacío si no tiene teléfono propio.",
+    "via": "Avisos vía {{name}}",
+    "noticesTo": "Avisos de WhatsApp a:",
+    "noticesVia": "Avisos de WhatsApp vía {{name}} · {{phone}}",
+    "receivesFor": "También recibe los avisos de {{names}}",
+    "noPhone": "sin teléfono",
+    "linkCompanion": "Enviar a un acompañante"
   }
 }

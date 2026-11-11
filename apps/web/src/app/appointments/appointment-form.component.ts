@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import {
@@ -21,6 +22,11 @@ import type {
 } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
 import { PatientsService } from '../patient-drive/patients.service';
+import { PatientPickerComponent } from '../patient-drive/patient-picker.component';
+import {
+  NotificationContactDialogComponent,
+  type NotificationContactDialogData,
+} from '../patient-drive/notification-contact-dialog.component';
 import { TreatmentTypesService } from '../treatments/treatment-types.service';
 import { AppointmentService } from './appointment.service';
 
@@ -58,6 +64,8 @@ function toDatetimeLocalString(date: Date): string {
     MatCheckboxModule,
     MatSelectModule,
     MatButtonModule,
+    MatSlideToggleModule,
+    PatientPickerComponent,
     TranslocoModule,
   ],
   template: `
@@ -91,8 +99,20 @@ function toDatetimeLocalString(date: Date): string {
             <mat-label>{{ 'appointments.form.newPatientName' | transloco }}</mat-label>
             <input matInput [(ngModel)]="newPatientName" [ngModelOptions]="{ standalone: true }" />
           </mat-form-field>
+          <mat-slide-toggle class="companion-toggle" [checked]="newPatientUsesContact()" (change)="setNewPatientUsesContact($event.checked)">
+            {{ 'companions.toggle' | transloco }}
+          </mat-slide-toggle>
+          @if (newPatientUsesContact()) {
+            <app-patient-picker
+              class="companion-picker"
+              [selected]="newPatientContact()"
+              (selectedChange)="newPatientContact.set($event)"
+            ></app-patient-picker>
+          }
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'appointments.form.newPatientPhone' | transloco }}</mat-label>
+            <mat-label>
+              {{ (newPatientUsesContact() ? 'companions.ownPhoneOptional' : 'appointments.form.newPatientPhone') | transloco }}
+            </mat-label>
             <input
               matInput
               type="tel"
@@ -100,7 +120,9 @@ function toDatetimeLocalString(date: Date): string {
               [(ngModel)]="newPatientPhone"
               [ngModelOptions]="{ standalone: true }"
             />
-            <mat-hint>{{ 'appointments.form.newPatientHelp' | transloco }}</mat-hint>
+            <mat-hint>
+              {{ (newPatientUsesContact() ? 'companions.ownPhoneHint' : 'appointments.form.newPatientHelp') | transloco }}
+            </mat-hint>
           </mat-form-field>
         } @else {
           <mat-form-field appearance="outline" class="full-width">
@@ -121,11 +143,30 @@ function toDatetimeLocalString(date: Date): string {
               @for (patient of patientResults(); track patient.id) {
                 <mat-option [value]="patient">
                   <span class="option-name">{{ patient.fullName }}</span>
-                  <span class="option-meta">{{ patient.phone }}</span>
+                  <span class="option-meta">
+                    {{ patient.contactPatient ? ('companions.via' | transloco: { name: patient.contactPatient.fullName }) : patient.phone }}
+                  </span>
                 </mat-option>
               }
             </mat-autocomplete>
           </mat-form-field>
+          @if (selectedPatient(); as sp) {
+            <div class="notice-dest">
+              <span>
+                {{ 'companions.noticesTo' | transloco }}
+                @if (sp.contactPatient) {
+                  <strong>{{ sp.contactPatient.fullName }}</strong> · {{ sp.contactPatient.phone }}
+                } @else {
+                  <strong>{{ sp.phone || ('companions.noPhone' | transloco) }}</strong>
+                }
+              </span>
+              @if (canEditPatients) {
+                <button mat-button type="button" (click)="changeNoticeDestination(sp)">
+                  {{ (sp.contactPatient ? 'companions.change' : 'companions.linkCompanion') | transloco }}
+                </button>
+              }
+            </div>
+          }
         }
       </section>
 
@@ -282,6 +323,24 @@ function toDatetimeLocalString(date: Date): string {
       .patient-mode mat-button-toggle {
         flex: 1;
       }
+      .companion-toggle {
+        display: block;
+        margin: 0 0 16px;
+      }
+      .companion-picker {
+        display: block;
+        margin-bottom: 16px;
+      }
+      .notice-dest {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px 12px;
+        margin: -4px 0 8px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .option-name {
         font-weight: 500;
       }
@@ -373,6 +432,7 @@ export class AppointmentFormComponent implements OnInit {
   private readonly appointmentService = inject(AppointmentService);
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
+  private readonly dialog = inject(MatDialog);
 
   // `data` must be a field injected before any field initializer that reads it (`patientQuery`
   // etc. below) — this project's established MAT_DIALOG_DATA field-ordering convention; see
@@ -391,6 +451,12 @@ export class AppointmentFormComponent implements OnInit {
   protected readonly newPatient = signal(false);
   protected newPatientName = '';
   protected newPatientPhone = '';
+  /** The new patient's notices go to a companion's phone instead of their own. */
+  protected readonly newPatientUsesContact = signal(false);
+  protected readonly newPatientContact = signal<PatientSummary | null>(null);
+  protected readonly canEditPatients = this.auth.hasPermission('patients', 'edit');
+  /** The chosen existing patient, so the form can say where their notices will go. */
+  protected readonly selectedPatient = signal<PatientSummary | null>(null);
 
   protected patientQuery = this.data.appointment?.patientName ?? this.data.initialPatientName ?? '';
   protected readonly patientResults = signal<PatientSummary[]>([]);
@@ -421,6 +487,12 @@ export class AppointmentFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.selectedPatientId && this.auth.hasPermission('patients', 'view')) {
+      void this.patientsService
+        .getById(this.selectedPatientId)
+        .then((p) => this.selectedPatient.set(p))
+        .catch(() => this.selectedPatient.set(null));
+    }
     if (this.canViewTreatmentTypes) {
       this.loadTreatmentTypes();
     }
@@ -487,7 +559,8 @@ export class AppointmentFormComponent implements OnInit {
     // In new-patient mode there is no id to check yet — the record is created on save — so the
     // name and phone stand in for it. Both are required by the patients endpoint.
     const patientReady = this.newPatient()
-      ? !!this.newPatientName.trim() && !!this.newPatientPhone.trim()
+      ? !!this.newPatientName.trim() &&
+        (this.newPatientUsesContact() ? !!this.newPatientContact() : !!this.newPatientPhone.trim())
       : !!this.selectedPatientId;
     return patientReady && !!this.parsedStartTime() && this.durationMinutes > 0;
   }
@@ -495,6 +568,7 @@ export class AppointmentFormComponent implements OnInit {
   protected async onPatientQueryChange(value: string | PatientSummary): Promise<void> {
     if (typeof value !== 'string') return;
     this.selectedPatientId = null;
+    this.selectedPatient.set(null);
     if (!value.trim()) {
       this.patientResults.set([]);
       return;
@@ -515,6 +589,7 @@ export class AppointmentFormComponent implements OnInit {
   protected onPatientSelected(event: MatAutocompleteSelectedEvent): void {
     const patient = event.option.value as PatientSummary;
     this.selectedPatientId = patient.id;
+    this.selectedPatient.set(patient);
     this.patientQuery = patient.fullName;
     this.patientResults.set([]);
   }
@@ -536,11 +611,7 @@ export class AppointmentFormComponent implements OnInit {
   async save(): Promise<void> {
     const start = this.parsedStartTime();
     if (!start) return;
-    if (this.newPatient()) {
-      if (!this.newPatientName.trim() || !this.newPatientPhone.trim()) return;
-    } else if (!this.selectedPatientId) {
-      return;
-    }
+    if (!this.canSave()) return;
 
     // On a failed save, an exception propagates out of this `try` before `dialogRef.close(true)`
     // runs — the dialog stays open with every field's current value intact, so the user can retry
@@ -561,6 +632,7 @@ export class AppointmentFormComponent implements OnInit {
         const created = await this.patientsService.create({
           fullName: this.newPatientName.trim(),
           phone: this.newPatientPhone.trim(),
+          contactPatientId: this.newPatientUsesContact() ? this.newPatientContact()?.id : undefined,
         });
         patientId = created.id;
       }
@@ -588,6 +660,30 @@ export class AppointmentFormComponent implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  protected setNewPatientUsesContact(value: boolean): void {
+    this.newPatientUsesContact.set(value);
+    if (!value) this.newPatientContact.set(null);
+  }
+
+  /** Links or unlinks a companion for the chosen patient, so the booking's notices go there. */
+  protected changeNoticeDestination(patient: PatientSummary): void {
+    const open = (full: PatientSummary) =>
+      this.dialog
+        .open<NotificationContactDialogComponent, NotificationContactDialogData, PatientSummary>(
+          NotificationContactDialogComponent,
+          { data: { patient: full }, width: '520px', maxWidth: '95vw' }
+        )
+        .afterClosed()
+        .subscribe((updated) => {
+          if (updated) this.selectedPatient.set(updated);
+        });
+    // The search result lacks `dependents`, which the dialog needs to block a chain.
+    void this.patientsService
+      .getById(patient.id)
+      .then(open)
+      .catch(() => open(patient));
   }
 
   async delete(): Promise<void> {

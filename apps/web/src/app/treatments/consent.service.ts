@@ -42,4 +42,38 @@ export class ConsentService {
       )
     );
   }
+
+  /** The unsigned letter as a PDF with blank signature lines, to print and sign by hand. */
+  printBlank(itemId: string): Promise<Blob> {
+    return firstValueFrom(
+      this.http.get(`/api/treatment-items/${itemId}/consent/print`, { responseType: 'blob' })
+    );
+  }
+
+  /** One scan (one or more image pages) that carries the handwritten signatures of several letters. */
+  registerScan(
+    treatmentId: string,
+    input: {
+      itemIds: string[];
+      signedDate: string;
+      place: string;
+      patientIdentification: string;
+      witnessName: string | null;
+      pages: File[];
+    }
+  ): Promise<{ scanId: string; consentIds: string[] }> {
+    const formData = new FormData();
+    for (const id of input.itemIds) formData.append('itemIds', id);
+    formData.append('signedDate', input.signedDate);
+    formData.append('place', input.place);
+    formData.append('patientIdentification', input.patientIdentification);
+    if (input.witnessName) formData.append('witnessName', input.witnessName);
+    for (const page of input.pages) formData.append('pages', page, page.name);
+    return firstValueFrom(
+      this.http.post<{ scanId: string; consentIds: string[] }>(
+        `/api/treatments/${treatmentId}/consent-scan`,
+        formData
+      )
+    );
+  }
 }

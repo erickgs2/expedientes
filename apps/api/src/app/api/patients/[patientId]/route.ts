@@ -5,6 +5,7 @@ import {
   type UpdatePatientData,
 } from '../../../../lib/patients/patient-search';
 import { deletePatient } from '../../../../lib/patients/patient-delete';
+import { checkContactLink, CONTACT_LINK_MESSAGES } from '../../../../lib/patients/notification-contact';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
@@ -51,9 +52,30 @@ export const PATCH = withApiErrors(
     const userId = await requireAuth(request, 'patients', 'edit');
 
     const { patientId } = await params;
-    const body = (await request.json()) as { documentId?: string | null; phone?: string };
+    const body = (await request.json()) as {
+      documentId?: string | null;
+      phone?: string;
+      contactPatientId?: string | null;
+    };
+
+    const current = await getPatientById(patientId);
+    if (!current) return apiError('NOT_FOUND', 'Patient not found', 404);
 
     const data: UpdatePatientData = {};
+
+    if (body.contactPatientId !== undefined) {
+      const contactId = typeof body.contactPatientId === 'string' ? body.contactPatientId.trim() : '';
+      if (contactId) {
+        const problem = await checkContactLink(patientId, contactId);
+        if (problem) return apiError(problem, CONTACT_LINK_MESSAGES[problem], 400);
+        data.contactPatientId = contactId;
+      } else {
+        data.contactPatientId = null;
+      }
+    }
+    // After this request, will the patient's notices go to a companion?
+    const willHaveContact =
+      data.contactPatientId !== undefined ? data.contactPatientId !== null : !!current.contactPatientId;
 
     if (body.documentId !== undefined) {
       const trimmed = typeof body.documentId === 'string' ? body.documentId.trim() : '';
@@ -65,7 +87,9 @@ export const PATCH = withApiErrors(
 
     if (body.phone !== undefined) {
       const trimmed = typeof body.phone === 'string' ? body.phone.trim() : '';
-      if (!trimmed) {
+      // Blank is allowed only while a companion receives the notices; otherwise the reminders
+      // would silently have nowhere to go.
+      if (!trimmed && !willHaveContact) {
         return apiError('INVALID_INPUT', 'phone cannot be empty', 400);
       }
       if (trimmed.length > MAX_PHONE_LENGTH) {
@@ -74,8 +98,14 @@ export const PATCH = withApiErrors(
       data.phone = trimmed;
     }
 
+    // Unlinking the companion of a patient with no phone of their own would leave them with no way
+    // to be reached.
+    if (!willHaveContact && !(data.phone ?? current.phone).trim()) {
+      return apiError('INVALID_INPUT', 'A phone is required when no contact receives the notices', 400);
+    }
+
     if (Object.keys(data).length === 0) {
-      return apiError('INVALID_INPUT', 'documentId or phone is required', 400);
+      return apiError('INVALID_INPUT', 'documentId, phone or contactPatientId is required', 400);
     }
 
     // No existence pre-check needed: Prisma's update throws P2025 for a missing id, which

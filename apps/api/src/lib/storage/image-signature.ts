@@ -23,3 +23,10 @@ export function isPng(buffer: Buffer): boolean {
     PNG_SIGNATURE.every((byte, index) => buffer[index] === byte)
   );
 }
+
+/** The only content types `/api/files` renders inline; decided by bytes, never by path or name. */
+export function inlineImageType(buffer: Buffer): 'image/jpeg' | 'image/png' | null {
+  if (isJpeg(buffer)) return 'image/jpeg';
+  if (isPng(buffer)) return 'image/png';
+  return null;
+}

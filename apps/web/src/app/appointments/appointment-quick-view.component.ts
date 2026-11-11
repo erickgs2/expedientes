@@ -32,7 +32,7 @@ import { HasPermissionDirective } from '../auth/has-permission.directive';
         mat-flat-button
         color="primary"
         type="button"
-        (click)="open('historia-clinica')"
+        (click)="open('resumen')"
       >
         <mat-icon>folder_open</mat-icon>
         {{ 'appointments.quick.openRecord' | transloco }}
@@ -98,7 +98,7 @@ export class AppointmentQuickViewComponent {
     return `${day} · ${time(start)}–${time(end)}`;
   }
 
-  protected open(section: 'historia-clinica' | 'valoracion'): void {
+  protected open(section: 'resumen' | 'valoracion'): void {
     this.dialogRef.close();
     void this.router.navigate(['/pacientes', this.appointment.patientId, section]);
   }
