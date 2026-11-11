@@ -325,8 +325,76 @@
     "inactiveBadge": "Inactive",
     "form": {
       "newTitle": "New treatment",
-      "editTitle": "Edit treatment"
-    }
+      "editTitle": "Edit treatment",
+      "untitled": "Untitled treatment",
+      "progress": "{{n}} of {{total}} sections",
+      "close": "Close",
+      "nameRequired": "Enter the treatment name",
+      "descriptionRequired": "The procedure description is required",
+      "availableTitle": "Available for new treatments",
+      "availableUsedOne": "Used by 1 patient. Deactivating it doesn't affect their record.",
+      "availableUsedMany": "Used by {{n}} patients. Deactivating it doesn't affect their records.",
+      "availableNone": "Deactivating it only hides it when starting a new treatment.",
+      "consentText": "Consent text",
+      "required": "Required",
+      "optional": "Optional",
+      "printsAs": "prints as {{heading}}",
+      "emptySection": "Empty — this section will be left out of the consent.",
+      "useExample": "Start from the example",
+      "write": "Write",
+      "previewTitle": "How it will look on the consent",
+      "previewBefore": "Opening declaration — set in Clinic details",
+      "previewAfter": "Closing declarations — set in Clinic details",
+      "previewNote": "Signed consents keep their own text; editing here only affects new ones.",
+      "unsaved": "{{n}} unsaved change(s)",
+      "noChanges": "No changes",
+      "saveError": "Couldn't save. Check the details and try again.",
+      "unsavedDialog": {
+        "title": "Unsaved changes",
+        "message": "You have unsaved changes to this treatment. Keep editing or leave without saving?",
+        "keepEditing": "Keep editing",
+        "discard": "Leave without saving"
+      }
+    },
+    "searchPlaceholder": "Search treatments…",
+    "summary": {
+      "active": "{{n}} active",
+      "inactive": "{{n}} inactive",
+      "incomplete": "{{n}} with an incomplete consent"
+    },
+    "filters": {
+      "label": "Filter treatments",
+      "active": "Active",
+      "incomplete": "Incomplete",
+      "inactive": "Inactive",
+      "all": "All"
+    },
+    "columns": {
+      "treatment": "Treatment",
+      "consent": "Consent",
+      "usage": "Usage",
+      "active": "Active"
+    },
+    "updated": "Updated {{date}}",
+    "complete": "Complete",
+    "sectionsCount": "{{n}}/{{total}} sections",
+    "missing": "Missing:",
+    "allSections": "All five consent sections",
+    "sectionShort": {
+      "description": "Procedure",
+      "risks": "Risks",
+      "alternatives": "Alternatives",
+      "aftercare": "Aftercare",
+      "contraindications": "Contraindications"
+    },
+    "patientsOne": "1 patient",
+    "patientsMany": "{{n}} patients",
+    "lastUsed": "Last used {{date}}",
+    "neverUsed": "Not used yet",
+    "noMatch": "No treatment matches the search or filter.",
+    "footnote": "Deactivating a treatment hides it when starting a new one; records and signed consents that already use it don't change.",
+    "editAria": "Edit {{name}}",
+    "activeFor": "{{name}} active"
   },
   "clinicSettings": {
     "title": "Clinic details",
@@ -765,5 +833,38 @@
     "photosState": "Before {{before}} · After {{after}}",
     "procedureNotes": "Procedure notes",
     "pickTreatment": "Pick above the treatments applied in this visit."
+  },
+  "diagramEditor": {
+    "title": "Diagram",
+    "undo": "Undo",
+    "redo": "Redo",
+    "unsaved": "Unsaved changes in {{n}} view(s)",
+    "close": "Close",
+    "tools": "Tools",
+    "color": "Colour",
+    "width": "Width",
+    "widthPx": "Width {{n}} px",
+    "zoom": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Fit to screen",
+    "views": "Views",
+    "annotations": "Annotations · {{n}}",
+    "noAnnotations": "No annotations on this view yet.",
+    "remove": "Remove",
+    "clearView": "Clear this view",
+    "reference": "Reference",
+    "opacity": "Reference transparency",
+    "kind": {
+      "pin": "Pin",
+      "x": "Cross",
+      "star": "Star",
+      "line": "Line",
+      "stroke": "Stroke",
+      "text": "Note"
+    },
+    "marks": "{{n}} mark(s)",
+    "noMarks": "No marks",
+    "noMarksEdit": "Tap to annotate"
   }
 }

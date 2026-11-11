@@ -325,8 +325,76 @@
     "inactiveBadge": "Inactivo",
     "form": {
       "newTitle": "Nuevo tratamiento",
-      "editTitle": "Editar tratamiento"
-    }
+      "editTitle": "Editar tratamiento",
+      "untitled": "Tratamiento sin nombre",
+      "progress": "{{n}} de {{total}} secciones",
+      "close": "Cerrar",
+      "nameRequired": "Escribe el nombre del tratamiento",
+      "descriptionRequired": "La descripción del procedimiento es obligatoria",
+      "availableTitle": "Disponible para nuevos tratamientos",
+      "availableUsedOne": "Usado por 1 paciente. Desactivarlo no afecta su expediente.",
+      "availableUsedMany": "Usado por {{n}} pacientes. Desactivarlo no afecta sus expedientes.",
+      "availableNone": "Desactivarlo sólo lo oculta al iniciar un tratamiento nuevo.",
+      "consentText": "Texto del consentimiento",
+      "required": "Obligatorio",
+      "optional": "Opcional",
+      "printsAs": "aparece como {{heading}}",
+      "emptySection": "Vacío — esta sección se omitirá del consentimiento.",
+      "useExample": "Partir del ejemplo",
+      "write": "Escribir",
+      "previewTitle": "Así se verá en el consentimiento",
+      "previewBefore": "Declaración inicial — se configura en Datos de la clínica",
+      "previewAfter": "Declaraciones finales — se configuran en Datos de la clínica",
+      "previewNote": "Los consentimientos ya firmados guardan su propio texto; editar aquí sólo afecta a los nuevos.",
+      "unsaved": "{{n}} cambio(s) sin guardar",
+      "noChanges": "Sin cambios",
+      "saveError": "No se pudo guardar. Revisa los datos e inténtalo de nuevo.",
+      "unsavedDialog": {
+        "title": "Cambios sin guardar",
+        "message": "Tienes cambios sin guardar en este tratamiento. ¿Quieres seguir editando o salir sin guardar?",
+        "keepEditing": "Seguir editando",
+        "discard": "Salir sin guardar"
+      }
+    },
+    "searchPlaceholder": "Buscar tratamiento…",
+    "summary": {
+      "active": "{{n}} activos",
+      "inactive": "{{n}} inactivos",
+      "incomplete": "{{n}} con consentimiento incompleto"
+    },
+    "filters": {
+      "label": "Filtrar tratamientos",
+      "active": "Activos",
+      "incomplete": "Incompletos",
+      "inactive": "Inactivos",
+      "all": "Todos"
+    },
+    "columns": {
+      "treatment": "Tratamiento",
+      "consent": "Consentimiento",
+      "usage": "Uso",
+      "active": "Activo"
+    },
+    "updated": "Actualizado {{date}}",
+    "complete": "Completo",
+    "sectionsCount": "{{n}}/{{total}} secciones",
+    "missing": "Falta:",
+    "allSections": "Las cinco secciones del consentimiento",
+    "sectionShort": {
+      "description": "Procedimiento",
+      "risks": "Riesgos",
+      "alternatives": "Alternativas",
+      "aftercare": "Cuidados",
+      "contraindications": "Contraindicaciones"
+    },
+    "patientsOne": "1 paciente",
+    "patientsMany": "{{n}} pacientes",
+    "lastUsed": "Último uso {{date}}",
+    "neverUsed": "Sin uso todavía",
+    "noMatch": "Ningún tratamiento coincide con la búsqueda o el filtro.",
+    "footnote": "Desactivar un tratamiento lo oculta al iniciar uno nuevo; los expedientes y consentimientos firmados que ya lo usan no cambian.",
+    "editAria": "Editar {{name}}",
+    "activeFor": "{{name}} activo"
   },
   "clinicSettings": {
     "title": "Datos de la clínica",
@@ -765,5 +833,38 @@
     "photosState": "Antes {{before}} · Después {{after}}",
     "procedureNotes": "Notas del procedimiento",
     "pickTreatment": "Elige arriba los tratamientos que se aplican en esta visita."
+  },
+  "diagramEditor": {
+    "title": "Diagrama",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "unsaved": "Cambios sin guardar en {{n}} vista(s)",
+    "close": "Cerrar",
+    "tools": "Herramientas",
+    "color": "Color",
+    "width": "Grosor",
+    "widthPx": "Grosor {{n}} px",
+    "zoom": "Zoom",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "zoomReset": "Ajustar a la pantalla",
+    "views": "Vistas",
+    "annotations": "Anotaciones · {{n}}",
+    "noAnnotations": "Aún no hay anotaciones en esta vista.",
+    "remove": "Eliminar",
+    "clearView": "Borrar todo en esta vista",
+    "reference": "Referencia",
+    "opacity": "Transparencia de la referencia",
+    "kind": {
+      "pin": "Punto",
+      "x": "Cruz",
+      "star": "Estrella",
+      "line": "Línea",
+      "stroke": "Trazo",
+      "text": "Nota"
+    },
+    "marks": "{{n}} marca(s)",
+    "noMarks": "Sin marcas",
+    "noMarksEdit": "Toca para anotar"
   }
 }

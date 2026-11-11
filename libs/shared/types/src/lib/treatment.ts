@@ -11,6 +11,19 @@ export interface TreatmentType {
   updatedAt: string;
 }
 
+/** Returned only by `GET /api/treatment-types?include=usage` (the catalog screen). */
+export interface TreatmentTypeUsage {
+  /** Distinct patients with at least one treatment of this type. */
+  patientCount: number;
+  /** ISO date of the most recent treatment visit that used it, or null if never used. */
+  lastUsedAt: string | null;
+}
+
+export interface TreatmentTypeWithUsage extends TreatmentType {
+  /** Absent when the server could not compute usage; the catalog then hides those details. */
+  usage?: TreatmentTypeUsage;
+}
+
 export interface TreatmentTypeUpdateInput {
   name?: string;
   consentDescription?: string;

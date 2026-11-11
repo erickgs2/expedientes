@@ -267,3 +267,20 @@ img {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The diagram editor fills the screen: no rounded corners or outline around the edge. */
+.diagram-editor-panel .mat-mdc-dialog-surface {
+  border: 0;
+  border-radius: 0 !important;
+}
+.diagram-editor-panel .mat-mdc-dialog-container {
+  --mat-dialog-container-shape: 0;
+}
+
+/* Treatment catalog form: a wide two-column dialog whose own header/footer frame the content. */
+.treatment-type-dialog-panel .mat-mdc-dialog-container {
+  --mat-dialog-container-shape: 18px;
+}
+.treatment-type-dialog-panel .mat-mdc-dialog-surface {
+  overflow: hidden;
+}

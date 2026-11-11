@@ -1,11 +1,11 @@
 import { Circle, Group, IText, Line, Polygon } from 'fabric';
 
-const MARKER_COLOR = '#e53935';
+export const MARKER_COLOR = '#e53935';
 
-export function createPinMarker(number: number, left: number, top: number): Group {
+export function createPinMarker(number: number, left: number, top: number, color = MARKER_COLOR): Group {
   const circle = new Circle({
     radius: 12,
-    fill: MARKER_COLOR,
+    fill: color,
     stroke: '#ffffff',
     strokeWidth: 2,
     originX: 'center',
@@ -23,17 +23,17 @@ export function createPinMarker(number: number, left: number, top: number): Grou
   return new Group([circle, label], { left, top, originX: 'center', originY: 'center' });
 }
 
-export function createXMarker(left: number, top: number): Group {
-  const line1 = new Line([-10, -10, 10, 10], { stroke: MARKER_COLOR, strokeWidth: 3 });
-  const line2 = new Line([-10, 10, 10, -10], { stroke: MARKER_COLOR, strokeWidth: 3 });
+export function createXMarker(left: number, top: number, color = MARKER_COLOR): Group {
+  const line1 = new Line([-10, -10, 10, 10], { stroke: color, strokeWidth: 3 });
+  const line2 = new Line([-10, 10, 10, -10], { stroke: color, strokeWidth: 3 });
   return new Group([line1, line2], { left, top, originX: 'center', originY: 'center' });
 }
 
-export function createStarMarker(left: number, top: number): Polygon {
+export function createStarMarker(left: number, top: number, color = MARKER_COLOR): Polygon {
   return new Polygon(starPoints(12, 5, 5), {
     left,
     top,
-    fill: MARKER_COLOR,
+    fill: color,
     stroke: '#ffffff',
     strokeWidth: 1,
     originX: 'center',

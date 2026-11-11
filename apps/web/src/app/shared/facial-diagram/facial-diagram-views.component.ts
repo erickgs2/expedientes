@@ -42,29 +42,40 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
   imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslocoModule],
   template: `
     <div class="diagram-views">
-      @for (view of shownViews(); track view) {
-        <div class="diagram-view-card">
-          <div class="diagram-view-header">
-            <span class="diagram-view-label">{{ viewLabelKey(view) | transloco }}</span>
-            <button mat-stroked-button type="button" (click)="openEditor(view)">
-              <mat-icon>{{ canEdit ? 'edit' : 'visibility' }}</mat-icon>
-              {{ (canEdit ? 'common.edit' : 'valoracion.diagram.view') | transloco }}
-            </button>
-          </div>
-          @if (previewUrls()[view]; as url) {
-            <img
-              class="diagram-preview"
-              [style.aspect-ratio]="aspectRatio(view)"
-              [src]="url"
-              [alt]="viewLabelKey(view) | transloco"
-              (click)="openEditor(view)"
-            />
-          } @else {
-            <div class="diagram-preview diagram-preview-loading" [style.aspect-ratio]="aspectRatio(view)">
+      @for (view of fullViews; track view) {
+        <button type="button" class="view-card" [class.has-marks]="countFor(view) > 0" (click)="openEditor(view)">
+          <span class="preview" [style.aspect-ratio]="aspectRatio(view)">
+            @if (previewUrls()[view]; as url) {
+              <img [src]="url" [alt]="viewLabelKey(view) | transloco" />
+            } @else {
               <mat-spinner diameter="32"></mat-spinner>
-            </div>
-          }
-        </div>
+            }
+          </span>
+          <span class="card-foot">
+            <span class="label">{{ viewLabelKey(view) | transloco }}</span>
+            <span class="count">
+              @if (countFor(view) > 0) {
+                {{ 'diagramEditor.marks' | transloco: { n: countFor(view) } }}
+              } @else {
+                {{ (canEdit ? 'diagramEditor.noMarksEdit' : 'diagramEditor.noMarks') | transloco }}
+              }
+            </span>
+          </span>
+        </button>
+      }
+    </div>
+    <div class="close-ups" role="group" [attr.aria-label]="'valoracion.diagram.closeUps.label' | transloco">
+      <span class="close-ups-label">{{ 'valoracion.diagram.closeUps.label' | transloco }}:</span>
+      @for (view of closeUps; track view) {
+        @if (countFor(view) > 0) {
+          <button type="button" class="close-up has-marks" (click)="openEditor(view)">
+            {{ viewLabelKey(view) | transloco }} · {{ 'diagramEditor.marks' | transloco: { n: countFor(view) } }}
+          </button>
+        } @else if (canEdit) {
+          <button type="button" class="close-up" (click)="openEditor(view)">
+            + {{ viewLabelKey(view) | transloco }}
+          </button>
+        }
       }
     </div>
   `,
@@ -72,37 +83,89 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
     `
       .diagram-views {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
       }
-      .diagram-view-card {
+      .view-card {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        max-width: 320px;
+        padding: 0;
+        border: 1px solid var(--plate-line);
+        border-radius: 14px;
+        background: var(--mat-sys-surface);
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 150ms ease-out;
       }
-      .diagram-view-header {
+      .view-card:hover,
+      .view-card:focus-visible {
+        border-color: var(--plate-line-strong);
+      }
+      .view-card.has-marks {
+        border: 1.5px solid var(--plate-mark);
+      }
+      .preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-height: 260px;
+        background: #ffffff;
+      }
+      .preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .card-foot {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--plate-line);
       }
-      .diagram-view-label {
-        font-weight: 500;
+      .label {
+        font-weight: 600;
       }
-      .diagram-preview {
-        width: 100%;
-        object-fit: contain;
-        border: 1px solid var(--plate-line-strong);
-        border-radius: var(--plate-radius);
-        background: #ffffff;
-        cursor: pointer;
-        display: block;
+      .count {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
       }
-      .diagram-preview-loading {
+      .has-marks .count {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
+      }
+      .close-ups {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        justify-content: center;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .close-ups-label {
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .close-up {
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: 20px;
+        background: transparent;
+        color: var(--mat-sys-on-surface-variant);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .close-up.has-marks {
+        border-style: solid;
+        color: var(--mat-sys-on-surface);
+        font-weight: 600;
       }
     `,
   ],
@@ -116,8 +179,12 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   private readonly dialog = inject(MatDialog);
 
   protected canEdit = false;
-  /** Full views always; close-ups only when they hold data. */
+  protected readonly fullViews = VIEW_ORDER;
+  protected readonly closeUps = CLOSE_UP_VIEWS;
+  /** Views with a rendered preview: the full ones always, close-ups once they hold data. */
   protected readonly shownViews = signal<DiagramView[]>(VIEW_ORDER);
+  /** Annotation count per view, refreshed with the previews. */
+  private readonly counts = signal<Partial<Record<DiagramView, number>>>({});
 
   protected readonly previewUrls = signal<Partial<Record<DiagramView, string>>>({});
   private readonly pastOptions = signal<DiagramReferenceOption[]>([]);
@@ -160,6 +227,18 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       ...VIEW_ORDER,
       ...CLOSE_UP_VIEWS.filter((view) => this.dataFor(view) !== null),
     ]);
+    this.counts.set(
+      Object.fromEntries(
+        ALL_VIEWS.map((view) => {
+          const objects = this.dataFor(view)?.['objects'];
+          return [view, Array.isArray(objects) ? objects.length : 0];
+        })
+      )
+    );
+  }
+
+  protected countFor(view: DiagramView): number {
+    return this.counts()[view] ?? 0;
   }
 
   private dataFor(view: DiagramView): Record<string, unknown> | null {
@@ -190,6 +269,7 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       initialData: Object.fromEntries(ALL_VIEWS.map((v) => [v, this.dataFor(v)])),
       dataSource: this.dataSource,
       referenceOptions: this.pastOptions(),
+      previewUrls: this.previewUrls(),
     };
     const ref = this.dialog.open<
       FacialDiagramEditDialogComponent,
@@ -197,14 +277,13 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       FacialDiagramEditDialogResult
     >(FacialDiagramEditDialogComponent, {
       data,
-      // Wide enough for the whole toolbar — tools, colours, widths and actions — to sit on one
-      // or two rows beside the canvas rather than wrapping into a stack that pushes it off screen.
-      width: 'min(96vw, 900px)',
-      maxWidth: '96vw',
-      // A fixed height (not just a max) so the editor can lay itself out to fit exactly: toolbar on
-      // top, canvas scaled into the rest — no scrolling inside the dialog.
-      height: '95dvh',
-      maxHeight: '95dvh',
+      // Full screen: tools, canvas and the views/annotations panel side by side, with the canvas
+      // scaled into whatever room is left.
+      width: '100vw',
+      maxWidth: '100vw',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      panelClass: 'diagram-editor-panel',
       autoFocus: false,
     });
     ref.afterClosed().subscribe((result) => {

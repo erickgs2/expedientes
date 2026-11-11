@@ -16,7 +16,21 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { Canvas, FabricImage, FabricObject, IText, Line, PencilBrush, TPointerEvent, TPointerEventInfo, util } from 'fabric';
+import {
+  Canvas,
+  Circle,
+  FabricImage,
+  FabricObject,
+  Group,
+  IText,
+  Line,
+  Path,
+  PencilBrush,
+  Polygon,
+  TPointerEvent,
+  TPointerEventInfo,
+  util,
+} from 'fabric';
 import type { DiagramView, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { createPinMarker, createStarMarker, createXMarker } from './fabric-shapes';
@@ -25,9 +39,28 @@ import { DIAGRAM_CANVAS_SIZES, DIAGRAM_IMAGE_URLS, fitBackgroundToCanvas } from 
 /** Upper bound for upscaling on large screens — beyond this the canvas just gets unwieldy. */
 const MAX_DISPLAY_SCALE = 1.5;
 
-type DiagramTool = 'select' | 'pencil' | 'line' | 'pin' | 'x' | 'star' | 'text';
+export type DiagramTool = 'select' | 'pencil' | 'line' | 'pin' | 'x' | 'star' | 'text';
 
-const DRAW_COLORS = ['#000000', '#e53935', '#1e88e5', '#43a047'];
+export type AnnotationKind = 'pin' | 'x' | 'star' | 'line' | 'stroke' | 'text';
+
+/** One of this view's own annotations, for the editor's list (reference overlay excluded). */
+export interface DiagramAnnotation {
+  /** Position among this view's own objects, as passed to `selectAnnotation`/`removeAnnotation`. */
+  index: number;
+  kind: AnnotationKind;
+  /** The pin's number or the note's text; empty for shapes without one. */
+  label: string;
+  color: string;
+}
+
+/** Undo steps kept per view; older ones are dropped. */
+const HISTORY_LIMIT = 100;
+/** Quiet time before a change becomes an undo step, so typing a note is one step, not one per key. */
+const SNAPSHOT_DELAY_MS = 250;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+
+const DRAW_COLORS = ['#e53935', '#1e88e5', '#43a047', '#000000'];
 const DRAW_WIDTHS = [2, 4, 6];
 
 /** i18n keys for the accessible names of {@link DRAW_COLORS}, keyed by the same hex values. */
@@ -138,7 +171,7 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
   imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatTooltipModule, TranslocoModule],
   template: `
     <div class="diagram-container">
-      @if (canEdit) {
+      @if (canEdit && showToolbar) {
         <div class="diagram-toolbar">
           <mat-button-toggle-group class="tool-group" [value]="activeTool()" [hideSingleSelectionIndicator]="true">
             @for (tool of toolDefs; track tool.id) {
@@ -242,16 +275,17 @@ export function findDisallowedDiagramType(obj: unknown): string | null {
       .diagram-brush-options.inactive {
         visibility: hidden;
       }
+      /* Scrolls when zoomed in past the area; the wrapper's auto margins centre it otherwise. */
       .diagram-canvas-area {
         flex: 1 1 auto;
         min-height: 0;
         width: 100%;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
+        overflow: auto;
       }
       .diagram-canvas-wrapper {
+        margin: auto;
+        flex: none;
         display: inline-block;
         line-height: 0;
         border: 1px solid var(--mat-sys-outline-variant, #ccc);
@@ -334,6 +368,10 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   @Input({ required: true }) permissionModule!: PermissionModule;
   @Input() initialDiagramData: Record<string, unknown> | null = null;
   @Input() referenceData: Record<string, unknown> | null = null;
+  /** Off when an editor around the canvas provides the tools (see `FacialDiagramEditDialog`). */
+  @Input() showToolbar = true;
+  /** How visible the reference overlay is, 0–1. */
+  @Input() referenceOpacity = 0.35;
 
   @ViewChild('canvasEl') private readonly canvasEl!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvasWrapper') private readonly canvasWrapper!: ElementRef<HTMLDivElement>;
@@ -364,9 +402,9 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   readonly dirty = signal(false);
   protected canEdit = false;
 
-  protected readonly drawColors = DRAW_COLORS;
-  protected readonly drawWidths = DRAW_WIDTHS;
-  protected readonly toolDefs: { id: DiagramTool; icon: string; labelKey: string }[] = [
+  readonly drawColors = DRAW_COLORS;
+  readonly drawWidths = DRAW_WIDTHS;
+  readonly toolDefs: { id: DiagramTool; icon: string; labelKey: string }[] = [
     { id: 'select', icon: 'near_me', labelKey: 'valoracion.diagram.tools.select' },
     { id: 'pencil', icon: 'edit', labelKey: 'valoracion.diagram.tools.pencil' },
     { id: 'line', icon: 'horizontal_rule', labelKey: 'valoracion.diagram.tools.line' },
@@ -375,9 +413,25 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     { id: 'star', icon: 'star', labelKey: 'valoracion.diagram.tools.star' },
     { id: 'text', icon: 'text_fields', labelKey: 'valoracion.diagram.tools.text' },
   ];
-  protected readonly activeTool = signal<DiagramTool>('select');
-  protected readonly drawColor = signal(DRAW_COLORS[0]);
-  protected readonly drawWidth = signal(DRAW_WIDTHS[0]);
+  readonly activeTool = signal<DiagramTool>('select');
+  readonly drawColor = signal(DRAW_COLORS[0]);
+  readonly drawWidth = signal(DRAW_WIDTHS[0]);
+  /** This view's own annotations, in stacking order, for the editor's list. */
+  readonly annotations = signal<DiagramAnnotation[]>([]);
+  /** Index (in `annotations`) of the selected annotation, or null. */
+  readonly selectedIndex = signal<number | null>(null);
+  readonly canUndo = signal(false);
+  readonly canRedo = signal(false);
+  /** Zoom on top of the fit-to-area scale: 1 = the whole face fits. */
+  readonly zoom = signal(1);
+  /** Serialized states for undo/redo; `history[0]` is the state as loaded. */
+  private history: string[] = [];
+  private historyIndex = -1;
+  /** The state as loaded, so undoing back to it clears `dirty`. */
+  private baseline = '';
+  /** True while an undo/redo rebuilds the canvas, so its own add/remove events are ignored. */
+  private restoring = false;
+  private snapshotTimer: ReturnType<typeof setTimeout> | null = null;
   private pinCounter = 1;
   /** The line currently being dragged out, or null. Unselectable until the drag ends. */
   private pendingLine: Line | null = null;
@@ -402,7 +456,12 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     // `ngAfterViewInit` finishes constructing it (e.g. on the very first input binding).
     // `ngAfterViewInit`'s own tail end applies whatever `referenceData` is already set by the time
     // it finishes loading, so an early change here is not lost, just deferred.
-    if (!changes['referenceData'] || !this.canvas) return;
+    if (!this.canvas) return;
+    if (changes['referenceOpacity'] && !changes['referenceData']) {
+      this.referenceObjects.forEach((obj) => obj.set({ opacity: this.referenceOpacity }));
+      this.canvas.requestRenderAll();
+    }
+    if (!changes['referenceData']) return;
     void this.applyReferenceOverlay();
   }
 
@@ -442,6 +501,11 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     });
 
     this.canvas.on('mouse:up', () => this.finishLine());
+
+    const syncSelection = () => this.syncSelection();
+    this.canvas.on('selection:created', syncSelection);
+    this.canvas.on('selection:updated', syncSelection);
+    this.canvas.on('selection:cleared', syncSelection);
 
     // Drop text notes that were opened but left empty, so a stray click with the text tool doesn't
     // persist a zero-width IText. Scoped to empty text objects only.
@@ -501,10 +565,11 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       // Wired only now, after the stored objects were added, so loading itself never counts as a
       // change.
       const markDirty = ({ target }: { target?: FabricObject }) => {
-        if (!target || this.destroyed) return;
+        if (!target || this.destroyed || this.restoring) return;
         if (this.referenceObjects.includes(target) || target === this.pendingLine) return;
         if (target instanceof IText && !target.text.trim()) return;
         this.dirty.set(true);
+        this.scheduleSnapshot();
       };
       this.canvas.on('object:added', markDirty);
       this.canvas.on('object:removed', markDirty);
@@ -512,6 +577,12 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       this.canvas.on('text:changed', markDirty);
 
       this.canvas.requestRenderAll();
+      // The loaded state is undo step zero.
+      this.baseline = this.snapshotJson();
+      this.history = [this.baseline];
+      this.historyIndex = 0;
+      this.updateHistoryFlags();
+      this.refreshAnnotations();
       // Only on the success path: leaving this false keeps Save disabled, so a broken load can
       // never overwrite the stored diagram with an empty/partial object set.
       this.loaded.set(true);
@@ -533,6 +604,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    if (this.snapshotTimer) clearTimeout(this.snapshotTimer);
     this.resizeObserver?.disconnect();
     this.canvas?.dispose();
   }
@@ -549,11 +621,13 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     const availableWidth = area.clientWidth - 2;
     const availableHeight = area.clientHeight - 2;
     if (availableWidth <= 0 || availableHeight <= 0) return;
-    const displayScale = Math.min(
+    const fitScale = Math.min(
       MAX_DISPLAY_SCALE,
       availableWidth / this.canvasWidth,
       availableHeight / this.canvasHeight
     );
+    // Zooming in makes the canvas larger than its area, which then scrolls.
+    const displayScale = fitScale * this.zoom();
     const width = Math.floor(this.canvasWidth * displayScale);
     const height = Math.floor(this.canvasHeight * displayScale);
     if (width === this.canvas.getWidth() && height === this.canvas.getHeight()) return;
@@ -563,6 +637,16 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
+    const editingText = (this.canvas?.getActiveObject() as IText | undefined)?.isEditing;
+    if ((event.ctrlKey || event.metaKey) && !editingText && this.canEdit) {
+      const key = event.key.toLowerCase();
+      if (key === 'z' || key === 'y') {
+        event.preventDefault();
+        if (key === 'y' || event.shiftKey) void this.redo();
+        else void this.undo();
+        return;
+      }
+    }
     if (event.key !== 'Delete' && event.key !== 'Backspace') return;
     const active = this.canvas?.getActiveObject();
     if (!active) return;
@@ -571,13 +655,13 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     this.deleteSelected();
   }
 
-  protected deleteSelected(): void {
+  deleteSelected(): void {
     this.canvas.getActiveObjects().forEach((obj) => this.canvas.remove(obj));
     this.canvas.discardActiveObject();
     this.canvas.requestRenderAll();
   }
 
-  protected clearAll(): void {
+  clearAll(): void {
     // Resolved fresh on each use so a live language switch is reflected; `translate` is synchronous
     // once the active bundle is loaded, which it is by the time this button can be clicked.
     if (!confirm(this.transloco.translate('valoracion.diagram.confirmClearAll'))) return;
@@ -589,7 +673,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     this.canvas.requestRenderAll();
   }
 
-  protected setTool(tool: DiagramTool): void {
+  setTool(tool: DiagramTool): void {
     this.activeTool.set(tool);
     this.canvas.isDrawingMode = tool === 'pencil';
     if (tool === 'pencil') {
@@ -618,23 +702,24 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       line.set({ selectable: true, evented: true });
       line.setCoords();
       this.dirty.set(true);
+      this.scheduleSnapshot();
     }
     this.canvas.requestRenderAll();
     this.setTool('select');
   }
 
-  protected setColor(color: string): void {
+  setColor(color: string): void {
     this.drawColor.set(color);
     this.applyBrushSettings();
   }
 
-  protected setWidth(width: number): void {
+  setWidth(width: number): void {
     this.drawWidth.set(width);
     this.applyBrushSettings();
   }
 
   /** i18n key for a swatch's accessible name, so screen readers announce "Red", not "#e53935". */
-  protected colorLabel(color: string): string {
+  colorLabel(color: string): string {
     return DRAW_COLOR_LABEL_KEYS[color] ?? color;
   }
 
@@ -671,7 +756,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
         left: pointer.x,
         top: pointer.y,
         fontSize: 14,
-        fill: '#000000',
+        fill: this.drawColor(),
         backgroundColor: 'rgba(255,255,255,0.85)',
       });
       this.canvas.add(note);
@@ -684,10 +769,10 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
     const marker =
       tool === 'pin'
-        ? createPinMarker(this.pinCounter++, pointer.x, pointer.y)
+        ? createPinMarker(this.pinCounter++, pointer.x, pointer.y, this.drawColor())
         : tool === 'x'
-        ? createXMarker(pointer.x, pointer.y)
-        : createStarMarker(pointer.x, pointer.y);
+        ? createXMarker(pointer.x, pointer.y, this.drawColor())
+        : createStarMarker(pointer.x, pointer.y, this.drawColor());
 
     this.canvas.add(marker);
     this.canvas.requestRenderAll();
@@ -753,7 +838,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
       const overlay = objects.map((obj) => {
         const fabricObj = obj as FabricObject;
-        fabricObj.set({ selectable: false, evented: false, opacity: 0.35 });
+        fabricObj.set({ selectable: false, evented: false, opacity: this.referenceOpacity });
         return fabricObj;
       });
       // Accumulate, never replace. In the normal case the removal at the top of this method has
@@ -788,4 +873,147 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       }
     }
   }
+
+  // --- Editor API: undo/redo, zoom, annotation list ---------------------------------------------
+
+  setZoom(zoom: number): void {
+    this.zoom.set(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoom * 4) / 4)));
+    this.fitCanvasToArea();
+  }
+
+  /** Steps back one change. Waits for a pending snapshot first so the last edit is never skipped. */
+  async undo(): Promise<void> {
+    if (!this.canEdit || this.restoring) return;
+    this.flushSnapshot();
+    if (this.historyIndex <= 0) return;
+    this.historyIndex -= 1;
+    await this.restore(this.history[this.historyIndex]);
+  }
+
+  async redo(): Promise<void> {
+    if (!this.canEdit || this.restoring) return;
+    this.flushSnapshot();
+    if (this.historyIndex >= this.history.length - 1) return;
+    this.historyIndex += 1;
+    await this.restore(this.history[this.historyIndex]);
+  }
+
+  selectAnnotation(index: number): void {
+    const obj = this.ownObjects()[index];
+    if (!obj || !this.canEdit) return;
+    this.canvas.setActiveObject(obj);
+    this.canvas.requestRenderAll();
+    this.syncSelection();
+  }
+
+  removeAnnotation(index: number): void {
+    const obj = this.ownObjects()[index];
+    if (!obj || !this.canEdit) return;
+    this.canvas.remove(obj);
+    this.canvas.discardActiveObject();
+    this.canvas.requestRenderAll();
+  }
+
+  /** This view's own objects: no reference overlay, no line still being dragged out. */
+  private ownObjects(): FabricObject[] {
+    return this.canvas
+      .getObjects()
+      .filter((obj) => !this.referenceObjects.includes(obj) && obj !== this.pendingLine);
+  }
+
+  private snapshotJson(): string {
+    return JSON.stringify({
+      objects: this.ownObjects().map((obj) => obj.toObject()),
+      nextPinNumber: this.pinCounter,
+    });
+  }
+
+  private scheduleSnapshot(): void {
+    this.refreshAnnotations();
+    if (this.snapshotTimer) clearTimeout(this.snapshotTimer);
+    this.snapshotTimer = setTimeout(() => this.commitSnapshot(), SNAPSHOT_DELAY_MS);
+  }
+
+  private flushSnapshot(): void {
+    if (!this.snapshotTimer) return;
+    clearTimeout(this.snapshotTimer);
+    this.commitSnapshot();
+  }
+
+  private commitSnapshot(): void {
+    this.snapshotTimer = null;
+    if (this.destroyed || this.restoring || !this.loaded()) return;
+    const json = this.snapshotJson();
+    if (json === this.history[this.historyIndex]) return;
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(json);
+    if (this.history.length > HISTORY_LIMIT) this.history.shift();
+    this.historyIndex = this.history.length - 1;
+    this.updateHistoryFlags();
+  }
+
+  /**
+   * Rebuilds this view's own objects from an undo snapshot. The snapshot only ever holds objects
+   * this canvas serialized itself, but it still goes through the same allowlist as stored data —
+   * the reviving path stays single and audited.
+   */
+  private async restore(json: string): Promise<void> {
+    this.restoring = true;
+    try {
+      const state = JSON.parse(json) as { objects: Record<string, unknown>[]; nextPinNumber: number };
+      this.ownObjects().forEach((obj) => this.canvas.remove(obj));
+      this.canvas.discardActiveObject();
+      const safe = state.objects.filter((obj) => findDisallowedDiagramType(obj) === null);
+      const objects = await util.enlivenObjects(safe);
+      if (this.destroyed) return;
+      objects.forEach((obj) => this.canvas.add(obj as FabricObject));
+      this.pinCounter = state.nextPinNumber;
+      this.canvas.requestRenderAll();
+      this.dirty.set(json !== this.baseline);
+    } catch (error) {
+      console.error('Failed to restore diagram state', error);
+    } finally {
+      this.restoring = false;
+      this.updateHistoryFlags();
+      this.refreshAnnotations();
+    }
+  }
+
+  private updateHistoryFlags(): void {
+    this.canUndo.set(this.historyIndex > 0);
+    this.canRedo.set(this.historyIndex >= 0 && this.historyIndex < this.history.length - 1);
+  }
+
+  private refreshAnnotations(): void {
+    if (this.destroyed || !this.canvas) return;
+    this.annotations.set(this.ownObjects().map((obj, index) => describeAnnotation(obj, index)));
+    this.syncSelection();
+  }
+
+  private syncSelection(): void {
+    const active = this.canvas.getActiveObject();
+    const index = active ? this.ownObjects().indexOf(active) : -1;
+    this.selectedIndex.set(index >= 0 ? index : null);
+  }
+}
+
+/** What an object on the canvas is, for the editor's annotation list. */
+function describeAnnotation(obj: FabricObject, index: number): DiagramAnnotation {
+  const colorOf = (value: unknown) => (typeof value === 'string' ? value : '#000000');
+  if (obj instanceof Group) {
+    const children = obj.getObjects();
+    const circle = children.find((c) => c instanceof Circle);
+    if (circle) {
+      const label = children.find((c) => c instanceof IText) as IText | undefined;
+      return { index, kind: 'pin', label: label?.text ?? '', color: colorOf(circle.fill) };
+    }
+    return { index, kind: 'x', label: '', color: colorOf(children[0]?.stroke) };
+  }
+  if (obj instanceof IText) {
+    return { index, kind: 'text', label: obj.text.slice(0, 40), color: colorOf(obj.fill) };
+  }
+  if (obj instanceof Polygon) return { index, kind: 'star', label: '', color: colorOf(obj.fill) };
+  if (obj instanceof Line) return { index, kind: 'line', label: '', color: colorOf(obj.stroke) };
+  if (obj instanceof Path) return { index, kind: 'stroke', label: '', color: colorOf(obj.stroke) };
+  return { index, kind: 'stroke', label: '', color: colorOf(obj.stroke) };
 }
