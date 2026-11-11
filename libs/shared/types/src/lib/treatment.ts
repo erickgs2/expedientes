@@ -36,6 +36,16 @@ export interface TreatmentItem {
   treatmentTypeName: string;
   notes: string | null;
   hasConsent: boolean;
+  /** How far the item has got, for the treatment screen's step cards. */
+  progress?: TreatmentItemProgress;
+}
+
+export interface TreatmentItemProgress {
+  /** Diagram views (front, profiles, close-ups) that hold annotations. */
+  diagramViews: number;
+  products: number;
+  photosBefore: number;
+  photosAfter: number;
 }
 
 /** A treatment visit with its full item detail — returned by the get and item-update endpoints. */

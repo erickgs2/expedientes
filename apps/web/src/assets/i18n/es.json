@@ -730,5 +730,40 @@
     "receivesFor": "También recibe los avisos de {{names}}",
     "noPhone": "sin teléfono",
     "linkCompanion": "Enviar a un acompañante"
+  },
+  "visitSheet": {
+    "valoracionOf": "Valoración del {{date}}",
+    "treatmentOf": "Tratamiento del {{date}}",
+    "reason": "Motivo de la visita",
+    "notesLabel": "Hallazgos, plan, indicaciones",
+    "previousVisit": "Visita anterior · {{date}}",
+    "previousEmpty": "Sin notas",
+    "openPrevious": "Abrir esa valoración",
+    "leaveUnsaved": "Hay cambios sin guardar en esta valoración. ¿Salir sin guardarlos?",
+    "unsaved": "Hay cambios sin guardar",
+    "allSaved": "Todo guardado",
+    "savedAt": "Guardado {{time}}",
+    "diagramsHint": "Toca una vista para anotar",
+    "treatmentsToday": "Tratamientos de esta visita",
+    "lockedBySignature": "Tiene consentimiento firmado; ya no se puede quitar",
+    "stepsDone": "{{done}} de {{total}} pasos listos",
+    "saveToContinue": "Guarda para continuar con sus pasos",
+    "next": "Siguiente: {{step}}",
+    "complete": "Completo",
+    "step": {
+      "consent": "Consentimiento",
+      "diagram": "Diagrama",
+      "products": "Productos y lote",
+      "photos": "Fotos"
+    },
+    "notSigned": "Sin firmar",
+    "pending": "Pendiente",
+    "notRecorded": "Sin registrar",
+    "diagramViews": "{{n}} vista(s) anotada(s)",
+    "productsCount": "{{n}} producto(s)",
+    "recordProduct": "Registrar producto",
+    "photosState": "Antes {{before}} · Después {{after}}",
+    "procedureNotes": "Notas del procedimiento",
+    "pickTreatment": "Elige arriba los tratamientos que se aplican en esta visita."
   }
 }

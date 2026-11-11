@@ -730,5 +730,40 @@
     "receivesFor": "Also receives notices for {{names}}",
     "noPhone": "no phone",
     "linkCompanion": "Send to a companion"
+  },
+  "visitSheet": {
+    "valoracionOf": "Assessment of {{date}}",
+    "treatmentOf": "Treatment of {{date}}",
+    "reason": "Reason for visit",
+    "notesLabel": "Findings, plan, instructions",
+    "previousVisit": "Previous visit · {{date}}",
+    "previousEmpty": "No notes",
+    "openPrevious": "Open that assessment",
+    "leaveUnsaved": "This assessment has unsaved changes. Leave without saving?",
+    "unsaved": "Unsaved changes",
+    "allSaved": "All saved",
+    "savedAt": "Saved {{time}}",
+    "diagramsHint": "Tap a view to annotate",
+    "treatmentsToday": "Treatments in this visit",
+    "lockedBySignature": "Has a signed consent; it can no longer be removed",
+    "stepsDone": "{{done}} of {{total}} steps done",
+    "saveToContinue": "Save to continue with its steps",
+    "next": "Next: {{step}}",
+    "complete": "Complete",
+    "step": {
+      "consent": "Consent",
+      "diagram": "Diagram",
+      "products": "Products and lot",
+      "photos": "Photos"
+    },
+    "notSigned": "Not signed",
+    "pending": "Pending",
+    "notRecorded": "Not recorded",
+    "diagramViews": "{{n}} view(s) annotated",
+    "productsCount": "{{n}} product(s)",
+    "recordProduct": "Record product",
+    "photosState": "Before {{before}} · After {{after}}",
+    "procedureNotes": "Procedure notes",
+    "pickTreatment": "Pick above the treatments applied in this visit."
   }
 }

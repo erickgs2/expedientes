@@ -1,16 +1,17 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
-import type { HistoriaClinica } from '@expedientes/shared-types';
+import type { HistoriaClinica, ValoracionSummary } from '@expedientes/shared-types';
 import { ValoracionService } from './valoracion.service';
 import { FacialDiagramViewsComponent } from '../shared/facial-diagram/facial-diagram-views.component';
 import type { DiagramDataSource } from '../shared/facial-diagram/diagram-data-source';
@@ -26,7 +27,6 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    RouterLink,
     TranslocoModule,
     HasPermissionDirective,
     FacialDiagramViewsComponent,
@@ -41,109 +41,275 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
            that id has been validated against the active patient. -->
       <p class="load-error">{{ 'common.loadError' | transloco }}</p>
     } @else {
-      <a mat-button class="back-link" routerLink="/valoracion">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'common.back' | transloco }}
-      </a>
-      <h1>{{ 'valoracion.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
-
-      <!-- Three distinct jobs on one page — record the visit, annotate the diagrams, manage the
-           photos — previously ran together with nothing between them, so the Guardar button looked
-           like it belonged to whatever followed it. Headings and rules say where each one ends. -->
-      <section class="page-section">
-        <h2 class="section-title">{{ 'valoracion.sections.visit' | transloco }}</h2>
-        <form [formGroup]="form" (ngSubmit)="save()">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'valoracion.fields.fecha' | transloco }}</mat-label>
-          <input matInput type="date" formControlName="fecha" />
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'valoracion.fields.queQuiereElPaciente' | transloco }}</mat-label>
-          <textarea matInput formControlName="queQuiereElPaciente" rows="3"></textarea>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'valoracion.fields.queNecesitaElPaciente' | transloco }}</mat-label>
-          <textarea matInput formControlName="queNecesitaElPaciente" rows="3"></textarea>
-        </mat-form-field>
-        <div *appHasPermission="'valoracion:edit'" class="copy-row">
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!historiaHasWantsOrNeeds()"
-            (click)="copyFromHistoria()"
-          >
-            <mat-icon>content_copy</mat-icon>
-            {{ 'valoracion.copyFromHistoria' | transloco }}
-          </button>
-          <span class="hint">
-            {{
-              (historiaHasWantsOrNeeds()
-                ? 'valoracion.copyFromHistoriaHelp'
-                : 'valoracion.copyFromHistoriaEmpty'
-              ) | transloco
-            }}
+      <div class="strip">
+        <span class="strip-date">{{ 'visitSheet.valoracionOf' | transloco: { date: longDate(form.controls.fecha.value) } }}</span>
+        @if (allergyNames()) {
+          <span class="allergy-chip">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            {{ 'historiaClinica.fields.alergias' | transloco }}: {{ allergyNames() }}
           </span>
-        </div>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>{{ 'valoracion.fields.notas' | transloco }}</mat-label>
-          <textarea matInput formControlName="notas" rows="10"></textarea>
-        </mat-form-field>
-          <button
-            *appHasPermission="'valoracion:edit'"
-            mat-flat-button
-            color="primary"
-            type="submit"
-            [disabled]="saving()"
-          >
-            {{ (saving() ? 'valoracion.saving' : 'common.save') | transloco }}
-          </button>
+        }
+        <span class="strip-status" aria-live="polite">{{ saveStatus() | transloco: { time: lastSavedAt() } }}</span>
+      </div>
+
+      <h1>{{ 'valoracion.detailTitle' | transloco }}</h1>
+
+      <div class="sheet">
+        <form class="visit-col" [formGroup]="form" (ngSubmit)="save()">
+          <section class="card">
+            <h2>{{ 'visitSheet.reason' | transloco }}</h2>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'valoracion.fields.fecha' | transloco }}</mat-label>
+              <input matInput type="date" formControlName="fecha" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'valoracion.fields.queQuiereElPaciente' | transloco }}</mat-label>
+              <textarea matInput formControlName="queQuiereElPaciente" rows="3"></textarea>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'valoracion.fields.queNecesitaElPaciente' | transloco }}</mat-label>
+              <textarea matInput formControlName="queNecesitaElPaciente" rows="3"></textarea>
+            </mat-form-field>
+            <div *appHasPermission="'valoracion:edit'" class="copy-row">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!historiaHasWantsOrNeeds()"
+                (click)="copyFromHistoria()"
+              >
+                <mat-icon>content_copy</mat-icon>
+                {{ 'valoracion.copyFromHistoria' | transloco }}
+              </button>
+              <span class="hint">
+                {{
+                  (historiaHasWantsOrNeeds()
+                    ? 'valoracion.copyFromHistoriaHelp'
+                    : 'valoracion.copyFromHistoriaEmpty'
+                  ) | transloco
+                }}
+              </span>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>{{ 'valoracion.fields.notas' | transloco }}</h2>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'visitSheet.notesLabel' | transloco }}</mat-label>
+              <textarea matInput formControlName="notas" rows="8"></textarea>
+            </mat-form-field>
+          </section>
+
+          @if (previousVisit(); as prev) {
+            <button type="button" class="previous" (click)="openVisit(prev.id)">
+              <span class="previous-title">{{ 'visitSheet.previousVisit' | transloco: { date: longDate(prev.fecha) } }}</span>
+              <span class="previous-text">
+                {{ prev.queNecesitaElPaciente || prev.queQuiereElPaciente || prev.notas || ('visitSheet.previousEmpty' | transloco) }}
+              </span>
+              <span class="previous-link">{{ 'visitSheet.openPrevious' | transloco }}</span>
+            </button>
+          }
+
+          <div *appHasPermission="'valoracion:edit'" class="save-bar" [class.has-changes]="dirty()">
+            <span>{{ (dirty() ? 'visitSheet.unsaved' : 'visitSheet.allSaved') | transloco }}</span>
+            <button mat-flat-button color="primary" type="submit" [disabled]="saving() || !dirty()">
+              {{ (saving() ? 'valoracion.saving' : 'common.save') | transloco }}
+            </button>
+          </div>
         </form>
-      </section>
 
-      <section class="page-section">
-        <h2 class="section-title">{{ 'valoracion.sections.diagrams' | transloco }}</h2>
-        <app-facial-diagram-views
-          [dataSource]="diagramDataSource"
-          permissionModule="valoracion"
-          [diagrams]="diagrams"
-        />
-      </section>
+        <div class="media-col">
+          <section class="media">
+            <div class="media-head">
+              <h2>{{ 'valoracion.sections.diagrams' | transloco }}</h2>
+              <span class="hint">{{ 'visitSheet.diagramsHint' | transloco }}</span>
+            </div>
+            <app-facial-diagram-views
+              [dataSource]="diagramDataSource"
+              permissionModule="valoracion"
+              [diagrams]="diagrams"
+            />
+          </section>
 
-      <section class="page-section">
-        <h2 class="section-title">{{ 'valoracion.sections.photos' | transloco }}</h2>
-        <app-photo-gallery [dataSource]="photoDataSource" permissionModule="valoracion" />
-      </section>
+          <section class="media">
+            <div class="media-head">
+              <h2>{{ 'valoracion.sections.photos' | transloco }}</h2>
+            </div>
+            <app-photo-gallery [dataSource]="photoDataSource" permissionModule="valoracion" />
+          </section>
+        </div>
+      </div>
     }
   `,
   styles: [
     `
-      /* A rule plus generous top spacing between sections: on a long record page the boundary has
-         to survive being scrolled past, which a gap alone does not. */
-      .page-section + .page-section {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid var(--plate-line);
-      }
-      .section-title {
+      .strip {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
         margin: 0 0 16px;
-        font-size: 12px;
+        padding: 10px 16px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+        background: var(--mat-sys-surface-container-low);
+      }
+      .strip-date {
+        flex: 1;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+        font-variant-numeric: tabular-nums;
+      }
+      .strip-status {
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .allergy-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 0 12px;
+        border: 1px solid var(--mat-sys-error);
+        border-radius: 15px;
+        color: var(--mat-sys-error);
+        font-size: 13px;
         font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+      }
+      .allergy-chip mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+      }
+      h1 {
+        margin: 0 0 20px;
+      }
+      .sheet {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        align-items: flex-start;
+      }
+      .visit-col {
+        flex: 1 1 340px;
+        max-width: 440px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      @media (max-width: 939px) {
+        .visit-col {
+          max-width: none;
+        }
+      }
+      .media-col {
+        flex: 999 1 540px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+      .card {
+        padding: 20px;
+        border: 1px solid var(--plate-line);
+        border-radius: 14px;
+        background: var(--mat-sys-surface);
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .media-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 12px;
+        margin-bottom: 12px;
+      }
+      .media-head h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        letter-spacing: -0.015em;
+      }
+      .hint {
+        font-size: 12px;
         color: var(--mat-sys-on-surface-variant);
       }
       .copy-row {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 12px;
-        margin: -8px 0 16px;
+        gap: 8px 12px;
       }
       .copy-row .hint {
         flex: 1;
-        min-width: 200px;
-        font-size: 12px;
+        min-width: 180px;
+      }
+      .previous {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        width: 100%;
+        background: transparent;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        padding: 14px 16px;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: var(--plate-radius);
+        color: inherit;
+        text-decoration: none;
+      }
+      .previous:hover,
+      .previous:focus-visible {
+        background: var(--mat-sys-surface-container-low);
+      }
+      .previous-title {
+        font-weight: 600;
+      }
+      .previous-text {
+        font-size: 13px;
         color: var(--mat-sys-on-surface-variant);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .previous-link {
+        margin-top: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--mat-sys-primary);
+      }
+      .save-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--plate-line);
+        border-radius: 14px;
+        background: var(--mat-sys-surface);
+      }
+      .save-bar span {
+        flex: 1;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .save-bar.has-changes {
+        border-color: var(--plate-mark);
+      }
+      .save-bar.has-changes span {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
       }
       .full-width {
         width: 100%;
@@ -161,6 +327,7 @@ export class ValoracionDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly historiaClinicaService = inject(HistoriaClinicaService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -181,6 +348,28 @@ export class ValoracionDetailComponent implements OnInit {
     queNecesitaElPaciente: [''],
     notas: [''],
   });
+
+  /** The visit before this one, shown as a reference card. */
+  protected readonly previousVisit = signal<ValoracionSummary | null>(null);
+  protected readonly lastSavedAt = signal('');
+  /** `form.dirty` is not a signal; re-read it whenever the values change or a save lands. */
+  private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
+  private readonly savedTick = signal(0);
+  protected readonly dirty = computed(() => {
+    this.formValue();
+    this.savedTick();
+    return this.form.dirty;
+  });
+  protected readonly saveStatus = computed(() =>
+    this.dirty()
+      ? 'visitSheet.unsaved'
+      : this.lastSavedAt()
+        ? 'visitSheet.savedAt'
+        : 'visitSheet.allSaved'
+  );
+  protected readonly allergyNames = computed(() =>
+    (this.historia()?.allergies ?? []).map((a) => a.allergy.name).join(', ')
+  );
 
   async ngOnInit(): Promise<void> {
     this.valoracionId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -219,7 +408,15 @@ export class ValoracionDetailComponent implements OnInit {
         queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
       });
+      this.form.markAsPristine();
+      this.savedTick.update((n) => n + 1);
       this.diagrams = valoracion.diagrams;
+      // The visit just before this one, for the reference card. Same patient-scoped list the
+      // reference picker uses; failing to load it only hides the card.
+      void this.valoracionService
+        .list(this.patientId)
+        .then((visits) => this.previousVisit.set(this.pickPrevious(visits, valoracion.fecha)))
+        .catch(() => this.previousVisit.set(null));
       this.diagramDataSource = {
         listReferenceOptions: async () => {
           const visits = await this.valoracionService.list(this.patientId);
@@ -302,8 +499,51 @@ export class ValoracionDetailComponent implements OnInit {
         queNecesitaElPaciente: raw.queNecesitaElPaciente?.trim() || null,
         notas: raw.notas?.trim() || null,
       });
+      this.form.markAsPristine();
+      this.savedTick.update((n) => n + 1);
+      this.lastSavedAt.set(
+        new Date().toLocaleTimeString(this.transloco.getActiveLang(), {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+      );
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /**
+   * Opens another visit of this patient. Goes through a throwaway navigation first because the
+   * router would otherwise reuse this component for the same route and keep showing this visit:
+   * the page and its diagram previews are built once, from the id read on init.
+   */
+  protected async openVisit(id: string): Promise<void> {
+    if (this.form.dirty && !confirm(this.transloco.translate('visitSheet.leaveUnsaved'))) return;
+    await this.router.navigateByUrl('/', { skipLocationChange: true });
+    await this.router.navigate(['/pacientes', this.patientId, 'valoracion', id]);
+  }
+
+  /** The most recent other visit dated on or before this one; the patient-scoped list only. */
+  private pickPrevious(visits: ValoracionSummary[], fecha: string): ValoracionSummary | null {
+    const current = new Date(fecha).getTime();
+    return (
+      visits
+        .filter((v) => v.id !== this.valoracionId && v.patientId === this.patientId)
+        .filter((v) => new Date(v.fecha).getTime() <= current)
+        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0] ?? null
+    );
+  }
+
+  /** `11 nov 2026` from a `YYYY-MM-DD` or ISO string, read as a calendar date. */
+  protected longDate(value: string | null | undefined): string {
+    if (!value) return '';
+    const d = new Date(`${value.substring(0, 10)}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(this.transloco.getActiveLang(), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 }

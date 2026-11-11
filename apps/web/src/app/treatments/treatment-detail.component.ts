@@ -1,15 +1,20 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
-import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import type { Treatment, TreatmentType } from '@expedientes/shared-types';
+import type {
+  HistoriaClinica,
+  Treatment,
+  TreatmentItemProgress,
+  TreatmentType,
+} from '@expedientes/shared-types';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
 import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { TreatmentsService } from './treatments.service';
@@ -29,14 +34,18 @@ interface TreatmentItemForm {
   notes: string;
   itemId: string | null;
   hasConsent: boolean;
+  progress: TreatmentItemProgress;
 }
+
+type StepKey = 'consent' | 'diagram' | 'products' | 'photos';
+
+const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photosBefore: 0, photosAfter: 0 };
 
 @Component({
   selector: 'app-treatment-detail',
   standalone: true,
   imports: [
     FormsModule,
-    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -50,206 +59,429 @@ interface TreatmentItemForm {
     } @else if (loadFailed()) {
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
-      <a mat-button class="back-link" routerLink="/treatments">
-        <mat-icon>arrow_back</mat-icon>
-        {{ 'common.back' | transloco }}
-      </a>
-      <h1>{{ 'treatments.detailTitle' | transloco }} — {{ patient()?.fullName }}</h1>
-      <p>{{ 'valoracion.fields.fecha' | transloco }}: {{ fecha().substring(0, 10) }}</p>
-      @for (item of items(); track item.treatmentTypeId) {
-        <div class="item-row">
-          <!--
-            The name/selected-state must always render, even for a treatments:view-only user —
-            only the ability to toggle is permission-gated, never the checkbox's presence or
-            label, so a read-only user can still see which types exist and which are selected on
-            this visit. Mirrors the read-only-vs-editable split used below for notes (and by
-            PhotoGalleryComponent/FacialDiagramViewsComponent elsewhere) rather than a disabled
-            interactive control, which would render the label at low-contrast disabled-text
-            opacity instead of a proper read-only display.
-          -->
-          @if (canEdit) {
-            <mat-checkbox
-              [checked]="item.selected"
-              [disabled]="item.hasConsent"
-              (change)="toggleSelected(item, $event.checked)"
-            >
-              {{ item.name }}
-            </mat-checkbox>
-            @if (item.hasConsent) {
-              <span class="consent-locked-badge">{{
-                'treatments.consentLockedBadge' | transloco
-              }}</span>
-            }
-          } @else {
-            <span class="item-readonly">
-              <span class="selection-indicator">{{
-                (item.selected ? 'treatments.selected' : 'treatments.notSelected') | transloco
-              }}</span>
-              {{ item.name }}
-            </span>
-          }
-          @if (!item.active) {
-            <span class="inactive-badge">{{ 'treatmentCatalog.inactiveBadge' | transloco }}</span>
-          }
-          @if (item.selected) {
+      <div class="strip">
+        <span class="strip-date">{{ 'visitSheet.treatmentOf' | transloco: { date: longDate(fecha()) } }}</span>
+        @if (allergyNames()) {
+          <span class="allergy-chip">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            {{ 'historiaClinica.fields.alergias' | transloco }}: {{ allergyNames() }}
+          </span>
+        }
+      </div>
+
+      <div class="head">
+        <h1>{{ 'treatments.detailTitle' | transloco }}</h1>
+        @if (canEdit && pendingItems().length > 0) {
+          <button mat-stroked-button type="button" (click)="registerScan()">
+            <mat-icon aria-hidden="true">document_scanner</mat-icon>
+            {{ 'treatments.registerScan' | transloco }}
+          </button>
+        }
+      </div>
+
+      <section class="picker" [attr.aria-label]="'visitSheet.treatmentsToday' | transloco">
+        <p class="hint">{{ 'visitSheet.treatmentsToday' | transloco }}</p>
+        <div class="chips">
+          @for (item of items(); track item.treatmentTypeId) {
             @if (canEdit) {
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>{{ 'treatments.notes' | transloco }}</mat-label>
-                <textarea
-                  matInput
-                  [(ngModel)]="item.notes"
-                  [ngModelOptions]="{ standalone: true }"
-                  rows="3"
-                ></textarea>
-              </mat-form-field>
-            } @else if (item.notes) {
-              <!-- Read-only equivalent of the textarea above: notes stay visible, never hidden,
-                   for a view-only user — just not editable. Only rendered when there's actual
-                   note content, so an empty/null note doesn't show a bare "Notas:" label. -->
-              <p class="notes-readonly">
-                <strong>{{ 'treatments.notes' | transloco }}:</strong> {{ item.notes }}
-              </p>
-            }
-            @if (item.itemId) {
-              <div class="item-actions">
-                @if (item.hasConsent) {
-                  <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'consent']">
-                    <mat-icon aria-hidden="true">task</mat-icon>
-                    <span>{{ 'treatments.viewConsent' | transloco }}</span>
-                  </a>
-                } @else if (canEdit) {
-                  <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'consent']">
-                    <mat-icon aria-hidden="true">draw</mat-icon>
-                    <span>{{ 'treatments.signConsent' | transloco }}</span>
-                  </a>
+              <button
+                type="button"
+                class="chip"
+                [class.is-on]="item.selected"
+                [attr.aria-pressed]="item.selected"
+                [disabled]="item.hasConsent"
+                [attr.title]="item.hasConsent ? ('visitSheet.lockedBySignature' | transloco) : null"
+                (click)="toggleSelected(item, !item.selected)"
+              >
+                @if (item.selected) {
+                  <mat-icon aria-hidden="true">check</mat-icon>
                 }
-                @if (!item.hasConsent) {
-                  <button
-                    type="button"
-                    class="item-action"
-                    [disabled]="printingItemId() === item.itemId"
-                    (click)="printBlank(item)"
-                  >
-                    <mat-icon aria-hidden="true">print</mat-icon>
-                    <span>{{ 'treatments.printBlank' | transloco }}</span>
-                  </button>
+                {{ item.name }}
+                @if (!item.active) {
+                  <span class="muted">· {{ 'treatmentCatalog.inactiveBadge' | transloco }}</span>
                 }
-                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'diagram']">
-                  <mat-icon aria-hidden="true">face</mat-icon>
-                  <span>{{
-                    (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco
-                  }}</span>
-                </a>
-                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'photos']">
-                  <mat-icon aria-hidden="true">photo_camera</mat-icon>
-                  <span>{{
-                    (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco
-                  }}</span>
-                </a>
-                <a class="item-action" [routerLink]="['/treatments/items', item.itemId, 'products']">
-                  <mat-icon aria-hidden="true">vaccines</mat-icon>
-                  <span>{{
-                    (canEdit ? 'treatments.addProducts' : 'treatments.viewProducts') | transloco
-                  }}</span>
-                </a>
-              </div>
+              </button>
+            } @else if (item.selected) {
+              <!-- Read-only users see which types were applied, never a disabled control. -->
+              <span class="chip is-on is-static">{{ item.name }}</span>
             }
+          } @empty {
+            <p>{{ 'treatments.noActiveTypes' | transloco }}</p>
           }
         </div>
-      } @empty {
-        <p>{{ 'treatments.noActiveTypes' | transloco }}</p>
-      }
+      </section>
+
+      <div class="cards">
+        @for (item of selectedItems(); track item.treatmentTypeId) {
+          @let st = stepsOf(item);
+          <article class="card" [class.is-current]="item.treatmentTypeId === currentItemId()">
+            <header class="card-head">
+              <div>
+                <h2>{{ item.name }}</h2>
+                <p class="hint">{{ 'visitSheet.stepsDone' | transloco: { done: st.done, total: 4 } }}</p>
+              </div>
+              @if (!item.itemId) {
+                <span class="next">{{ 'visitSheet.saveToContinue' | transloco }}</span>
+              } @else if (st.next) {
+                <span class="next is-marked">
+                  <span class="dot" aria-hidden="true"></span>
+                  {{ 'visitSheet.next' | transloco: { step: ('visitSheet.step.' + st.next | transloco) } }}
+                </span>
+              } @else {
+                <span class="next"><mat-icon aria-hidden="true">check</mat-icon>{{ 'visitSheet.complete' | transloco }}</span>
+              }
+            </header>
+
+            @if (item.itemId) {
+              <ol class="steps">
+                <li class="step" [class.is-next]="st.next === 'consent'">
+                  <p class="step-label">1 · {{ 'visitSheet.step.consent' | transloco }}</p>
+                  @if (item.hasConsent) {
+                    <p class="step-state is-done"><mat-icon aria-hidden="true">check</mat-icon>{{ 'treatments.consentLockedBadge' | transloco }}</p>
+                    <a class="step-link" [routerLink]="['/treatments/items', item.itemId, 'consent']">{{ 'treatments.viewConsent' | transloco }}</a>
+                  } @else {
+                    <p class="step-state">{{ 'visitSheet.notSigned' | transloco }}</p>
+                    <div class="step-actions">
+                      @if (canEdit) {
+                        <a mat-flat-button color="primary" [routerLink]="['/treatments/items', item.itemId, 'consent']">
+                          {{ 'treatments.signConsent' | transloco }}
+                        </a>
+                      }
+                      <button mat-button type="button" [disabled]="printingItemId() === item.itemId" (click)="printBlank(item)">
+                        <mat-icon aria-hidden="true">print</mat-icon>{{ 'treatments.printBlank' | transloco }}
+                      </button>
+                    </div>
+                  }
+                </li>
+                <li class="step" [class.is-next]="st.next === 'diagram'">
+                  <p class="step-label">2 · {{ 'visitSheet.step.diagram' | transloco }}</p>
+                  @if (item.progress.diagramViews > 0) {
+                    <p class="step-state is-done">
+                      <mat-icon aria-hidden="true">check</mat-icon>{{ 'visitSheet.diagramViews' | transloco: { n: item.progress.diagramViews } }}
+                    </p>
+                  } @else {
+                    <p class="step-state">{{ 'visitSheet.pending' | transloco }}</p>
+                  }
+                  <a [class]="st.next === 'diagram' && canEdit ? 'step-cta' : 'step-link'" [routerLink]="['/treatments/items', item.itemId, 'diagram']">
+                    {{ (canEdit ? 'treatments.editDiagram' : 'treatments.viewDiagram') | transloco }}
+                  </a>
+                </li>
+                <li class="step" [class.is-next]="st.next === 'products'">
+                  <p class="step-label">3 · {{ 'visitSheet.step.products' | transloco }}</p>
+                  @if (item.progress.products > 0) {
+                    <p class="step-state is-done">
+                      <mat-icon aria-hidden="true">check</mat-icon>{{ 'visitSheet.productsCount' | transloco: { n: item.progress.products } }}
+                    </p>
+                  } @else {
+                    <p class="step-state">{{ 'visitSheet.notRecorded' | transloco }}</p>
+                  }
+                  <a [class]="st.next === 'products' && canEdit ? 'step-cta' : 'step-link'" [routerLink]="['/treatments/items', item.itemId, 'products']">
+                    {{ (canEdit ? 'visitSheet.recordProduct' : 'treatments.viewProducts') | transloco }}
+                  </a>
+                </li>
+                <li class="step" [class.is-next]="st.next === 'photos'">
+                  <p class="step-label">4 · {{ 'visitSheet.step.photos' | transloco }}</p>
+                  <p class="step-state" [class.is-done]="item.progress.photosBefore > 0 && item.progress.photosAfter > 0">
+                    @if (item.progress.photosBefore > 0 && item.progress.photosAfter > 0) {
+                      <mat-icon aria-hidden="true">check</mat-icon>
+                    }
+                    {{ 'visitSheet.photosState' | transloco: { before: item.progress.photosBefore, after: item.progress.photosAfter } }}
+                  </p>
+                  <a [class]="st.next === 'photos' && canEdit ? 'step-cta' : 'step-link'" [routerLink]="['/treatments/items', item.itemId, 'photos']">
+                    {{ (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco }}
+                  </a>
+                </li>
+              </ol>
+            }
+
+            <div class="notes">
+              @if (canEdit) {
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'visitSheet.procedureNotes' | transloco }}</mat-label>
+                  <textarea
+                    matInput
+                    [ngModel]="item.notes"
+                    (ngModelChange)="setNotes(item, $event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    rows="2"
+                  ></textarea>
+                </mat-form-field>
+              } @else if (item.notes) {
+                <p class="notes-readonly"><strong>{{ 'treatments.notes' | transloco }}:</strong> {{ item.notes }}</p>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="empty">{{ 'visitSheet.pickTreatment' | transloco }}</p>
+        }
+      </div>
+
       @if (actionError()) {
         <p class="action-error" role="alert">{{ actionError()! | transloco }}</p>
       }
-      @if (canEdit && pendingItems().length > 0) {
-        <button mat-stroked-button type="button" class="scan-button" (click)="registerScan()">
-          <mat-icon aria-hidden="true">document_scanner</mat-icon>
-          {{ 'treatments.registerScan' | transloco }}
-        </button>
-      }
+
       @if (canEdit) {
-        <button mat-flat-button color="primary" [disabled]="saving()" (click)="save()">
-          {{ 'common.save' | transloco }}
-        </button>
+        <div class="save-bar" [class.has-changes]="dirty()">
+          <span>{{ (dirty() ? 'visitSheet.unsaved' : 'visitSheet.allSaved') | transloco }}</span>
+          <button mat-flat-button color="primary" type="button" [disabled]="saving() || !dirty()" (click)="save()">
+            {{ 'common.save' | transloco }}
+          </button>
+        </div>
       }
     }
   `,
   styles: [
     `
-      /* Each selected treatment is its own card, so its notes and actions read as belonging to
-         it rather than running together with the next treatment down the page. */
-      .item-row {
-        margin-bottom: 12px;
-        padding: 14px 16px;
+      .strip {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        margin: 0 0 16px;
+        padding: 10px 16px;
         border: 1px solid var(--plate-line);
         border-radius: var(--plate-radius);
+        background: var(--mat-sys-surface-container-low);
       }
-      /* Chips rather than bare text links: they read as tappable and keep a comfortable touch
-         target when they wrap on a phone. */
-      .item-actions {
+      .strip-date {
+        flex: 1;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+        font-variant-numeric: tabular-nums;
+      }
+      .allergy-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 0 12px;
+        border: 1px solid var(--mat-sys-error);
+        border-radius: 15px;
+        color: var(--mat-sys-error);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .allergy-chip mat-icon,
+      .next mat-icon,
+      .step-state mat-icon,
+      .chip mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+      }
+      .head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .head h1 {
+        margin: 0;
+      }
+      .picker {
+        margin-bottom: 20px;
+      }
+      .hint {
+        margin: 0;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .picker .hint {
+        margin-bottom: 8px;
+      }
+      .chips {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 12px;
       }
-      .item-action {
+      .chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         min-height: 44px;
-        padding: 0 14px;
-        border: 1px solid var(--plate-line);
-        border-radius: 8px;
-        background: transparent;
+        padding: 0 16px;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: 22px;
+        background: var(--mat-sys-surface);
         color: var(--mat-sys-on-surface);
-        font-size: 14px;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .chip.is-on {
+        border: 2px solid var(--mat-sys-on-surface-variant);
+        background: var(--mat-sys-surface-container-low);
+        font-weight: 600;
+      }
+      .chip:disabled {
+        cursor: not-allowed;
+      }
+      .chip.is-static {
+        cursor: default;
+      }
+      .muted {
+        color: var(--mat-sys-on-surface-variant);
+        font-weight: 400;
+      }
+      .cards {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .card {
+        border: 1px solid var(--plate-line);
+        border-radius: 14px;
+        background: var(--mat-sys-surface);
+        overflow: hidden;
+      }
+      .card.is-current {
+        border: 1.5px solid var(--plate-mark);
+      }
+      .card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--plate-line);
+      }
+      .card-head h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+      .next {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .next.is-marked {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--plate-mark);
+      }
+      .steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      }
+      .step {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 16px 20px;
+        border-right: 1px solid var(--plate-line);
+        border-bottom: 1px solid var(--plate-line);
+      }
+      .step.is-next {
+        background: var(--mat-sys-surface-container-low);
+      }
+      .step-label {
+        margin: 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .step.is-next .step-label {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
+      }
+      .step-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin: 0 0 6px;
+        color: var(--mat-sys-on-surface-variant);
+        font-variant-numeric: tabular-nums;
+      }
+      .step-state.is-done {
+        color: var(--mat-sys-on-surface);
+        font-weight: 600;
+      }
+      .step-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .step-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .step-cta {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: 0 16px;
+        border-radius: 20px;
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+        font-size: 13px;
         font-weight: 500;
         text-decoration: none;
-        transition: background-color 150ms ease-out, border-color 150ms ease-out;
       }
-      .item-action:hover {
-        background: var(--mat-sys-surface-container-low);
-        border-color: var(--plate-line-strong);
-      }
-      .item-action mat-icon {
-        color: var(--mat-sys-on-surface-variant);
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+      .notes {
+        padding: 16px 20px 4px;
       }
       .full-width {
         width: 100%;
       }
-      button.item-action {
-        cursor: pointer;
+      .notes-readonly {
+        margin: 0 0 12px;
+        color: var(--mat-sys-on-surface-variant);
       }
-      .scan-button {
-        margin-right: 8px;
+      .empty {
+        padding: 24px;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: 14px;
+        color: var(--mat-sys-on-surface-variant);
       }
       .action-error {
         color: var(--mat-sys-error);
       }
-      .inactive-badge {
-        margin-left: 8px;
-        font-size: 12px;
+      .save-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 20px;
+        padding: 12px 16px;
+        border: 1px solid var(--plate-line);
+        border-radius: 14px;
+        background: var(--mat-sys-surface);
+      }
+      .save-bar span {
+        flex: 1;
+        font-size: 13px;
         color: var(--mat-sys-on-surface-variant);
       }
-      .notes-readonly {
-        margin: 4px 0 0;
-        color: var(--mat-sys-on-surface-variant);
+      .save-bar.has-changes {
+        border-color: var(--plate-mark);
       }
-      .item-readonly {
-        display: inline-block;
-      }
-      .selection-indicator {
-        font-weight: 500;
-        margin-right: 6px;
-      }
-      .consent-locked-badge {
-        margin-left: 8px;
-        font-size: 12px;
-        color: var(--mat-sys-on-surface-variant);
+      .save-bar.has-changes span {
+        color: var(--mat-sys-primary);
+        font-weight: 600;
       }
     `,
   ],
@@ -263,6 +495,8 @@ export class TreatmentDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly consentService = inject(ConsentService);
   private readonly dialog = inject(MatDialog);
+  private readonly historiaService = inject(HistoriaClinicaService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -275,6 +509,18 @@ export class TreatmentDetailComponent implements OnInit {
   /** Saved, selected items still waiting for a signed consent — what a scan can cover. */
   protected readonly pendingItems = computed(() =>
     this.items().filter((i) => i.selected && i.itemId && !i.hasConsent)
+  );
+  protected readonly selectedItems = computed(() => this.items().filter((i) => i.selected));
+  /** What was last loaded or saved, to tell whether anything is waiting to be saved. */
+  private readonly savedSnapshot = signal('');
+  protected readonly dirty = computed(() => this.snapshotOf(this.items()) !== this.savedSnapshot());
+  /** The first selected treatment with a step still to do — the one the doctor is on. */
+  protected readonly currentItemId = computed(
+    () => this.selectedItems().find((i) => i.itemId && this.stepsOf(i).next)?.treatmentTypeId ?? null
+  );
+  private readonly historia = signal<HistoriaClinica | null>(null);
+  protected readonly allergyNames = computed(() =>
+    (this.historia()?.allergies ?? []).map((a) => a.allergy.name).join(', ')
   );
   // Plain field, not a signal: matches the established pattern used by
   // FacialDiagramViewsComponent/PhotoGalleryComponent for the same read-only-vs-editable split —
@@ -306,6 +552,14 @@ export class TreatmentDetailComponent implements OnInit {
       }
       this.fecha.set(treatment.fecha);
       this.items.set(this.buildItems(treatment, treatmentTypes));
+      this.savedSnapshot.set(this.snapshotOf(this.items()));
+      // Allergies for the strip; only for users who may see the clinical history.
+      if (this.auth.hasPermission('historia-clinica', 'view')) {
+        void this.historiaService
+          .get(treatment.patientId)
+          .then((h) => this.historia.set(h))
+          .catch(() => this.historia.set(null));
+      }
     } catch (error) {
       console.error('Failed to load treatment', error);
       this.loadFailed.set(true);
@@ -334,6 +588,7 @@ export class TreatmentDetailComponent implements OnInit {
         notes: existing?.notes ?? '',
         itemId: existing?.id ?? null,
         hasConsent: existing?.hasConsent ?? false,
+        progress: existing?.progress ?? NO_PROGRESS,
       };
     });
   }
@@ -342,6 +597,44 @@ export class TreatmentDetailComponent implements OnInit {
     this.items.update((current) =>
       current.map((i) => (i.treatmentTypeId === item.treatmentTypeId ? { ...i, selected } : i))
     );
+  }
+
+  protected setNotes(item: TreatmentItemForm, notes: string): void {
+    this.items.update((current) =>
+      current.map((i) => (i.treatmentTypeId === item.treatmentTypeId ? { ...i, notes } : i))
+    );
+  }
+
+  /** The four steps of an item, how many are done, and the first one still to do. */
+  protected stepsOf(item: TreatmentItemForm): { done: number; next: StepKey | null } {
+    const done: Record<StepKey, boolean> = {
+      consent: item.hasConsent,
+      diagram: item.progress.diagramViews > 0,
+      products: item.progress.products > 0,
+      photos: item.progress.photosBefore > 0 && item.progress.photosAfter > 0,
+    };
+    const order: StepKey[] = ['consent', 'diagram', 'products', 'photos'];
+    return {
+      done: order.filter((k) => done[k]).length,
+      next: order.find((k) => !done[k]) ?? null,
+    };
+  }
+
+  private snapshotOf(items: TreatmentItemForm[]): string {
+    return JSON.stringify(
+      items.filter((i) => i.selected).map((i) => [i.treatmentTypeId, i.notes.trim()])
+    );
+  }
+
+  protected longDate(value: string): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(this.transloco.getActiveLang(), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 
   protected async printBlank(item: TreatmentItemForm): Promise<void> {
@@ -406,10 +699,11 @@ export class TreatmentDetailComponent implements OnInit {
         current.map((i) => {
           const saved = savedByTypeId.get(i.treatmentTypeId);
           return saved
-            ? { ...i, itemId: saved.id, hasConsent: saved.hasConsent }
-            : { ...i, itemId: null, hasConsent: false };
+            ? { ...i, itemId: saved.id, hasConsent: saved.hasConsent, progress: saved.progress ?? NO_PROGRESS }
+            : { ...i, itemId: null, hasConsent: false, progress: NO_PROGRESS };
         })
       );
+      this.savedSnapshot.set(this.snapshotOf(this.items()));
     } finally {
       this.saving.set(false);
     }

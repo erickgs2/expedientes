@@ -31,7 +31,16 @@ export async function createTreatment(patientId: string, fecha?: Date) {
 export async function getTreatment(id: string) {
   const treatment = await prisma.treatment.findUnique({
     where: { id },
-    include: { items: { include: { treatmentType: true, consent: true } } },
+    include: {
+      items: {
+        include: {
+          treatmentType: true,
+          consent: { select: { id: true } },
+          photos: { select: { tag: true } },
+          _count: { select: { diagrams: true, products: true } },
+        },
+      },
+    },
   });
   if (!treatment) return null;
   return {
@@ -44,6 +53,12 @@ export async function getTreatment(id: string) {
       treatmentTypeName: i.treatmentType.name,
       notes: i.notes,
       hasConsent: !!i.consent,
+      progress: {
+        diagramViews: i._count.diagrams,
+        products: i._count.products,
+        photosBefore: i.photos.filter((p) => p.tag === 'BEFORE').length,
+        photosAfter: i.photos.filter((p) => p.tag === 'AFTER').length,
+      },
     })),
   };
 }
