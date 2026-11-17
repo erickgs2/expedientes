@@ -28,12 +28,16 @@ import { AuthService } from '../auth/auth.service';
       <mat-card class="login-card">
         <mat-card-content>
           <div class="login-brand">
-            <svg class="login-mark" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="8" />
-              <path d="M12 1.5v6M12 16.5v6M1.5 12h6M16.5 12h6" />
-              <circle cx="12" cy="12" r="2" class="dot" />
-            </svg>
-            <h1>Expedientes</h1>
+            <svg class="login-mark" viewBox="0 0 48 48" aria-hidden="true">
+                <path class="petal" d="M24 34C14 36 6 31 6 22C14 22 21 27 24 34Z" />
+                <path class="petal" d="M24 34C34 36 42 31 42 22C34 22 27 27 24 34Z" />
+                <path class="petal" d="M24 34C15 30 10 22 13 14C21 17 25 25 24 34Z" />
+                <path class="petal" d="M24 34C33 30 38 22 35 14C27 17 23 25 24 34Z" />
+                <path class="petal" d="M6 39c0 4 4 6 8 5.5 3-.4 4-1.5 10-1.5s7 1.1 10 1.5c4 .5 8-1.5 8-5.5" />
+                <path class="accent" d="M24 34C17 28 17 16 24 9.5C31 16 31 28 24 34Z" />
+                <circle class="dot" cx="24" cy="6.6" r="2.3" />
+              </svg>
+            <h1>MedCloud</h1>
           </div>
           <form [formGroup]="form" (ngSubmit)="submit()">
             <mat-form-field appearance="outline" class="full-width">
@@ -45,7 +49,7 @@ import { AuthService } from '../auth/auth.service';
               <input matInput type="password" formControlName="password" autocomplete="current-password" />
             </mat-form-field>
             @if (error()) {
-              <p class="error" role="alert">{{ 'auth.invalidCredentials' | transloco }}</p>
+              <p class="error" role="alert">{{ (error() === 'locked' ? 'auth.tooManyAttempts' : 'auth.invalidCredentials') | transloco }}</p>
             }
             <button
               mat-flat-button
@@ -89,9 +93,14 @@ import { AuthService } from '../auth/auth.service';
         width: 44px;
         height: 44px;
         fill: none;
-        stroke: var(--mat-sys-on-surface);
-        stroke-width: 1.1;
+        stroke: color-mix(in srgb, var(--mat-sys-secondary) 60%, var(--mat-sys-surface));
+        stroke-width: 2;
+        stroke-linejoin: round;
         stroke-linecap: round;
+      }
+      .login-mark .accent {
+        stroke: color-mix(in srgb, var(--plate-mark) 55%, var(--mat-sys-surface));
+        stroke-width: 2.2;
       }
       .login-mark .dot {
         fill: var(--plate-mark);
@@ -120,7 +129,7 @@ export class LoginComponent {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
-  protected readonly error = signal(false);
+  protected readonly error = signal<'invalid' | 'locked' | null>(null);
 
   protected readonly form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -130,15 +139,16 @@ export class LoginComponent {
   async submit(): Promise<void> {
     if (this.form.invalid) return;
     this.loading.set(true);
-    this.error.set(false);
+    this.error.set(null);
     try {
       await this.auth.login({
         email: this.form.value.email ?? '',
         password: this.form.value.password ?? '',
       });
       await this.router.navigate(['/']);
-    } catch {
-      this.error.set(true);
+    } catch (e) {
+      // 429 means this source is temporarily blocked, which "wrong password" would misreport.
+      this.error.set((e as { status?: number })?.status === 429 ? 'locked' : 'invalid');
     } finally {
       this.loading.set(false);
     }

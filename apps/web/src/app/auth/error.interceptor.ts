@@ -15,9 +15,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // still propagated so the caller can handle it — it just isn't reported to the user.
       const expected404 = error.status === 404 && req.context.get(SUPPRESS_404_TOAST);
 
+      // The login screen reports a blocked source itself, in the user's language.
+      const handledByLogin = error.status === 429 && req.url.endsWith('/api/auth/login');
+
       if (error.status === 401) {
         router.navigate(['/login']);
-      } else if (!expected404) {
+      } else if (!expected404 && !handledByLogin) {
         const message = error.error?.error?.message ?? 'Unexpected error';
         snackBar.open(message, undefined, { duration: 4000 });
       }

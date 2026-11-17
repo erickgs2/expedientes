@@ -1,4 +1,7 @@
-# Expedientes
+# MedCloud
+
+> The product is called MedCloud. The repository, npm workspace and database are still named
+> `expedientes`; renaming them would gain nothing and risk the deployed data.
 
 Electronic patient records for an aesthetic medicine clinic: clinical history, facial assessments
 with annotated diagrams and photography, treatments with product traceability, legally structured
@@ -16,6 +19,7 @@ reproduces exactly as it was signed.
 | Web | Angular 22, standalone components, signals, Angular Material, Transloco |
 | API | Next.js 16 route handlers |
 | Database | PostgreSQL via Prisma 5 |
+| Images | Local disk (`STORAGE_ROOT`) in development, S3 when `STORAGE_S3_BUCKET` is set |
 | PDF | `@react-pdf/renderer` |
 | Mobile | Capacitor shell (iOS/Android) pointing at the deployed web app |
 | Tests | Jest, over pure logic modules |
@@ -33,8 +37,9 @@ docs/superpowers/  design specs and implementation plans per feature
 
 ## Getting started
 
-Requires Node 20+ and a reachable PostgreSQL instance. There is no Docker setup — Postgres runs
-natively.
+Requires Node 22+ and a reachable PostgreSQL instance. Local development runs Postgres natively;
+Docker is used for the deployed environments (see *Deployment*), all built from the one root
+`Dockerfile`.
 
 ```bash
 npm install
@@ -96,6 +101,8 @@ contraindications. Every field shows a worked example as placeholder text.
 DATABASE_URL          PostgreSQL connection string
 JWT_SECRET            signing secret for session cookies
 STORAGE_ROOT          where uploads live (default ./storage, relative to apps/api)
+STORAGE_S3_BUCKET     optional: send uploads to S3 instead (credentials come from the EC2 instance role)
+AWS_REGION            region of that bucket
 SEED_ADMIN_EMAIL      admin account created by the seed
 SEED_ADMIN_PASSWORD   its password — change from the default
 ```
@@ -125,6 +132,10 @@ prior entries), lot number, expiry, and an optional photo of the packaging — s
 be traced to the patients who received it. Expiry is normalised server-side to the end of the
 printed month, since packaging prints MM/YYYY.
 
+**Front desk.** The home screen (`/`) is the day's desk for reception: the agenda, summary counts,
+quick patient search, and arrival check-in. A patient can name another patient as their
+notification contact, whose phone then receives their WhatsApp notices.
+
 **Appointments** send a WhatsApp confirmation on booking and a reminder two hours before, via a
 sweep running every five minutes inside the API process. Templates must be authored and approved in
 Meta Business Manager; the app only references them by name. With no credentials configured the
@@ -148,6 +159,12 @@ image, which is the one asset that could be used to fabricate a consent. Files s
 
 Mutations write to an `AuditLog` carrying the acting user and the patient involved.
 
+Login is rate-limited: five failed attempts for the same account from the same address, or twenty
+from one address in total, block further attempts for 15 minutes (HTTP 429 with `Retry-After`).
+The counters live in the API process's memory, which is right for a single API container; running
+several instances would need them moved to a shared store. The address comes from
+`X-Forwarded-For`, so the reverse proxy in front must set it (Caddy does).
+
 ## Mobile
 
 `apps/mobile` is a Capacitor shell that loads the deployed web app from a URL, so authentication
@@ -158,12 +175,18 @@ time:
 EXPEDIENTES_SERVER_URL=http://192.168.0.10 npx cap sync
 ```
 
+The app is displayed as *MedCloud*, but its `appId` stays `com.expedientes.app` on purpose: a
+different id would install as a second app on devices that already have it.
+
 ## Deployment
 
 | Environment | Target | Guide |
 |---|---|---|
 | `dev` | Raspberry Pi on a home network, DuckDNS hostname | [docs/deployment/dev-pi-runbook.md](docs/deployment/dev-pi-runbook.md) |
 | `qa` | EC2 instance, Postgres on the box, images in S3 | [docs/deployment/qa-runbook.md](docs/deployment/qa-runbook.md) |
+
+`docker-compose.prod.yml` is a plain stack with **no** TLS termination, meant to sit behind your own
+reverse proxy.
 
 An Android APK for testers is built from the same source: see
 [docs/deployment/android-apk.md](docs/deployment/android-apk.md). The mobile app is a shell around

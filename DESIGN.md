@@ -1,5 +1,5 @@
 ---
-name: Expedientes
+name: MedCloud
 description: A facial-mapping chart for clinical records: pearl plate, graphite ink, one rose mark.
 colors:
   primary: "#af0641"
@@ -60,7 +60,7 @@ components:
     textColor: "{colors.on-primary}"
 ---
 
-# Design System: Expedientes
+# Design System: MedCloud
 
 ## Overview
 
@@ -68,7 +68,7 @@ components:
 
 The interface is a printed anatomical chart for an aesthetic-medicine practice: a pearl-ivory plate, graphite-blue ink, and a single rose mark, the dot a practitioner places on a face map. Position, selection and action are the only things that earn the mark. Everything else is ink on paper, separated by one hairline.
 
-Navigation and controls stay standard Material 3 components; the world supplies type (Hanken Grotesk, tabular numerals), palette, density, and one signature move: the registration mark, a ringed cross with a rose centre used as the logo, and a small rose dot that marks the active page and the hovered shortcut.
+Navigation and controls stay standard Material 3 components; the world supplies type (Hanken Grotesk, tabular numerals), palette, density, and one signature move: the rose dot. The logo is a lotus rising from a cloud, topped by that same dot, and a small rose dot marks the active page and the hovered shortcut.
 
 **Key Characteristics:**
 - Flat paper surfaces with 1px ink hairlines instead of shadows.
@@ -130,7 +130,7 @@ Material 3 flat/stroked in Mark Rose; destructive uses `color="warn"` behind a c
 56px rows: ink icon, left-aligned label, hairline border. On hover or focus the border strengthens and a 6px rose dot appears at the right edge.
 
 ### Header
-Sticky pearl bar with hairline, ringed-cross logo and wordmark, text navigation. The active page carries a 5px rose dot under its label.
+Sticky pearl bar with hairline, lotus-and-cloud logo and wordmark, text navigation. The active page carries a 5px rose dot under its label.
 
 ### Patient banner
 Proof Grey strip, 44px link, name in ink, CURP muted.
