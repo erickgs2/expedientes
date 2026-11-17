@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import type { InvitationInput, PendingInvitation } from '@expedientes/shared-types';
 
 export interface AdminUser {
   id: string;
@@ -15,14 +16,6 @@ export interface AdminUser {
 export interface AdminRole {
   id: string;
   name: string;
-}
-
-export interface CreateUserInput {
-  email: string;
-  password: string;
-  fullName: string;
-  roleId: string;
-  language: string;
 }
 
 export interface UpdateUserInput {
@@ -45,8 +38,21 @@ export class UsersService {
     return firstValueFrom(this.http.get<{ roles: AdminRole[] }>('/api/roles')).then((r) => r.roles);
   }
 
-  createUser(input: CreateUserInput): Promise<{ id: string }> {
-    return firstValueFrom(this.http.post<{ id: string }>('/api/users', input));
+  listInvitations(): Promise<PendingInvitation[]> {
+    return firstValueFrom(
+      this.http.get<{ invitations: PendingInvitation[] }>('/api/invitations')
+    ).then((r) => r.invitations);
+  }
+
+  /** People join a clinic by accepting an emailed invitation; there is no direct creation. */
+  invite(input: InvitationInput): Promise<PendingInvitation> {
+    return firstValueFrom(
+      this.http.post<{ invitation: PendingInvitation }>('/api/invitations', input)
+    ).then((r) => r.invitation);
+  }
+
+  revokeInvitation(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/invitations/${id}`));
   }
 
   updateUser(id: string, input: UpdateUserInput): Promise<void> {

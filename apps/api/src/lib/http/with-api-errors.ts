@@ -8,6 +8,9 @@ import { NoClinicContextError, runWithRequestContext } from '../tenancy/context'
 import { TenancyViolationError } from '../tenancy/scope';
 import { NotInClinicError } from '../tenancy/assert';
 import { PlanLimitError } from '../plan/limits';
+import { ApiProblem } from './api-problem';
+import { LegalDocumentsMissingError } from '../legal/legal-documents';
+import { EmailDeliveryError } from '../email/send-email';
 
 function conflictTarget(error: Prisma.PrismaClientKnownRequestError): string {
   const target = error.meta?.['target'];
@@ -28,6 +31,17 @@ export function toApiErrorResponse(error: unknown): NextResponse {
   // A deactivated or deleted user's JWT is no longer an acceptable credential: 401, not 403.
   if (error instanceof InactiveUserError) {
     return apiError('UNAUTHENTICATED', error.message, 401);
+  }
+  if (error instanceof ApiProblem) {
+    return apiError(error.code, error.message, error.status, error.details);
+  }
+  if (error instanceof EmailDeliveryError) {
+    console.error('Email delivery failed', error);
+    return apiError('EMAIL_FAILED', 'The email could not be sent. Try again in a few minutes.', 502);
+  }
+  if (error instanceof LegalDocumentsMissingError) {
+    console.error(error.message);
+    return apiError('LEGAL_MISSING', 'Sign-up is not available right now', 503);
   }
   if (error instanceof PlanMemberInactiveError) {
     return apiError('PLAN_MEMBER_INACTIVE', error.message, 403);

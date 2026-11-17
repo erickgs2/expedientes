@@ -1,4 +1,5 @@
 import type { ClinicPlanSummary } from './plan.js';
+import type { LegalDocumentSummary } from './legal.js';
 
 export interface AuthUser {
   id: string;
@@ -14,6 +15,11 @@ export interface AuthUser {
   isOwner: boolean;
   /** The clinic's effective plan, so the web can hide what the plan does not include. */
   plan: ClinicPlanSummary;
+  /**
+   * Legal versions in force that require acceptance and this user has not accepted. While any is
+   * listed, the web asks to accept them before anything else.
+   */
+  pendingLegal: LegalDocumentSummary[];
 }
 
 export interface LoginRequest {

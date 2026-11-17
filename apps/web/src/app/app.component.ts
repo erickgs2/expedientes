@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,6 +7,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { AuthService } from './auth/auth.service';
+import {
+  PendingLegalDialogComponent,
+  type PendingLegalResult,
+} from './legal/pending-legal-dialog.component';
 import { HasPermissionDirective } from './auth/has-permission.directive';
 import { ThemeService } from './shell/theme.service';
 import { PatientBannerComponent } from './patient-drive/patient-banner.component';
@@ -268,6 +273,30 @@ export class AppComponent {
   protected readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private legalDialogOpen = false;
+
+  constructor() {
+    // A new privacy notice or terms version that requires acceptance blocks the app until the user
+    // accepts it or signs out.
+    effect(() => {
+      const pending = this.auth.currentUser()?.pendingLegal ?? [];
+      if (pending.length === 0 || this.legalDialogOpen) return;
+      this.legalDialogOpen = true;
+      this.dialog
+        .open<PendingLegalDialogComponent, unknown, PendingLegalResult>(PendingLegalDialogComponent, {
+          data: pending,
+          disableClose: true,
+          maxWidth: 520,
+        })
+        .afterClosed()
+        .subscribe(async (result) => {
+          this.legalDialogOpen = false;
+          if (result === 'accepted') this.auth.setPendingLegal([]);
+          else await this.logout();
+        });
+    });
+  }
 
   protected setLang(lang: 'es' | 'en'): void {
     this.transloco.setActiveLang(lang);

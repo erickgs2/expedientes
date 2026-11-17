@@ -82,6 +82,15 @@ services:
       # out-of-memory error instead of the kernel killing the container mid-request.
       NODE_OPTIONS: --max-old-space-size=512
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      # Transactional email (sign-up codes, invitations, password reset) through Resend. Unset, the API
+      # writes each email to its log instead of sending it.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-MedCloud <no-reply@intech-erp.com>}
+      # Public address used in links inside emails.
+      APP_BASE_URL: ${APP_BASE_URL:-https://medcloud.intech-erp.com}
+      # Cloudflare Turnstile on the sign-up form; off while unset.
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       STORAGE_ROOT: /data/storage
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-}

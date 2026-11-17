@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prismaUnscoped } from '../../../../lib/prisma/client';
 import { verifyPassword } from '../../../../lib/auth/password';
-import { issueToken } from '../../../../lib/auth/jwt';
-import { AUTH_COOKIE_NAME } from '../../../../lib/auth/session';
+import { setSessionCookie } from '../../../../lib/auth/session-cookie';
 import { InactiveUserError, resolveMembership } from '../../../../lib/rbac/permissions';
 import { setCurrentClinic } from '../../../../lib/tenancy/context';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 import { toAuthUser } from '../../../../lib/auth/auth-user';
+import { pendingLegalFor } from '../../../../lib/legal/legal-documents';
 import {
   checkLoginAllowed,
   getClientIp,
@@ -33,7 +33,10 @@ export const POST = withApiErrors(async (request: NextRequest) => {
   }
 
   // Users are global (one email, one password); no clinic is known until the membership below.
-  const user = await prismaUnscoped.user.findUnique({ where: { email } });
+  // Emails are stored lower-cased by sign-up; older accounts may not be, so the match ignores case.
+  const user = await prismaUnscoped.user.findFirst({
+    where: { email: { equals: email.trim(), mode: 'insensitive' } },
+  });
 
   if (!user || !user.active || !(await verifyPassword(password, user.passwordHash))) {
     recordLoginFailure(ip, email);
@@ -57,17 +60,9 @@ export const POST = withApiErrors(async (request: NextRequest) => {
   recordLoginSuccess(ip, email);
   setCurrentClinic(membership.clinicId);
 
-  const token = issueToken({ sub: user.id, email: user.email, cid: membership.clinicId });
+  const response = NextResponse.json({ user: toAuthUser(membership, await pendingLegalFor(membership.userId)) });
 
-  const response = NextResponse.json({ user: toAuthUser(membership) });
-
-  response.cookies.set(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 8 * 60 * 60,
-  });
+  setSessionCookie(response, user, membership.clinicId);
 
   // Successful logins only — a failed attempt has no authenticated user to attribute it to.
   await writeAuditLogSafe({ userId: user.id, action: 'view', entity: 'Session', entityId: user.id });

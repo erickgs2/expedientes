@@ -33,6 +33,7 @@ model Clinic {
 
   subscription          Subscription?
   planGrants            PlanGrant[]
+  invitations           Invitation[]
   memberships           Membership[]
   settings              ClinicSettings?
   roles                 Role[]
@@ -178,6 +179,8 @@ model User {
   roleId       String?
   role         Role?    @relation(fields: [roleId], references: [id])
   memberships  Membership[]
+  legalAcceptances TermsAcceptance[]
+  invitationsSent  Invitation[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -194,6 +197,7 @@ model Role {
   /// Legacy: User.roleId from before memberships. Kept until a later migration drops it.
   users       User[]
   memberships Membership[]
+  invitations Invitation[]
   permissions RolePermission[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -691,4 +695,111 @@ model ClinicSettings {
   whatsappNotificationsEnabled Boolean @default(false)
 
   updatedAt           DateTime @updatedAt
+}
+
+/// A registration waiting for its email code. No user or clinic exists until the code is confirmed;
+/// confirming creates both in one transaction. One row per email: registering again replaces it.
+model PendingSignup {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  passwordHash      String
+  fullName          String
+  clinicName        String
+  phone             String
+  /// The legal document versions shown and accepted on the form.
+  privacyDocumentId String
+  termsDocumentId   String
+  marketingConsent  Boolean  @default(false)
+  codeHash          String
+  codeExpiresAt     DateTime
+  attempts          Int      @default(0)
+  /// Sends in the current hour window, for the resend cap.
+  sendCount         Int      @default(1)
+  sendWindowStart   DateTime @default(now())
+  lastSentAt        DateTime @default(now())
+  ip                String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// A password-reset code sent to a user's email. One row per user: requesting again replaces it.
+model PasswordResetCode {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  codeHash        String
+  codeExpiresAt   DateTime
+  attempts        Int      @default(0)
+  sendCount       Int      @default(1)
+  sendWindowStart DateTime @default(now())
+  lastSentAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// An invitation to join a clinic with a role. The account (or, for an existing account, the
+/// membership) is created only when the invitee accepts from the emailed link, so a clinic cannot
+/// claim someone else's email.
+model Invitation {
+  id          String    @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId    String    @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic      Clinic    @relation(fields: [clinicId], references: [id])
+  email       String
+  roleId      String
+  role        Role      @relation(fields: [roleId], references: [id])
+  /// SHA-256 of the token in the link; the token itself is never stored.
+  tokenHash   String    @unique
+  invitedById String
+  invitedBy   User      @relation(fields: [invitedById], references: [id])
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([clinicId])
+}
+
+enum LegalDocumentKind {
+  PRIVACY
+  TERMS
+}
+
+/// One published version of the privacy notice or the terms. Never edited: a change is a new
+/// version. The one in force is the latest whose effectiveFrom has passed.
+model LegalDocument {
+  id                 String            @id @default(uuid())
+  kind               LegalDocumentKind
+  version            String
+  /// Markdown (the subset in libs/shared/types/src/lib/legal-markdown.ts).
+  body               String
+  changeSummary      String
+  effectiveFrom      DateTime
+  /// Users who have not accepted this version are asked to before they can go on.
+  requiresAcceptance Boolean           @default(false)
+  publishedBy        String
+  createdAt          DateTime          @default(now())
+  acceptances        TermsAcceptance[]
+
+  @@unique([kind, version])
+  @@index([kind, effectiveFrom])
+}
+
+/// That a user accepted a version of a legal document, when and from where.
+model TermsAcceptance {
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId       String
+  document         LegalDocument @relation(fields: [documentId], references: [id])
+  /// For the privacy notice: whether the additional purposes (promotions, surveys) were accepted.
+  marketingConsent Boolean       @default(false)
+  ip               String?
+  userAgent        String?
+  acceptedAt       DateTime      @default(now())
+
+  @@unique([userId, documentId])
+  @@index([documentId])
 }

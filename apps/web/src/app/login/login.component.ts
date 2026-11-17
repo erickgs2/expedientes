@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -22,6 +22,7 @@ import { AuthService } from '../auth/auth.service';
     MatIconModule,
     MatProgressSpinnerModule,
     TranslocoModule,
+    RouterLink,
   ],
   template: `
     <div class="login-container">
@@ -65,6 +66,13 @@ import { AuthService } from '../auth/auth.service';
               }
             </button>
           </form>
+          <div class="links">
+            <a routerLink="/recuperar">{{ 'auth.forgotPassword' | transloco }}</a>
+            <span>
+              {{ 'auth.noAccount' | transloco }}
+              <a routerLink="/registro" class="strong">{{ 'auth.createAccount' | transloco }}</a>
+            </span>
+          </div>
         </mat-card-content>
       </mat-card>
     </div>
@@ -119,6 +127,22 @@ import { AuthService } from '../auth/auth.service';
       .error {
         color: var(--mat-sys-error, #b91c1c);
         margin: 0 0 12px;
+      }
+      .links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .links a {
+        color: inherit;
+      }
+      .links .strong {
+        color: var(--mat-sys-on-surface);
+        font-weight: 600;
       }
     `,
   ],

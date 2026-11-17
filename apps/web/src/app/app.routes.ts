@@ -102,6 +102,28 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./today/today.component').then((m) => m.TodayComponent),
   },
   { path: 'login', loadComponent: () => import('./login/login.component').then((m) => m.LoginComponent) },
+  // Public: signing up, recovering a password, accepting an invitation and the legal documents.
+  { path: 'registro', loadComponent: () => import('./signup/signup.component').then((m) => m.SignupComponent) },
+  {
+    path: 'recuperar',
+    loadComponent: () =>
+      import('./signup/password-reset.component').then((m) => m.PasswordResetComponent),
+  },
+  {
+    path: 'invitacion/:token',
+    loadComponent: () =>
+      import('./signup/invitation-accept.component').then((m) => m.InvitationAcceptComponent),
+  },
+  {
+    path: 'privacidad',
+    data: { kind: 'privacy' },
+    loadComponent: () => import('./legal/legal-page.component').then((m) => m.LegalPageComponent),
+  },
+  {
+    path: 'terminos',
+    data: { kind: 'terms' },
+    loadComponent: () => import('./legal/legal-page.component').then((m) => m.LegalPageComponent),
+  },
   {
     path: 'pacientes',
     canActivate: [authGuard],

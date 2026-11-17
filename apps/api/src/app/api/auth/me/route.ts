@@ -4,6 +4,7 @@ import { InactiveUserError, resolveMembership } from '../../../../lib/rbac/permi
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 import { toAuthUser } from '../../../../lib/auth/auth-user';
+import { pendingLegalFor } from '../../../../lib/legal/legal-documents';
 
 export const GET = withApiErrors(async (request: NextRequest) => {
   const session = getSessionFromRequest(request);
@@ -21,5 +22,5 @@ export const GET = withApiErrors(async (request: NextRequest) => {
     throw error;
   }
 
-  return NextResponse.json({ user: toAuthUser(membership) });
+  return NextResponse.json({ user: toAuthUser(membership, await pendingLegalFor(membership.userId)) });
 });

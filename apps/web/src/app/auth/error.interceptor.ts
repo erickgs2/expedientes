@@ -1,4 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { HANDLES_OWN_ERRORS } from './http-context';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -14,6 +15,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error) => {
+      // The signed-out screens show every failure inline, including 401 (a wrong password while
+      // accepting an invitation must not bounce to the sign-in page) and 402.
+      if (req.context.get(HANDLES_OWN_ERRORS)) return throwError(() => error);
+
       // A 404 the caller declared expected (e.g. "this patient has no historia clínica yet") is
       // still propagated so the caller can handle it — it just isn't reported to the user.
       const expected404 = error.status === 404 && req.context.get(SUPPRESS_404_TOAST);
