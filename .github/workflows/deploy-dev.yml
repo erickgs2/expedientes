@@ -1,16 +1,20 @@
 name: Deploy dev (MacBook server)
 
-# Pushing to `dev` deploys to the MacBook Pro server (Ubuntu Server, x86_64) on the home network.
-# It replaced the Raspberry Pi as the deploy target; the Pi keeps running its last deployed version
-# and no longer receives deploys.
+# Pushing to `dev` deploys to the MacBook Pro server (intech-mac, Ubuntu Server, x86_64).
 #
-# This runs on a SELF-HOSTED runner on the Mac itself rather than SSHing in from GitHub: the Mac
-# sits behind a home router, and a self-hosted runner polls outbound, so no inbound SSH port has to
-# be forwarded and no key for the home network is stored in GitHub. The app is published through a
-# Cloudflare Tunnel (see docker-compose.mac.yml), so no port is opened for it either.
+# The work is split by where it runs best:
+#   verify, build-and-push  GitHub-hosted runners. The images are built here and pushed to GHCR, the
+#                           same way QA does it. Compiling Angular and Next.js on a 4 GB laptop took
+#                           all its memory and pushed it into swap on a spinning disk, slowing the app
+#                           for every clinic during each deploy. GitHub's runners are amd64, like the
+#                           Mac, so the images run there unchanged.
+#   deploy                  The self-hosted runner on the Mac (labels `self-hosted`, `dev-server`). It
+#                           only pulls the new images, migrates and restarts. It polls GitHub
+#                           outbound, so no SSH port is opened and no key for the home network is
+#                           stored in GitHub. The app is published through a Cloudflare Tunnel (see
+#                           docker-compose.mac.yml).
 #
-# Setting the server and runner up is documented in docs/deployment/mac-server-runbook.md. The
-# runner must carry the labels `self-hosted` and `dev-server`.
+# Setting the server and runner up is documented in docs/deployment/mac-server-runbook.md.
 on:
   push:
     branches: [dev]
@@ -23,54 +27,122 @@ concurrency:
   group: deploy-dev
   cancel-in-progress: false
 
+env:
+  IMAGE_REPO: ghcr.io/${{ github.repository }}
+
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The Prisma client is generated code the tests depend on.
+      - run: npx prisma generate
+      # Tests run before anything is built, so a red build never reaches the running stack. The
+      # image builds below compile both apps, so a type error fails there.
+      - run: npx nx test api
+
+  build-and-push:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Three images from the one root Dockerfile, as in QA. api-pdf on the Mac runs the api image.
+      # The cache scopes match QA's, so a commit that already built there reuses its layers.
+      - name: Build and push api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: api-runtime
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push migrate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: migrate
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-migrate:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=migrate
+
+      - name: Build and push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: web-runtime
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-web:${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
   deploy:
+    needs: build-and-push
     runs-on: [self-hosted, dev-server]
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 30
     env:
-      # Every `docker compose` call needs this, `build` included: compose interpolates the whole
-      # file on any command, so the `${VAR:?...}` guards fire before a build would even start.
+      # Every `docker compose` call needs the env file: compose interpolates the whole file on any
+      # command, so the `${VAR:?...}` guards fire otherwise. The secrets live only in
+      # /opt/expedientes/.env on the Mac and never pass through GitHub; the job adds the image
+      # version to it below.
       COMPOSE: docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env
-    # A 2011 laptop with 4 GB builds Angular and Next much more slowly than a cloud runner; the
-    # default 360-minute cap would let a wedged build sit for hours before anyone noticed.
-    timeout-minutes: 60
 
     steps:
-      # `clean: false` keeps node_modules between deploys. The default `git clean -ffdx` deletes
-      # it, forcing a full npm ci on every deploy. Tracked files are still reset to the commit.
+      # Only the compose file is needed from the checkout, so a change to the stack ships with the
+      # code that expects it.
       - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
         with:
-          clean: false
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # No actions/setup-node: the runner uses the server's installed Node 22 rather than
-      # downloading a toolchain on every deploy. Confirm the version rather than assume it — a mismatch shows up here instead
-      # of as a confusing build failure later.
-      - name: Show toolchain
+      # IMAGE_REPO and IMAGE_TAG are the only values CI controls. Written into the env file rather
+      # than passed only to this job, so `docker compose ps`, `logs` or `run` typed by hand on the
+      # Mac address the version that is running. mktemp creates the file 0600, like the original, so
+      # the secrets never become readable by other users for the instant before the rename.
+      - name: Record the version being deployed
         run: |
-          node --version
-          docker --version
-          docker compose version
+          set -euo pipefail
+          ENV_FILE=/opt/expedientes/.env
+          tmp=$(mktemp /opt/expedientes/.env.XXXXXX)
+          grep -vE '^(IMAGE_REPO|IMAGE_TAG)=' "$ENV_FILE" > "$tmp" || true
+          echo "IMAGE_REPO=${IMAGE_REPO}" >> "$tmp"
+          echo "IMAGE_TAG=${{ github.sha }}" >> "$tmp"
+          mv "$tmp" "$ENV_FILE"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma client
-        run: npx prisma generate
-
-      # Tests run before anything is rebuilt, so a red build never reaches the running stack.
-      - name: Test
-        run: npx nx test api
-
-      # `--profile tools` matters: without it compose silently skips the profiled `migrate`
-      # service, and the deploy then runs migrations from a stale image built weeks ago.
-      - name: Build images
-        run: $COMPOSE --profile tools build
+      - name: Pull images
+        run: $COMPOSE --profile tools pull
 
       - name: Migrate and restart
         run: |
           set -euo pipefail
-          # The stack's secrets live in /opt/expedientes/.env on the server and never pass through
-          # GitHub. --env-file points at it while the compose file comes from this checkout, so a
-          # change to the stack ships with the code that expects it.
           $COMPOSE up -d db
           $COMPOSE --profile tools run --rm migrate
           $COMPOSE up -d --remove-orphans
@@ -82,18 +154,19 @@ jobs:
           # same path nginx uses to reach the API — a server listening only on its own interface
           # would pass a localhost check inside its own container while still being unreachable.
           for i in $(seq 1 15); do
-            if $COMPOSE exec -T web wget -q -O /dev/null http://api:3000/api/hello; then
+            if $COMPOSE exec -T web wget -q -O /dev/null http://api:3000/api/hello \
+              && $COMPOSE exec -T web wget -q -O /dev/null http://api-pdf:3000/api/hello; then
               echo "API healthy"
               exit 0
             fi
             sleep 4
           done
           echo "API did not become healthy" >&2
-          $COMPOSE logs --tail=50 api >&2
+          $COMPOSE logs --tail=50 api api-pdf >&2
           exit 1
 
-      # Old images pile up with every deploy, and a full disk is the most likely way this server breaks. `always()`
-      # so the cleanup still runs when the smoke check failed and left a half-built image behind.
+      # Every deploy leaves the previous images behind, and a full disk is the most likely way this
+      # server breaks. `always()` so the cleanup still runs when the smoke check failed.
       - name: Prune old images
         if: always()
         run: docker image prune -f

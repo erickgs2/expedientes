@@ -9,6 +9,10 @@
 #     here. Traffic from Cloudflare to this machine travels inside the tunnel, encrypted, and reaches
 #     nginx (`web`) over the internal Docker network.
 #
+# Images are built by GitHub Actions and pulled from GHCR (see .github/workflows/deploy-dev.yml).
+# Each deploy writes IMAGE_REPO and IMAGE_TAG into /opt/expedientes/.env, so compose commands run by
+# hand address the version that is running. Nothing is compiled on this machine.
+#
 # The tunnel and its public hostname (medcloud.intech-erp.com -> http://web:80) are configured in the
 # Cloudflare dashboard. This file only runs the connector with the tunnel's token.
 #
@@ -19,11 +23,41 @@
 #   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD
 #
 # Nothing in this stack publishes a port on the host. The only way in is the tunnel.
+#
+# Memory budget for a 4 GB machine: db 768 MB, api 640 MB, api-pdf 1 GB (PDF rendering is the
+# heaviest job), web and cloudflared 128 MB each. These are ceilings, not reservations: idle, the
+# stack uses far less, which leaves room for the OS, Docker and the GitHub runner. A container that exceeds its limit is killed
+# and restarted on its own, instead of pushing the whole machine into swap on a spinning disk.
 
 services:
   db:
     image: postgres:16
     restart: unless-stopped
+    # Tuned for a 4 GB machine shared with the API, nginx and the runner (Postgres's defaults assume
+    # much less memory for its own cache and much more for connections):
+    #   shared_buffers        Postgres's own cache; ~1/8 of RAM leaves the rest to the OS page cache
+    #   effective_cache_size  how much the planner may assume the OS caches for it
+    #   max_connections       the API's pool is capped at 10 (DATABASE_URL below); 30 leaves room for
+    #                         migrations and a psql session without reserving memory for 100
+    #   random_page_cost      4 is right for a spinning disk; lower it to 1.1 after the SSD upgrade
+    command:
+      - postgres
+      - -c
+      - shared_buffers=384MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=30
+      - -c
+      - random_page_cost=4
+    # Docker's default 64 MB /dev/shm is too small for Postgres's dynamic shared memory with the
+    # settings above, and the failure only shows up under a heavier query.
+    shm_size: 256m
+    mem_limit: 768m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
@@ -38,13 +72,15 @@ services:
       start_period: 10s
 
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: api-runtime
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-api:${IMAGE_TAG:?IMAGE_TAG must be set}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      # connection_limit caps Prisma's pool; its default grows with the CPU count, and every idle
+      # connection costs Postgres memory this machine does not have to spare.
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes?connection_limit=10
+      # Keeps the Node heap under the container limit, so a heavy PDF export fails as a handled
+      # out-of-memory error instead of the kernel killing the container mid-request.
+      NODE_OPTIONS: --max-old-space-size=512
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       STORAGE_ROOT: /data/storage
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
@@ -60,15 +96,37 @@ services:
       WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_MX}
     volumes:
       - storage_data:/data/storage
+    mem_limit: 640m
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The same API image, receiving only the routes that render a PDF (nginx sends them here). React-PDF
+  # lays out a document synchronously, which blocks the Node event loop for the whole render; in its
+  # own process that wait falls only on the person exporting, not on every clinic using the app. One
+  # process renders one PDF at a time, so simultaneous exports queue instead of competing for memory.
+  api-pdf:
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-api:${IMAGE_TAG:?IMAGE_TAG must be set}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes?connection_limit=3
+      NODE_OPTIONS: --max-old-space-size=768
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      STORAGE_ROOT: /data/storage
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-}
+      TRUSTED_CLIENT_IP_HEADER: cf-connecting-ip
+      # The regular api container already runs the reminder sweep.
+      DISABLE_REMINDER_SCHEDULER: 'true'
+    volumes:
+      - storage_data:/data/storage
+    mem_limit: 1g
     depends_on:
       db:
         condition: service_healthy
 
   migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: migrate
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-migrate:${IMAGE_TAG:?IMAGE_TAG must be set}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
@@ -79,15 +137,33 @@ services:
         condition: service_healthy
     profiles: ['tools']
 
+  # Fictional demo data (prisma/seed-demo.ts) for the load test and for demos. NEVER run it against a
+  # database with real patients. Run by hand:
+  #   docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env --profile demo run --rm seed-demo
+  seed-demo:
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-migrate:${IMAGE_TAG:?IMAGE_TAG must be set}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      STORAGE_ROOT: /data/storage
+    volumes:
+      - storage_data:/data/storage
+    command: ['npx', 'tsx', 'prisma/seed-demo.ts']
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ['demo']
+
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: web-runtime
+    image: ${IMAGE_REPO:?IMAGE_REPO must be set}-web:${IMAGE_TAG:?IMAGE_TAG must be set}
     restart: unless-stopped
     # Not published: only cloudflared reaches it, on the internal network.
+    environment:
+      # PDF routes go to the dedicated container (see apps/web/nginx.conf).
+      PDF_UPSTREAM: api-pdf:3000
+    mem_limit: 128m
     depends_on:
       - api
+      - api-pdf
 
   cloudflared:
     image: cloudflare/cloudflared:2026.11.1
@@ -97,6 +173,7 @@ services:
     command: ['tunnel', '--no-autoupdate', 'run']
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
+    mem_limit: 128m
     depends_on:
       - web
 

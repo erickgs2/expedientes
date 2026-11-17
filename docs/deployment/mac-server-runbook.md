@@ -142,9 +142,10 @@ docker run --rm hello-world
 No instales Postgres en el sistema: corre como contenedor. Tampoco instales `cloudflared`: corre como
 contenedor dentro del stack.
 
-## 7. Node 22
+## 7. Node 22 (opcional)
 
-Lo usa el runner para `npm ci` y las pruebas. Sáltalo si `node --version` muestra v22 o más.
+Ya no es necesario: las imágenes se compilan en GitHub y la Mac solo las descarga. Sirve si quieres
+correr scripts del repo en la Mac. Sáltalo si `node --version` muestra v22 o más.
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
@@ -207,10 +208,9 @@ puedes eliminarlo desde ahí.
 
 ## 11. Primer deploy
 
-Mezcla en `dev` el PR que trae `docker-compose.mac.yml`. El workflow corre en la Mac: instala
-dependencias, prueba, compila las imágenes, migra la base de datos (vacía, con el administrador del
-paso 8) y levanta el stack. El primer build en esta máquina tarda bastante; los siguientes reutilizan
-la caché.
+Cada push a `dev` corre el workflow en tres partes: las pruebas y la compilación de las imágenes en
+los servidores de GitHub, y el deploy en la Mac, que solo descarga las imágenes de GHCR, migra la base
+de datos y levanta el stack. La Mac no compila nada, así que un deploy no la deja sin memoria.
 
 Comprobaciones:
 
@@ -223,12 +223,72 @@ docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env logs -
 - En Cloudflare, el túnel `medcloud-mac` debe verse con 1 réplica y en buen estado.
 - `https://medcloud.intech-erp.com` debe abrir el login, y debes poder entrar con el administrador del paso 8.
 
+## Operar el stack a mano
+
+Cada deploy anota en `/opt/expedientes/.env` la versión desplegada (`IMAGE_REPO` e `IMAGE_TAG`), así
+que estos comandos siempre apuntan a lo que está corriendo:
+
+```bash
+cd ~/actions-runner/_work/expedientes/expedientes
+C="docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env"
+$C ps                       # estado de cada contenedor
+$C logs --tail=50 api       # o api-pdf, web, db, cloudflared
+docker stats --no-stream    # memoria y CPU por contenedor contra su límite
+```
+
+El stack tiene dos contenedores del API: `api` atiende la app y `api-pdf` solo genera PDF (export del
+expediente e impresión de consentimientos). Un export ocupa `api-pdf` mientras se genera, pero la app
+sigue respondiendo para todas las clínicas.
+
+## Datos de prueba
+
+Para la prueba de carga y para demos hay datos ficticios (`prisma/seed-demo.ts`). **Nunca los cargues
+en una base de datos con pacientes reales.**
+
+```bash
+$C --profile demo run --rm seed-demo
+```
+
+## Prueba de carga
+
+Mide cuántas clínicas trabajando a la vez aguanta el servidor antes de que se note. La script está en
+`tools/loadtest/clinic-load.js`. Córrela **desde otra computadora** (tu Mac personal, con Docker
+Desktop), no desde el servidor, para no quitarle CPU a lo que mides. Cada corrida tarda unos 8 minutos.
+
+```bash
+cd /Volumes/GSFAWKES/code/expedientes
+for n in 3 6 9 12; do
+  docker run --rm -i -v "$PWD/tools/loadtest:/scripts" \
+    -e BASE_URL=https://medcloud.intech-erp.com \
+    -e EMAIL=<admin del .env> -e PASSWORD=<su contraseña> \
+    -e CLINICS=$n \
+    grafana/k6 run /scripts/clinic-load.js 2>&1 | tee "carga-$n-clinicas.txt"
+done
+```
+
+En cada resumen, mira:
+
+- `http_req_duration{kind:screen}` → `p(95)`: el tiempo de las pantallas para el 95% de las peticiones.
+  **Más de 1 s es afectación media.** Si el umbral falla, k6 lo marca con ✗.
+- `http_req_failed{kind:screen}`: debe quedar por debajo de 1%.
+- `http_req_duration{kind:export}`: cuánto tarda un PDF; sirve de referencia, no tiene umbral.
+
+El último nivel que pasa es la capacidad del servidor. Mientras corre, `docker stats` en la Mac
+muestra qué contenedor se acerca a su límite.
+
+## Después del upgrade a SSD
+
+Postgres está ajustado para disco duro. Con el SSD, en `docker-compose.mac.yml` cambia
+`random_page_cost=4` a `random_page_cost=1.1`. Con 8 GB de RAM se pueden subir `shared_buffers` y los
+límites de memoria de cada contenedor; vuelve a correr la prueba de carga para comparar.
+
 ## Si algo falla
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
 | Error 502 en el navegador | `web` no está arriba, o la ruta del túnel no es `http://web:80` | Revisa `ps` y la ruta en Cloudflare |
 | Error 1033 de Cloudflare | `cloudflared` no está conectado | Revisa sus logs y el token en `.env` |
-| El build se detiene o la Mac deja de responder | Falta de memoria | Confirma el swap del paso 5 |
+| El deploy falla al descargar imágenes (`denied`) | El paquete de GHCR no da acceso al repo | En GitHub: Packages → expedientes-api (y -web, -migrate) → Package settings → Manage Actions access → agrega el repo `expedientes` |
+| Un contenedor se reinicia solo | Superó su límite de memoria | `docker compose ... ps` y `docker inspect` para ver si fue OOM |
 | El job queda "Waiting for a runner" | El runner no tiene la etiqueta `dev-server` o está detenido | `sudo ./svc.sh status` en la Mac |
 | No puedes entrar por SSH | Se quitó DuckDNS antes de tener Tailscale | Entra con teclado y pantalla en la Mac y completa el paso 2 |
