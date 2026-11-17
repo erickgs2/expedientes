@@ -11,11 +11,23 @@ const perAccount = createFailureLimiter({ maxFailures: 5, windowMs: WINDOW_MS })
 const perAddress = createFailureLimiter({ maxFailures: 20, windowMs: WINDOW_MS });
 
 /**
- * The client address as the reverse proxy reports it. Caddy overwrites `X-Forwarded-For` for
- * clients it does not trust, so its first entry is the real peer, not something the client
- * chose. `unknown` still gets limited, collectively, rather than bypassing the limit.
+ * The client address, from the one header this deployment trusts to carry it.
+ *
+ * `TRUSTED_CLIENT_IP_HEADER` names a header that the edge in front of the app always overwrites, so
+ * a client cannot choose its value: `cf-connecting-ip` behind Cloudflare (the Mac server). It must
+ * stay unset anywhere a client can reach the app without passing that edge, or the client could
+ * send the header itself and pick any address.
+ *
+ * Without it, the first `X-Forwarded-For` entry is used: Caddy overwrites that header for clients it
+ * does not trust, so behind Caddy (QA) its first entry is the real peer. `unknown` still gets
+ * limited, collectively, rather than bypassing the limit.
  */
 export function getClientIp(request: NextRequest): string {
+  const trustedHeader = process.env.TRUSTED_CLIENT_IP_HEADER?.trim().toLowerCase();
+  if (trustedHeader) {
+    const value = request.headers.get(trustedHeader)?.trim();
+    if (value) return value;
+  }
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   return forwarded || request.headers.get('x-real-ip')?.trim() || 'unknown';
 }
