@@ -273,7 +273,7 @@ const HISTORIA_STEPS: { key: string; fields: (keyof HistoriaClinica)[] }[] = [
                           @if (e.photos.length > 0) {
                             <div class="thumbs">
                               @for (ph of e.photos; track ph.path) {
-                                <img [src]="fileUrl(ph.path)" [alt]="'patientOverview.photoAlt.' + ph.tag | transloco" loading="lazy" />
+                                <img [src]="thumbnailUrl(ph.path)" [alt]="'patientOverview.photoAlt.' + ph.tag | transloco" loading="lazy" />
                               }
                             </div>
                           }
@@ -309,7 +309,7 @@ const HISTORIA_STEPS: { key: string; fields: (keyof HistoriaClinica)[] }[] = [
                             @if (item.photos.length > 0) {
                               <div class="thumbs">
                                 @for (ph of item.photos; track ph.path) {
-                                  <img [src]="fileUrl(ph.path)" [alt]="'patientOverview.photoAlt.' + ph.tag | transloco" loading="lazy" />
+                                  <img [src]="thumbnailUrl(ph.path)" [alt]="'patientOverview.photoAlt.' + ph.tag | transloco" loading="lazy" />
                                 }
                               </div>
                             }
@@ -934,6 +934,10 @@ export class PatientOverviewComponent implements OnInit {
 
   protected fileUrl(path: string): string {
     return `/api/files/${path}`;
+  }
+
+  protected thumbnailUrl(path: string): string {
+    return `${this.fileUrl(path)}?thumb=1`;
   }
 
   protected eventDate(iso: string, withTime = false): string {

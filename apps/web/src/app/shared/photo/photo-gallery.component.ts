@@ -1,10 +1,12 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import type { PermissionModule, PhotoRecord, PhotoTag } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { PhotoCaptureComponent } from './photo-capture.component';
+import { PhotoViewerDialogComponent } from './photo-viewer-dialog.component';
 import type { PhotoDataSource } from './photo-data-source';
 
 @Component({
@@ -20,7 +22,15 @@ import type { PhotoDataSource } from './photo-data-source';
         <div class="photo-grid">
           @for (photo of photos(); track photo.id) {
             <div class="photo-item">
-              <img [src]="photoUrl(photo)" alt="" />
+              <!-- The tile loads the small thumbnail; tapping it shows the full-resolution original. -->
+              <button
+                type="button"
+                class="photo-open"
+                (click)="openViewer(photo)"
+                [attr.aria-label]="'common.viewPhoto' | transloco"
+              >
+                <img [src]="thumbnailUrl(photo)" alt="" loading="lazy" />
+              </button>
               <span class="photo-tag">{{ tagLabelKey(photo.tag) | transloco }}</span>
               @if (canEdit) {
                 <!-- Plain button, not mat-icon-button: this needs to sit on the photo at a fixed
@@ -56,6 +66,17 @@ import type { PhotoDataSource } from './photo-data-source';
         margin-top: 20px;
         padding-top: 20px;
         border-top: 1px solid var(--plate-line);
+      }
+      /* A bare button around each tile: keeps the tile's block layout, and the focus ring is the
+         global one. */
+      .photo-open {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        border-radius: var(--plate-radius);
+        cursor: zoom-in;
       }
       .photo-item img {
         transition: transform 150ms ease-out;
@@ -135,6 +156,7 @@ export class PhotoGalleryComponent implements OnInit {
   @Input({ required: true }) permissionModule!: PermissionModule;
 
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
 
   protected readonly photos = signal<PhotoRecord[]>([]);
@@ -147,6 +169,18 @@ export class PhotoGalleryComponent implements OnInit {
 
   protected photoUrl(photo: PhotoRecord): string {
     return `/api/files/${photo.filePath}`;
+  }
+
+  protected thumbnailUrl(photo: PhotoRecord): string {
+    return `${this.photoUrl(photo)}?thumb=1`;
+  }
+
+  protected openViewer(photo: PhotoRecord): void {
+    this.dialog.open(PhotoViewerDialogComponent, {
+      data: { url: this.photoUrl(photo) },
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+    });
   }
 
   protected tagLabelKey(tag: PhotoTag): string {

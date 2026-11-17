@@ -28,7 +28,9 @@
     "loading": "Cargando...",
     "loadError": "No se pudo cargar este expediente. Inténtelo de nuevo.",
     "back": "Volver",
-    "backToHistoria": "Volver a historia clínica"
+    "backToHistoria": "Volver a historia clínica",
+    "close": "Cerrar",
+    "viewPhoto": "Ver la foto en tamaño completo"
   },
   "auth": {
     "email": "Correo electrónico",
