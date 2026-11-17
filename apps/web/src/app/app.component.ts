@@ -39,6 +39,9 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
       <a *appHasPermission="'clinic-settings:view'" mat-menu-item routerLink="/admin/clinic">
         <mat-icon>business</mat-icon>{{ 'shell.nav.clinicSettings' | transloco }}
       </a>
+      <a *appHasPermission="'clinic-settings:view'" mat-menu-item routerLink="/admin/plan">
+        <mat-icon>workspace_premium</mat-icon>{{ 'shell.nav.plan' | transloco }}
+      </a>
     </mat-menu>
     <mat-toolbar class="app-toolbar">
       <a routerLink="/pacientes" class="brand">

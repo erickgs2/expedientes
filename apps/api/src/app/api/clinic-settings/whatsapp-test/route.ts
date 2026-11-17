@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { WhatsAppTestInput } from '@expedientes/shared-types';
 import { sendTestMessage } from '../../../../lib/notifications/appointment-notifications';
+import { assertFeature } from '../../../../lib/plan/limits';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
@@ -15,6 +16,7 @@ const MAX_PHONE_LENGTH = 30;
  */
 export const POST = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'clinic-settings', 'edit');
+  await assertFeature('whatsappReminders');
 
   const body = (await request.json()) as Partial<WhatsAppTestInput>;
   if (body.kind !== 'confirmation' && body.kind !== 'reminder') {

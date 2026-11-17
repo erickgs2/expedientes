@@ -1,3 +1,4 @@
+import { assertCanAddOne } from '../plan/limits';
 import { prisma } from '../prisma/client';
 import { currentClinicId } from '../tenancy/context';
 
@@ -49,10 +50,16 @@ export async function getTreatmentTypeUsage(): Promise<Map<string, TreatmentType
   );
 }
 
+/** Free caps active treatment types (see PLAN_LIMITS); inactive ones do not count. */
 export async function createTreatmentType(name: string, sections: TreatmentTypeSections) {
+  await assertCanAddOne('treatmentTypes');
   return prisma.treatmentType.create({ data: { name, ...sections } });
 }
 
 export async function updateTreatmentType(id: string, data: TreatmentTypeUpdateData) {
+  if (data.active === true) {
+    const current = await prisma.treatmentType.findUniqueOrThrow({ where: { id }, select: { active: true } });
+    if (!current.active) await assertCanAddOne('treatmentTypes');
+  }
   return prisma.treatmentType.update({ where: { id }, data });
 }

@@ -13,6 +13,7 @@ import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 const styles = StyleSheet.create({
   // `paddingTop` leaves room for the fixed letterhead below, which sits outside the flow.
   page: { padding: 40, paddingTop: 84, fontSize: 10, fontFamily: 'Helvetica' },
+  brandFooter: { position: 'absolute', bottom: 18, left: 40, right: 40, fontSize: 7, color: '#999999', textAlign: 'center' },
   letterhead: {
     position: 'absolute',
     top: 24,
@@ -292,7 +293,9 @@ function TreatmentsSection({
 export async function buildExportPdf(
   data: ExportData,
   diagramImages: Map<string, Buffer>,
-  language: 'es' | 'en'
+  language: 'es' | 'en',
+  /** Free plan exports carry a small "Generated with MedCloud" line on the record pages. */
+  options: { brandFooter?: boolean } = {}
 ): Promise<Buffer> {
   const labels = PDF_LABELS[language];
 
@@ -444,6 +447,13 @@ export async function buildExportPdf(
             labels={labels}
             annexIncluded={(data.consents ?? []).length > 0}
           />
+        )}
+        {options.brandFooter && (
+          // Only on the record pages: the consent annex reproduces signed legal documents and gets
+          // nothing added to it.
+          <Text style={styles.brandFooter} fixed>
+            {labels.generatedWith}
+          </Text>
         )}
       </Page>
       {consentPages}

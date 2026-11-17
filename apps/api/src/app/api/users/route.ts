@@ -3,6 +3,7 @@ import { prisma, prismaUnscoped } from '../../../lib/prisma/client';
 import { hashPassword } from '../../../lib/auth/password';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
 import { requireAuth } from '../../../lib/http/require-auth';
+import { assertCanAddOne } from '../../../lib/plan/limits';
 import { apiError } from '../../../lib/http/api-error';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
 import { assertInClinic } from '../../../lib/tenancy/assert';
@@ -48,6 +49,8 @@ export const POST = withApiErrors(async (request: NextRequest) => {
     return apiError('INVALID_INPUT', 'email, password, fullName, and roleId are required', 400);
   }
   await assertInClinic('role', [body.roleId]);
+  // Free allows one user, the owner; Premium has no cap.
+  await assertCanAddOne('users');
 
   // The account and its membership are created together, or not at all. An email that already has
   // an account (in this or another clinic) is refused by the unique email: adding an existing

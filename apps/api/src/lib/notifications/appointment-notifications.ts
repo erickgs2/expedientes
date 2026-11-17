@@ -1,6 +1,7 @@
 import type { WhatsAppSendResponse, WhatsAppTestKind } from '@expedientes/shared-types';
 import { prisma, prismaUnscoped } from '../prisma/client';
 import { runAsClinic } from '../tenancy/context';
+import { currentClinicPlan } from '../plan/clinic-plan';
 import { currentClinicTimeZone } from '../tenancy/clinic';
 import { writeAuditLogSafe } from '../audit/audit-log';
 import { getClinicSettings } from '../clinic/clinic-settings';
@@ -42,9 +43,14 @@ function templateFor(config: WhatsAppConfig, kind: NotificationKind): string {
  * The master switch in clinic settings. Messages to real patients go out only when it is on; the
  * settings screen's test sends deliberately bypass it, since they go to a number the user typed.
  */
+/**
+ * Whether the current clinic sends WhatsApp messages: switched on in its settings and included in
+ * its plan. A clinic back on Free keeps its settings; messages stop until it is on Premium again.
+ */
 export async function areNotificationsEnabled(): Promise<boolean> {
   const settings = await getClinicSettings();
-  return Boolean(settings?.whatsappNotificationsEnabled);
+  if (!settings?.whatsappNotificationsEnabled) return false;
+  return (await currentClinicPlan()).features.whatsappReminders;
 }
 
 /** Calls Meta and turns the outcome into a result value; never throws. */

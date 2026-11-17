@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -49,7 +49,7 @@ import { AuthService } from '../auth/auth.service';
               <input matInput type="password" formControlName="password" autocomplete="current-password" />
             </mat-form-field>
             @if (error()) {
-              <p class="error" role="alert">{{ (error() === 'locked' ? 'auth.tooManyAttempts' : 'auth.invalidCredentials') | transloco }}</p>
+              <p class="error" role="alert">{{ errorKey() | transloco }}</p>
             }
             <button
               mat-flat-button
@@ -129,7 +129,17 @@ export class LoginComponent {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
-  protected readonly error = signal<'invalid' | 'locked' | null>(null);
+  protected readonly error = signal<'invalid' | 'locked' | 'planInactive' | null>(null);
+  protected readonly errorKey = computed(() => {
+    switch (this.error()) {
+      case 'locked':
+        return 'auth.tooManyAttempts';
+      case 'planInactive':
+        return 'auth.planMemberInactive';
+      default:
+        return 'auth.invalidCredentials';
+    }
+  });
 
   protected readonly form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -148,7 +158,11 @@ export class LoginComponent {
       await this.router.navigate(['/']);
     } catch (e) {
       // 429 means this source is temporarily blocked, which "wrong password" would misreport.
-      this.error.set((e as { status?: number })?.status === 429 ? 'locked' : 'invalid');
+      const failure = e as { status?: number; error?: { error?: { code?: string } } };
+      if (failure?.status === 429) this.error.set('locked');
+      // The password was right, but the clinic is on Free, where only its owner can sign in.
+      else if (failure?.error?.error?.code === 'PLAN_MEMBER_INACTIVE') this.error.set('planInactive');
+      else this.error.set('invalid');
     } finally {
       this.loading.set(false);
     }

@@ -47,7 +47,15 @@ export const CHILD_MODELS: ReadonlySet<string> = new Set([
 ]);
 
 /** Shared across clinics. */
-export const GLOBAL_MODELS: ReadonlySet<string> = new Set(['Clinic', 'User', 'Permission']);
+export const GLOBAL_MODELS: ReadonlySet<string> = new Set(['Clinic', 'User', 'Permission', 'PlanPrice']);
+
+/**
+ * Rows keyed by a clinic that the clinic itself never writes: its paid plan and manual Premium grants.
+ * Only the payment flow and the platform portal change them, and plan checks read them, all through
+ * prismaUnscoped, so they are not scoped (a clinic request must not even be able to read another
+ * clinic's grant through a typo in a filter, and it never needs to write its own).
+ */
+export const PLATFORM_MODELS: ReadonlySet<string> = new Set(['Subscription', 'PlanGrant']);
 
 export class TenancyViolationError extends Error {
   constructor(message: string) {

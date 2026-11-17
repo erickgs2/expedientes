@@ -23,9 +23,16 @@ model Clinic {
   taxRegime     String?
   taxPostalCode String?
 
+  /// Bytes of uploaded files this clinic holds, kept up to date as files are saved and deleted and
+  /// recounted from the stored files when storageCountedAt is empty (see lib/plan/storage-usage.ts).
+  storageBytes     BigInt    @default(0)
+  storageCountedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  subscription          Subscription?
+  planGrants            PlanGrant[]
   memberships           Membership[]
   settings              ClinicSettings?
   roles                 Role[]
@@ -50,6 +57,93 @@ model Clinic {
 enum ClinicStatus {
   ACTIVE
   SUSPENDED
+}
+
+enum PlanTier {
+  FREE
+  PREMIUM
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  /// Paid up to currentPeriodEnd.
+  ACTIVE
+  /// A card charge failed; Premium continues until graceEndsAt while Stripe retries.
+  PAST_DUE
+  /// Will not renew; Premium continues until currentPeriodEnd.
+  CANCELED
+}
+
+enum PaymentMethod {
+  CARD
+  OXXO
+}
+
+/// A clinic's paid plan. Written only by the payment flow and the platform portal, never by a
+/// clinic's own requests, so it is read and written through prismaUnscoped. A clinic with no row is
+/// on Free unless a PlanGrant covers it.
+model Subscription {
+  id                   String             @id @default(uuid())
+  clinicId             String             @unique
+  clinic               Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan                 PlanTier           @default(PREMIUM)
+  status               SubscriptionStatus
+  interval             BillingInterval
+  method               PaymentMethod
+  currentPeriodEnd     DateTime
+  graceEndsAt          DateTime?
+  priceId              String?
+  price                PlanPrice?         @relation(fields: [priceId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?            @unique
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+/// Premium given by hand from the platform portal, for a number of months. Never touches the
+/// subscription or Stripe. Expiry is computed when the plan is read, so nothing has to run when a
+/// grant ends.
+model PlanGrant {
+  id            String    @id @default(uuid())
+  clinicId      String
+  clinic        Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan          PlanTier  @default(PREMIUM)
+  startsAt      DateTime
+  endsAt        DateTime
+  months        Int
+  reason        String
+  /// Who granted it: a platform admin id, or "migration" for the founder grant.
+  grantedBy     String
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedBy     String?
+  revokedReason String?
+
+  @@index([clinicId, endsAt])
+}
+
+/// One version of the Premium price. Never edited: a change is a new row, so every past charge keeps
+/// the price it was made at. The current price is the latest row whose effectiveFrom has passed.
+model PlanPrice {
+  id                    String         @id @default(uuid())
+  /// Monthly price in centavos, IVA included.
+  monthlyCents          Int
+  /// Discount for paying a year at once, in whole percent.
+  annualDiscountPercent Int
+  /// monthly × 12 × (1 − discount), rounded to whole pesos, in centavos.
+  annualCents           Int
+  stripeMonthlyPriceId  String?
+  stripeAnnualPriceId   String?
+  effectiveFrom         DateTime       @default(now())
+  createdBy             String
+  createdAt             DateTime       @default(now())
+  subscriptions         Subscription[]
+
+  @@index([effectiveFrom])
 }
 
 /// A user's access to one clinic, with the role they hold there. A user (one email, one password)

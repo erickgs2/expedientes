@@ -1,5 +1,7 @@
+import type { ClinicPlanSummary } from '@expedientes/shared-types';
+import { loadClinicPlan } from '../plan/clinic-plan';
 import { prismaUnscoped } from '../prisma/client';
-import { currentClinicIdOrNull, setCurrentClinic } from '../tenancy/context';
+import { currentClinicIdOrNull, requestMemo, setCurrentClinic } from '../tenancy/context';
 
 export class ForbiddenError extends Error {
   constructor(message: string) {
@@ -18,6 +20,18 @@ export class InactiveUserError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InactiveUserError';
+  }
+}
+
+/**
+ * The user's only memberships are in clinics on Free, where only the owner may sign in. Not a bad
+ * credential: the account is fine and comes back as soon as the clinic is on Premium again. Answered
+ * as 403 PLAN_MEMBER_INACTIVE so the sign-in screen can say why.
+ */
+export class PlanMemberInactiveError extends Error {
+  constructor() {
+    super('Your clinic is on the Free plan, where only its owner can sign in');
+    this.name = 'PlanMemberInactiveError';
   }
 }
 
@@ -42,6 +56,7 @@ export interface ResolvedMembership {
   roleName: string;
   isOwner: boolean;
   permissions: string[];
+  plan: ClinicPlanSummary;
 }
 
 /**
@@ -69,9 +84,20 @@ export async function resolveMembership(
     },
     orderBy: { createdAt: 'asc' },
   });
-  const membership =
-    memberships.find((m) => m.clinicId === preferredClinicId) ?? memberships[0];
-  if (!membership) throw new InactiveUserError('User has no active clinic membership');
+  if (memberships.length === 0) throw new InactiveUserError('User has no active clinic membership');
+
+  // On Free a clinic has one user, its owner. Other members keep their account and membership but
+  // cannot act for that clinic until it is on Premium again; nothing is deactivated, so nothing has
+  // to be reactivated by hand on renewal.
+  const plans = await Promise.all(
+    memberships.map((m) => requestMemo(`plan:${m.clinicId}`, () => loadClinicPlan(m.clinicId)))
+  );
+  const usable = memberships
+    .map((membership, i) => ({ membership, plan: plans[i] }))
+    .filter(({ membership, plan }) => membership.isOwner || plan.tier !== 'FREE');
+  const chosen = usable.find(({ membership }) => membership.clinicId === preferredClinicId) ?? usable[0];
+  if (!chosen) throw new PlanMemberInactiveError();
+  const { membership, plan } = chosen;
 
   return {
     userId: user.id,
@@ -86,6 +112,7 @@ export async function resolveMembership(
     permissions: membership.role.permissions.map(
       (rp) => `${rp.permission.module}:${rp.permission.action}`
     ),
+    plan,
   };
 }
 

@@ -3,6 +3,7 @@ import {
   gatherExportData,
   type ExportModulesSelection,
 } from '../../../../../lib/export/gather-export-data';
+import { currentClinicPlan } from '../../../../../lib/plan/clinic-plan';
 import { buildExportPdf } from '../../../../../lib/export/build-pdf';
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
@@ -86,7 +87,10 @@ export const POST = withApiErrors(
       diagramImages.set(key, buffer);
     }
 
-    const pdfBuffer = await buildExportPdf(data, diagramImages, languageRaw);
+    const plan = await currentClinicPlan();
+    const pdfBuffer = await buildExportPdf(data, diagramImages, languageRaw, {
+      brandFooter: !plan.features.unbrandedPdf,
+    });
 
     await writeAuditLogSafe({
       userId,

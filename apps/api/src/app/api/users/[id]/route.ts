@@ -3,6 +3,7 @@ import { prisma, prismaUnscoped } from '../../../../lib/prisma/client';
 import { hashPassword } from '../../../../lib/auth/password';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
+import { assertCanAddOne } from '../../../../lib/plan/limits';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 import { assertInClinic } from '../../../../lib/tenancy/assert';
@@ -32,7 +33,15 @@ export const PATCH = withApiErrors(
       await assertInClinic('role', [body.roleId]);
       membershipData.roleId = body.roleId;
     }
-    if (body.active !== undefined) membershipData.active = body.active;
+    if (body.active !== undefined) {
+      // The owner holds the clinic's plan and is the one user Free keeps; deactivating them would
+      // lock the whole clinic out.
+      if (membership.isOwner && body.active === false) {
+        return apiError('INVALID_INPUT', "The clinic's owner cannot be deactivated", 400);
+      }
+      if (body.active && !membership.active) await assertCanAddOne('users');
+      membershipData.active = body.active;
+    }
 
     // Name, language and password belong to the person's account, shared by every clinic they
     // work in. A clinic may change them only for a user who belongs to no other clinic; otherwise one

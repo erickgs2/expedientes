@@ -2,11 +2,12 @@ import { Prisma } from '@prisma/client';
 import type { NextResponse } from 'next/server';
 import { apiError } from './api-error';
 import { UnauthenticatedError } from './require-auth';
-import { ForbiddenError, InactiveUserError } from '../rbac/permissions';
+import { ForbiddenError, InactiveUserError, PlanMemberInactiveError } from '../rbac/permissions';
 import { InvalidFilePathError } from '../storage/file-storage';
 import { NoClinicContextError, runWithRequestContext } from '../tenancy/context';
 import { TenancyViolationError } from '../tenancy/scope';
 import { NotInClinicError } from '../tenancy/assert';
+import { PlanLimitError } from '../plan/limits';
 
 function conflictTarget(error: Prisma.PrismaClientKnownRequestError): string {
   const target = error.meta?.['target'];
@@ -27,6 +28,12 @@ export function toApiErrorResponse(error: unknown): NextResponse {
   // A deactivated or deleted user's JWT is no longer an acceptable credential: 401, not 403.
   if (error instanceof InactiveUserError) {
     return apiError('UNAUTHENTICATED', error.message, 401);
+  }
+  if (error instanceof PlanMemberInactiveError) {
+    return apiError('PLAN_MEMBER_INACTIVE', error.message, 403);
+  }
+  if (error instanceof PlanLimitError) {
+    return apiError('PLAN_LIMIT', error.message, 402, error.details);
   }
   if (error instanceof ForbiddenError) {
     return apiError('FORBIDDEN', error.message, 403);
