@@ -172,7 +172,16 @@ POSTGRES_USER=medcloud
 POSTGRES_PASSWORD=<openssl rand -base64 32>
 SEED_ADMIN_EMAIL=<tu correo de administrador>
 SEED_ADMIN_PASSWORD=<una contraseña fuerte>
+# Correos de registro, invitaciones y recuperación (Resend, dominio intech-erp.com verificado).
+RESEND_API_KEY=<API key de Resend con Sending access, de Contraseñas de Apple>
+MAIL_FROM="MedCloud <no-reply@intech-erp.com>"
+# Opcionales:
+# APP_BASE_URL=https://medcloud.intech-erp.com   (dirección de los enlaces en los correos)
+# TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY       (CAPTCHA del registro; sin ellas no hay CAPTCHA)
 ```
+
+Sin `RESEND_API_KEY` el API no envía correos: los escribe en su log (`docker compose logs api`),
+códigos incluidos. Sirve para probar, pero en producción la clave debe estar puesta.
 
 Usa `nano` u otro editor: si pones el token en un comando, queda en el historial de bash.
 

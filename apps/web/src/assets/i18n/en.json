@@ -39,7 +39,10 @@
     "login": "Log in",
     "invalidCredentials": "Invalid email or password",
     "tooManyAttempts": "Too many failed attempts. Wait a few minutes and try again.",
-    "planMemberInactive": "Your clinic is on the Free plan, where only its owner can sign in. Ask them to turn on Premium."
+    "planMemberInactive": "Your clinic is on the Free plan, where only its owner can sign in. Ask them to turn on Premium.",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "No account yet?",
+    "createAccount": "Create one for free"
   },
   "rbacAdmin": {
     "users": {
@@ -84,6 +87,15 @@
       "create": "Create",
       "edit": "Edit",
       "delete": "Delete"
+    },
+    "invitations": {
+      "title": "Invite someone",
+      "hint": "We will email them a link to set up their access and accept the privacy notice. It expires in 7 days.",
+      "send": "Send invitation",
+      "invite": "Invite",
+      "pending": "Pending invitations",
+      "expires": "expires {{date}}",
+      "revoke": "Cancel"
     }
   },
   "patientDrive": {
@@ -931,6 +943,90 @@
         "customRoles": "Custom roles are part of Premium.",
         "unbrandedPdf": "PDFs without the MedCloud footer are part of Premium."
       }
+    }
+  },
+  "legal": {
+    "version": "Version {{version}} · in force since {{date}}",
+    "history": "Earlier versions",
+    "backToLogin": "Back to sign in",
+    "acceptPrivacy": "I have read and accept the",
+    "acceptTerms": "I have read and accept the",
+    "privacyNotice": "Privacy notice",
+    "terms": "Terms and conditions",
+    "marketing": "Send me MedCloud news, promotions and surveys (optional)",
+    "pending": {
+      "title": "We updated our documents",
+      "intro": "To keep using MedCloud, review and accept the changes.",
+      "read": "Read document",
+      "agree": "I have read the changes and accept them",
+      "accept": "Accept and continue"
+    }
+  },
+  "signup": {
+    "title": "Create your account",
+    "lead": "Start free with your clinic or practice. Move to Premium whenever you want.",
+    "steps": {
+      "label": "Sign-up steps",
+      "details": "Your details",
+      "legal": "Notice and terms",
+      "code": "Confirm email"
+    },
+    "fullName": "Your full name",
+    "clinicName": "Clinic or practice name",
+    "phone": "Phone",
+    "phoneHint": "10 digits",
+    "passwordHint": "At least 10 characters",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "The passwords do not match",
+    "continue": "Continue",
+    "haveAccount": "Already have an account?",
+    "legalTitle": "Privacy notice and terms",
+    "legalLead": "Read them before creating your account. You can see them again at any time.",
+    "createAccount": "Create account and send code",
+    "code": {
+      "title": "Confirm your email",
+      "sentTo": "We sent a 6-digit code to {{email}}. It expires in 10 minutes.",
+      "label": "Code",
+      "resendIn": "You can request another in {{seconds}} s",
+      "resend": "Send another code",
+      "changeEmail": "Change email",
+      "confirm": "Confirm and enter"
+    },
+    "errors": {
+      "CODE_INVALID": "The code is not correct. {{left}} attempts left.",
+      "CODE_EXPIRED": "The code expired. Request a new one.",
+      "CODE_LOCKED": "Too many attempts with this code. Request a new one.",
+      "LEGAL_OUTDATED": "The notice or terms changed while you filled in the form. Review them again.",
+      "CAPTCHA_FAILED": "We could not verify you are not a robot. Try again.",
+      "EMAIL_TAKEN": "This email already has an account. Sign in.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes.",
+      "INVALID_INPUT": "Check your details: something is missing or badly formatted.",
+      "EMAIL_FAILED": "We could not send the email. Try again in a few minutes.",
+      "UNKNOWN": "Something went wrong. Try again."
+    }
+  },
+  "reset": {
+    "title": "Recover your password",
+    "lead": "We will email you a code to choose a new password.",
+    "send": "Send code",
+    "newPassword": "New password",
+    "save": "Save and enter"
+  },
+  "invitation": {
+    "title": "Join {{clinic}}",
+    "lead": "{{inviter}} invited you to MedCloud as {{role}}.",
+    "currentPassword": "Your MedCloud password",
+    "accept": "Accept invitation",
+    "goneTitle": "This invitation is no longer valid",
+    "gone": "It expired, was already used or was cancelled. Ask the clinic to send another.",
+    "errors": {
+      "INVALID_CREDENTIALS": "The password is not correct.",
+      "LEGAL_OUTDATED": "The notice or terms changed. Review them again.",
+      "INVALID_INPUT": "Check your name and that the password has at least 10 characters.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes.",
+      "PLAN_LIMIT": "The clinic reached its plan's user limit. Let the owner know.",
+      "ACCOUNT_INACTIVE": "Your account is deactivated.",
+      "UNKNOWN": "Something went wrong. Try again."
     }
   }
 }

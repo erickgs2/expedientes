@@ -1,8 +1,20 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { HANDLES_OWN_ERRORS } from './http-context';
 import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import type { AuthUser, LoginRequest, LoginResponse, PlanFeature } from '@expedientes/shared-types';
+import type {
+  AcceptInvitationRequest,
+  AuthUser,
+  CodeSentResponse,
+  InvitationPreview,
+  LoginRequest,
+  LoginResponse,
+  PasswordResetConfirmRequest,
+  PlanFeature,
+  SignupConfig,
+  SignupStartRequest,
+} from '@expedientes/shared-types';
 
 const SUPPORTED_LANGS = ['es', 'en'];
 
@@ -18,10 +30,68 @@ export class AuthService {
 
   private restoreInFlight: Promise<void> | null = null;
 
+  /** For the signed-out screens, which show their errors inline. */
+  private readonly inline = { context: new HttpContext().set(HANDLES_OWN_ERRORS, true) };
+
   async login(credentials: LoginRequest): Promise<void> {
     const response = await firstValueFrom(
       this.http.post<LoginResponse>('/api/auth/login', credentials)
     );
+    this.currentUser.set(response.user);
+    this.applyUserLanguage(response.user);
+  }
+
+  /** Starts a sign-up; the code arrives by email. */
+  signupConfig(): Promise<SignupConfig> {
+    return firstValueFrom(this.http.get<SignupConfig>('/api/auth/signup/config'));
+  }
+
+  startSignup(input: SignupStartRequest): Promise<CodeSentResponse> {
+    return firstValueFrom(this.http.post<CodeSentResponse>('/api/auth/signup', input, this.inline));
+  }
+
+  resendSignupCode(email: string): Promise<CodeSentResponse> {
+    return firstValueFrom(this.http.post<CodeSentResponse>('/api/auth/signup/resend', { email }, this.inline));
+  }
+
+  /** Confirms the code: the clinic and the account are created and the owner is signed in. */
+  async verifySignup(email: string, code: string): Promise<void> {
+    this.signedIn(
+      await firstValueFrom(this.http.post<LoginResponse>('/api/auth/signup/verify', { email, code }, this.inline))
+    );
+  }
+
+  requestPasswordReset(email: string): Promise<CodeSentResponse> {
+    return firstValueFrom(this.http.post<CodeSentResponse>('/api/auth/password-reset', { email }, this.inline));
+  }
+
+  async confirmPasswordReset(input: PasswordResetConfirmRequest): Promise<void> {
+    this.signedIn(
+      await firstValueFrom(this.http.post<LoginResponse>('/api/auth/password-reset/confirm', input, this.inline))
+    );
+  }
+
+  previewInvitation(token: string): Promise<InvitationPreview> {
+    return firstValueFrom(
+      this.http.get<InvitationPreview>(`/api/invitations/accept/${encodeURIComponent(token)}`, this.inline)
+    );
+  }
+
+  async acceptInvitation(token: string, input: AcceptInvitationRequest): Promise<void> {
+    this.signedIn(
+      await firstValueFrom(
+        this.http.post<LoginResponse>(`/api/invitations/accept/${encodeURIComponent(token)}`, input, this.inline)
+      )
+    );
+  }
+
+  /** Clears legal versions the user just accepted from the session. */
+  setPendingLegal(pendingLegal: AuthUser['pendingLegal']): void {
+    const user = this.currentUser();
+    if (user) this.currentUser.set({ ...user, pendingLegal });
+  }
+
+  private signedIn(response: LoginResponse): void {
     this.currentUser.set(response.user);
     this.applyUserLanguage(response.user);
   }

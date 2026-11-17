@@ -14,6 +14,7 @@
 /** Models whose rows belong to one clinic: each has a required `clinicId` column. */
 export const TENANT_MODELS: ReadonlySet<string> = new Set([
   'Membership',
+  'Invitation',
   'Role',
   'ClinicSettings',
   'AuditLog',
@@ -47,7 +48,17 @@ export const CHILD_MODELS: ReadonlySet<string> = new Set([
 ]);
 
 /** Shared across clinics. */
-export const GLOBAL_MODELS: ReadonlySet<string> = new Set(['Clinic', 'User', 'Permission', 'PlanPrice']);
+export const GLOBAL_MODELS: ReadonlySet<string> = new Set([
+  'Clinic',
+  'User',
+  'Permission',
+  'PlanPrice',
+  // Before any clinic exists, or about a user rather than a clinic.
+  'PendingSignup',
+  'PasswordResetCode',
+  'LegalDocument',
+  'TermsAcceptance',
+]);
 
 /**
  * Rows keyed by a clinic that the clinic itself never writes: its paid plan and manual Premium grants.

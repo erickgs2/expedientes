@@ -39,7 +39,10 @@
     "login": "Iniciar sesión",
     "invalidCredentials": "Correo o contraseña inválidos",
     "tooManyAttempts": "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.",
-    "planMemberInactive": "Tu clínica está en el plan Gratis, donde solo entra su propietario. Pídele que active Premium."
+    "planMemberInactive": "Tu clínica está en el plan Gratis, donde solo entra su propietario. Pídele que active Premium.",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccount": "¿No tienes cuenta?",
+    "createAccount": "Crea una gratis"
   },
   "rbacAdmin": {
     "users": {
@@ -84,6 +87,15 @@
       "create": "Crear",
       "edit": "Editar",
       "delete": "Eliminar"
+    },
+    "invitations": {
+      "title": "Invitar a alguien",
+      "hint": "Le enviaremos un enlace por correo para que cree su acceso y acepte el aviso de privacidad. Vence en 7 días.",
+      "send": "Enviar invitación",
+      "invite": "Invitar",
+      "pending": "Invitaciones pendientes",
+      "expires": "vence el {{date}}",
+      "revoke": "Cancelar"
     }
   },
   "patientDrive": {
@@ -931,6 +943,90 @@
         "customRoles": "Los roles personalizados son parte de Premium.",
         "unbrandedPdf": "El PDF sin pie de MedCloud es parte de Premium."
       }
+    }
+  },
+  "legal": {
+    "version": "Versión {{version}} · vigente desde el {{date}}",
+    "history": "Versiones anteriores",
+    "backToLogin": "Volver a iniciar sesión",
+    "acceptPrivacy": "Leí y acepto el",
+    "acceptTerms": "Leí y acepto los",
+    "privacyNotice": "Aviso de privacidad",
+    "terms": "Términos y condiciones",
+    "marketing": "Quiero recibir novedades, promociones y encuestas de MedCloud (opcional)",
+    "pending": {
+      "title": "Actualizamos nuestros documentos",
+      "intro": "Para seguir usando MedCloud, revisa y acepta los cambios.",
+      "read": "Leer documento",
+      "agree": "Leí los cambios y los acepto",
+      "accept": "Aceptar y continuar"
+    }
+  },
+  "signup": {
+    "title": "Crea tu cuenta",
+    "lead": "Empieza gratis con tu clínica o consultorio. Puedes pasar a Premium cuando quieras.",
+    "steps": {
+      "label": "Pasos del registro",
+      "details": "Tus datos",
+      "legal": "Aviso y términos",
+      "code": "Confirmar correo"
+    },
+    "fullName": "Tu nombre completo",
+    "clinicName": "Nombre de la clínica o consultorio",
+    "phone": "Teléfono",
+    "phoneHint": "10 dígitos",
+    "passwordHint": "Mínimo 10 caracteres",
+    "confirmPassword": "Confirma la contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "continue": "Continuar",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "legalTitle": "Aviso de privacidad y términos",
+    "legalLead": "Léelos antes de crear tu cuenta. Puedes consultarlos en cualquier momento.",
+    "createAccount": "Crear cuenta y enviar código",
+    "code": {
+      "title": "Confirma tu correo",
+      "sentTo": "Enviamos un código de 6 dígitos a {{email}}. Vence en 10 minutos.",
+      "label": "Código",
+      "resendIn": "Puedes pedir otro en {{seconds}} s",
+      "resend": "Enviar otro código",
+      "changeEmail": "Cambiar correo",
+      "confirm": "Confirmar y entrar"
+    },
+    "errors": {
+      "CODE_INVALID": "El código no es correcto. Te quedan {{left}} intentos.",
+      "CODE_EXPIRED": "El código venció. Pide uno nuevo.",
+      "CODE_LOCKED": "Demasiados intentos con este código. Pide uno nuevo.",
+      "LEGAL_OUTDATED": "El aviso o los términos cambiaron mientras llenabas el formulario. Revísalos de nuevo.",
+      "CAPTCHA_FAILED": "No pudimos verificar que no eres un robot. Inténtalo de nuevo.",
+      "EMAIL_TAKEN": "Este correo ya tiene una cuenta. Inicia sesión.",
+      "TOO_MANY_ATTEMPTS": "Demasiados intentos. Espera unos minutos.",
+      "INVALID_INPUT": "Revisa los datos: falta algo o tiene un formato incorrecto.",
+      "EMAIL_FAILED": "No pudimos enviar el correo. Inténtalo en unos minutos.",
+      "UNKNOWN": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "reset": {
+    "title": "Recupera tu contraseña",
+    "lead": "Te enviaremos un código a tu correo para que elijas una contraseña nueva.",
+    "send": "Enviar código",
+    "newPassword": "Contraseña nueva",
+    "save": "Guardar y entrar"
+  },
+  "invitation": {
+    "title": "Únete a {{clinic}}",
+    "lead": "{{inviter}} te invitó a MedCloud con el rol {{role}}.",
+    "currentPassword": "Tu contraseña de MedCloud",
+    "accept": "Aceptar invitación",
+    "goneTitle": "Esta invitación ya no es válida",
+    "gone": "Venció, ya se usó o fue cancelada. Pide a la clínica que te envíe otra.",
+    "errors": {
+      "INVALID_CREDENTIALS": "La contraseña no es correcta.",
+      "LEGAL_OUTDATED": "El aviso o los términos cambiaron. Revísalos de nuevo.",
+      "INVALID_INPUT": "Revisa tu nombre y que la contraseña tenga al menos 10 caracteres.",
+      "TOO_MANY_ATTEMPTS": "Demasiados intentos. Espera unos minutos.",
+      "PLAN_LIMIT": "La clínica alcanzó el límite de usuarios de su plan. Avísale al propietario.",
+      "ACCOUNT_INACTIVE": "Tu cuenta está desactivada.",
+      "UNKNOWN": "Algo salió mal. Inténtalo de nuevo."
     }
   }
 }
