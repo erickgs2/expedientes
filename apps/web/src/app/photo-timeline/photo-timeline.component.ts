@@ -1,8 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { PhotoRecord, PhotoTag, TreatmentTimelinePhoto } from '@expedientes/shared-types';
+import { PhotoViewerDialogComponent } from '../shared/photo/photo-viewer-dialog.component';
 import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { ValoracionService } from '../valoracion/valoracion.service';
@@ -32,7 +34,15 @@ interface PhotoTimelineGroup {
           <div class="photo-grid">
             @for (photo of group.photos; track photo.id) {
               <div class="photo-item">
-                <img [src]="photoUrl(photo)" alt="" />
+                <!-- The tile loads the small thumbnail; tapping it shows the full-resolution original. -->
+                <button
+                  type="button"
+                  class="photo-open"
+                  (click)="openViewer(photo)"
+                  [attr.aria-label]="'common.viewPhoto' | transloco"
+                >
+                  <img [src]="thumbnailUrl(photo)" alt="" loading="lazy" />
+                </button>
                 <span class="photo-tag">{{ tagLabelKey(photo.tag) | transloco }}</span>
               </div>
             }
@@ -59,6 +69,17 @@ interface PhotoTimelineGroup {
       }
       .photo-item {
         position: relative;
+      }
+      /* A bare button around each tile: keeps the tile's block layout, and the focus ring is the
+         global one. */
+      .photo-open {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        border-radius: var(--plate-radius);
+        cursor: zoom-in;
       }
       .photo-item img {
         width: 100%;
@@ -91,6 +112,7 @@ export class PhotoTimelineComponent implements OnInit {
   private readonly valoracionService = inject(ValoracionService);
   private readonly treatmentPhotoService = inject(TreatmentPhotoService);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
   private readonly activePatient = inject(ActivePatientStore);
 
   protected readonly patient = this.activePatient.patient;
@@ -158,6 +180,18 @@ export class PhotoTimelineComponent implements OnInit {
 
   protected photoUrl(photo: PhotoRecord): string {
     return `/api/files/${photo.filePath}`;
+  }
+
+  protected thumbnailUrl(photo: PhotoRecord): string {
+    return `${this.photoUrl(photo)}?thumb=1`;
+  }
+
+  protected openViewer(photo: PhotoRecord): void {
+    this.dialog.open(PhotoViewerDialogComponent, {
+      data: { url: this.photoUrl(photo) },
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+    });
   }
 
   protected tagLabelKey(tag: PhotoTag): string {

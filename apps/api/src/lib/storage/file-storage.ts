@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { existsSync, realpathSync } from 'fs';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
-import { extname, join, resolve, sep } from 'path';
+import { dirname, extname, join, resolve, sep } from 'path';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 function storageRoot(): string {
@@ -139,19 +139,62 @@ export async function readStoredFile(relativePath: string): Promise<Buffer> {
 }
 
 /**
- * Removes a stored file, from S3 or the local disk depending on configuration. A file that is
- * already gone is not an error — deleting must be safe to repeat.
+ * Suffix of the thumbnail derived from a stored image (see thumbnail.ts). Thumbnails live next to
+ * their original under the original's path plus this suffix, so they need no database column and
+ * are removed together with it.
  */
-export async function deleteStoredFile(relativePath: string): Promise<void> {
+export const THUMBNAIL_SUFFIX = '.thumb.jpg';
+
+function assertSafeKey(relativePath: string): void {
+  // A key arriving here came from a database column this app wrote, but treat it as untrusted
+  // anyway: a leading slash or a `..` segment would address a different object.
+  if (relativePath.includes('..') || relativePath.startsWith('/')) {
+    throw new InvalidFilePathError(`Invalid storage key: ${relativePath}`);
+  }
+}
+
+/**
+ * Writes bytes at an exact stored path, for files derived from one already stored (thumbnails).
+ * New uploads go through `saveFile`, which picks a fresh UUID path instead.
+ */
+export async function writeStoredFileAt(relativePath: string, buffer: Buffer): Promise<void> {
+  const bucket = s3Bucket();
+  if (bucket) {
+    assertSafeKey(relativePath);
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: relativePath,
+        Body: buffer,
+        ContentType: contentTypeFor(relativePath),
+      })
+    );
+    return;
+  }
+
+  const target = resolveFilePath(relativePath);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, buffer);
+}
+
+async function deleteOne(relativePath: string): Promise<void> {
   const bucket = s3Bucket();
   if (!bucket) {
     await rm(resolveFilePath(relativePath), { force: true });
     return;
   }
-
-  if (relativePath.includes('..') || relativePath.startsWith('/')) {
-    throw new InvalidFilePathError(`Invalid storage key: ${relativePath}`);
-  }
+  assertSafeKey(relativePath);
   // S3 DeleteObject succeeds on a missing key, so no existence check is needed.
   await s3().send(new DeleteObjectCommand({ Bucket: bucket, Key: relativePath }));
+}
+
+/**
+ * Removes a stored file, and its thumbnail if one was generated, from S3 or the local disk depending
+ * on configuration. A file that is already gone is not an error — deleting must be safe to repeat.
+ */
+export async function deleteStoredFile(relativePath: string): Promise<void> {
+  await deleteOne(relativePath);
+  if (!relativePath.endsWith(THUMBNAIL_SUFFIX)) {
+    await deleteOne(relativePath + THUMBNAIL_SUFFIX);
+  }
 }

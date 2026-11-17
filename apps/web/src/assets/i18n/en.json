@@ -28,7 +28,9 @@
     "loading": "Loading...",
     "loadError": "Couldn't load this record. Please try again.",
     "back": "Back",
-    "backToHistoria": "Back to clinical history"
+    "backToHistoria": "Back to clinical history",
+    "close": "Close",
+    "viewPhoto": "View the photo at full size"
   },
   "auth": {
     "email": "Email",

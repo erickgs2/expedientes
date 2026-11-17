@@ -80,5 +80,11 @@ FROM nginx:alpine AS web-runtime
 # would break the port-80 bind without adding isolation; the unprivileged variant of this image
 # (nginxinc/nginx-unprivileged, which listens on 8080) is the supported way to run as non-root.
 COPY --from=web-build /workspace/dist/apps/web/browser /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# The config is a template: at startup the image's entrypoint writes it to conf.d/default.conf with
+# ${PDF_UPSTREAM} filled in. The filter limits substitution to that one name, so nginx's own
+# variables ($host, $uri...) are never touched. The default sends PDF routes to the regular API,
+# which is what every stack without a dedicated PDF container needs.
+COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
+ENV PDF_UPSTREAM=api:3000
+ENV NGINX_ENVSUBST_FILTER=PDF_UPSTREAM
 EXPOSE 80
