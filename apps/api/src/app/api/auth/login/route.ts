@@ -7,6 +7,12 @@ import { getUserPermissions } from '../../../../lib/rbac/permissions';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
+import {
+  checkLoginAllowed,
+  getClientIp,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from '../../../../lib/auth/login-throttle';
 
 export const POST = withApiErrors(async (request: NextRequest) => {
   const { email, password } = (await request.json()) as { email?: string; password?: string };
@@ -15,11 +21,23 @@ export const POST = withApiErrors(async (request: NextRequest) => {
     return apiError('INVALID_INPUT', 'Email and password are required', 400);
   }
 
+  // Checked before the password hash is computed, so a blocked source also cannot burn CPU on bcrypt.
+  const ip = getClientIp(request);
+  const limit = checkLoginAllowed(ip, email);
+  if (!limit.allowed) {
+    const response = apiError('TOO_MANY_ATTEMPTS', 'Too many failed attempts. Try again later.', 429);
+    response.headers.set('Retry-After', String(limit.retryAfterSeconds));
+    return response;
+  }
+
   const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
 
   if (!user || !user.active || !(await verifyPassword(password, user.passwordHash))) {
+    recordLoginFailure(ip, email);
     return apiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   }
+
+  recordLoginSuccess(ip, email);
 
   const token = issueToken({ sub: user.id, email: user.email });
   const permissions = await getUserPermissions(user.id);
