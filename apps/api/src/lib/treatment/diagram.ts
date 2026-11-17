@@ -1,5 +1,6 @@
 import type { DiagramView, Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 export interface DiagramViewsUpdate {
   front?: Prisma.InputJsonValue | null;
@@ -37,6 +38,7 @@ export async function getTreatmentItemDiagrams(treatmentItemId: string) {
  * `updateValoracionDiagrams` uses. All writes run in one transaction.
  */
 export async function updateTreatmentItemDiagrams(treatmentItemId: string, views: DiagramViewsUpdate) {
+  await assertInClinic('treatmentItem', [treatmentItemId]);
   const operations = (
     Object.entries(views) as [keyof DiagramViewsUpdate, Prisma.InputJsonValue | null | undefined][]
   )

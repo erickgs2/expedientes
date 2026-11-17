@@ -37,6 +37,16 @@ const PERMISSIONS: Array<{ module: string; action: string }> = [
   { module: 'rbac-admin', action: 'delete' },
 ];
 
+/**
+ * Idempotent; runs after every migration.
+ *
+ * - The permission catalog is global and always brought up to date.
+ * - A database with no clinic (a fresh install) gets one, named by SEED_CLINIC_NAME, with the admin
+ *   from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD as its owner. A migrated database already has its
+ *   clinic, users and memberships, and gets no new user.
+ * - Every clinic's Admin role holds every permission, so a permission added in a release reaches
+ *   existing clinics; every clinic has its settings row.
+ */
 async function main() {
   const permissions = await Promise.all(
     PERMISSIONS.map((p) =>
@@ -48,53 +58,71 @@ async function main() {
     )
   );
 
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'Admin' },
-    update: {},
-    create: { name: 'Admin' },
-  });
+  let clinics = await prisma.clinic.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true } });
+  const freshInstall = clinics.length === 0;
+  if (freshInstall) {
+    const clinic = await prisma.clinic.create({
+      data: { name: process.env.SEED_CLINIC_NAME?.trim() || 'Mi clínica' },
+      select: { id: true },
+    });
+    clinics = [clinic];
+  }
 
-  await Promise.all(
-    permissions.map((permission) =>
-      prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: adminRole.id, permissionId: permission.id } },
+  for (const clinic of clinics) {
+    const adminRole = await prisma.role.upsert({
+      where: { clinicId_name: { clinicId: clinic.id, name: 'Admin' } },
+      update: {},
+      create: { clinicId: clinic.id, name: 'Admin' },
+    });
+
+    await Promise.all(
+      permissions.map((permission) =>
+        prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId: adminRole.id, permissionId: permission.id } },
+          update: {},
+          create: { roleId: adminRole.id, permissionId: permission.id },
+        })
+      )
+    );
+
+    await prisma.clinicSettings.upsert({
+      where: { clinicId: clinic.id },
+      update: {},
+      create: {
+        clinicId: clinic.id,
+        clinicName: '',
+        defaultPlace: '',
+        doctorTitle: 'DRA.',
+        doctorName: '',
+        doctorLicense: '',
+        declarationBefore: DEFAULT_DECLARATION_BEFORE,
+        declarationAfter: DEFAULT_DECLARATION_AFTER,
+      },
+    });
+
+    if (freshInstall) {
+      const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@clinic.local';
+      const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
+      const admin = await prisma.user.upsert({
+        where: { email: adminEmail },
         update: {},
-        create: { roleId: adminRole.id, permissionId: permission.id },
-      })
-    )
-  );
+        create: {
+          email: adminEmail,
+          passwordHash: await hashPassword(adminPassword),
+          fullName: 'Administrator',
+          language: 'es',
+        },
+      });
+      await prisma.membership.upsert({
+        where: { userId_clinicId: { userId: admin.id, clinicId: clinic.id } },
+        update: {},
+        create: { userId: admin.id, clinicId: clinic.id, roleId: adminRole.id, isOwner: true },
+      });
+      console.log(`Created the first clinic with ${adminEmail} as its owner`);
+    }
+  }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@clinic.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
-
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
-      email: adminEmail,
-      passwordHash: await hashPassword(adminPassword),
-      fullName: 'Administrator',
-      language: 'es',
-      roleId: adminRole.id,
-    },
-  });
-
-  await prisma.clinicSettings.upsert({
-    where: { id: 'singleton' },
-    update: {},
-    create: {
-      id: 'singleton',
-      clinicName: '',
-      defaultPlace: '',
-      doctorTitle: 'DRA.',
-      doctorName: '',
-      doctorLicense: '',
-      declarationBefore: DEFAULT_DECLARATION_BEFORE,
-      declarationAfter: DEFAULT_DECLARATION_AFTER,
-    },
-  });
-
-  console.log(`Seeded ${permissions.length} permissions, Admin role, and admin user ${adminEmail}`);
+  console.log(`Seeded ${permissions.length} permissions for ${clinics.length} clinic(s)`);
 }
 
 main()

@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 export function buildPatientSearchWhere(query: string): Prisma.PatientWhereInput {
   const trimmed = query.trim();
@@ -35,6 +36,7 @@ export interface CreatePatientData {
 }
 
 export async function createPatient(data: CreatePatientData) {
+  await assertInClinic('patient', [data.contactPatientId]);
   return prisma.patient.create({ data, include: { contactPatient: CONTACT_SELECT } });
 }
 
@@ -61,6 +63,7 @@ export interface UpdatePatientData {
 }
 
 export async function updatePatient(id: string, data: UpdatePatientData) {
+  await assertInClinic('patient', [data.contactPatientId]);
   return prisma.patient.update({
     where: { id },
     data,

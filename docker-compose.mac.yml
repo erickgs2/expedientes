@@ -131,6 +131,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set}
+      # Name of the first clinic on a fresh install; ignored once a clinic exists.
+      SEED_CLINIC_NAME: ${SEED_CLINIC_NAME:-Mi clínica}
     command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
     depends_on:
       db:

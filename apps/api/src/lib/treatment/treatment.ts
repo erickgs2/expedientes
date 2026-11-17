@@ -1,4 +1,5 @@
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 export async function listTreatments(patientId: string) {
   const treatments = await prisma.treatment.findMany({
@@ -77,6 +78,8 @@ export interface TreatmentItemInput {
  * function does not re-check that itself.
  */
 export async function replaceTreatmentItems(treatmentId: string, items: TreatmentItemInput[]) {
+  await assertInClinic('treatment', [treatmentId]);
+  await assertInClinic('treatmentType', items.map((item) => item.treatmentTypeId));
   const existingItems = await prisma.treatmentItem.findMany({
     where: { treatmentId },
     select: { id: true, treatmentTypeId: true },

@@ -1,5 +1,7 @@
 import type { WhatsAppSendResponse, WhatsAppTestKind } from '@expedientes/shared-types';
-import { prisma } from '../prisma/client';
+import { prisma, prismaUnscoped } from '../prisma/client';
+import { runAsClinic } from '../tenancy/context';
+import { currentClinicTimeZone } from '../tenancy/clinic';
 import { writeAuditLogSafe } from '../audit/audit-log';
 import { getClinicSettings } from '../clinic/clinic-settings';
 import { sendTemplateMessage } from './whatsapp-client';
@@ -12,21 +14,21 @@ const REMINDER_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 export const MANUAL_REMINDER_COOLDOWN_MS = 30 * 60 * 1000;
 const MAX_ERROR_DETAIL_LENGTH = 500;
 
-function formatDate(date: Date): string {
+function formatDate(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('es-MX', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'America/Mexico_City',
+    timeZone,
   }).format(date);
 }
 
-function formatTime(date: Date): string {
+function formatTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('es-MX', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: 'America/Mexico_City',
+    timeZone,
   }).format(date);
 }
 
@@ -127,10 +129,11 @@ async function sendAppointmentMessage(
     return outcome;
   }
 
+  const timeZone = await currentClinicTimeZone();
   const outcome = await deliver(to, templateFor(config, kind), [
     appointment.patient.fullName,
-    formatDate(appointment.startTime),
-    formatTime(appointment.startTime),
+    formatDate(appointment.startTime, timeZone),
+    formatTime(appointment.startTime, timeZone),
   ]);
   if (outcome.result === 'send_failed') {
     console.error(`Failed to send WhatsApp ${kind} for appointment ${appointment.id}`, outcome.detail);
@@ -167,6 +170,22 @@ export async function sendConfirmation(appointmentId: string): Promise<void> {
  * audit log with a "disabled" entry every five minutes.
  */
 export async function runReminderSweep(): Promise<void> {
+  // Each clinic is swept inside its own context, with its own settings, credentials and time zone.
+  // One clinic's failure (bad credentials, a transient error) must not stop the others.
+  const clinics = await prismaUnscoped.clinic.findMany({
+    where: { status: 'ACTIVE' },
+    select: { id: true },
+  });
+  for (const clinic of clinics) {
+    try {
+      await runAsClinic(clinic.id, sweepCurrentClinic);
+    } catch (error) {
+      console.error(`Reminder sweep failed for clinic ${clinic.id}`, error);
+    }
+  }
+}
+
+async function sweepCurrentClinic(): Promise<void> {
   if (!(await areNotificationsEnabled())) return;
   const now = new Date();
   const due = await prisma.appointment.findMany({
@@ -249,7 +268,7 @@ export async function sendTestMessage(
     const sample = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     outcome = await deliver(to, templateFor(config, kind), [
       'Paciente de prueba',
-      formatDate(sample),
+      formatDate(sample, await currentClinicTimeZone()),
       '10:00',
     ]);
   }

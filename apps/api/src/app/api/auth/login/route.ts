@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma/client';
+import { prismaUnscoped } from '../../../../lib/prisma/client';
 import { verifyPassword } from '../../../../lib/auth/password';
 import { issueToken } from '../../../../lib/auth/jwt';
 import { AUTH_COOKIE_NAME } from '../../../../lib/auth/session';
-import { getUserPermissions } from '../../../../lib/rbac/permissions';
+import { InactiveUserError, resolveMembership } from '../../../../lib/rbac/permissions';
+import { setCurrentClinic } from '../../../../lib/tenancy/context';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
@@ -30,17 +31,30 @@ export const POST = withApiErrors(async (request: NextRequest) => {
     return response;
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+  // Users are global (one email, one password); no clinic is known until the membership below.
+  const user = await prismaUnscoped.user.findUnique({ where: { email } });
 
   if (!user || !user.active || !(await verifyPassword(password, user.passwordHash))) {
     recordLoginFailure(ip, email);
     return apiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   }
 
-  recordLoginSuccess(ip, email);
+  // A correct password with no active membership in an active clinic (deactivated everywhere, or
+  // the clinic suspended) is still refused, with the same answer as a wrong password.
+  let membership;
+  try {
+    membership = await resolveMembership(user.id);
+  } catch (error) {
+    if (error instanceof InactiveUserError) {
+      return apiError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
+    }
+    throw error;
+  }
 
-  const token = issueToken({ sub: user.id, email: user.email });
-  const permissions = await getUserPermissions(user.id);
+  recordLoginSuccess(ip, email);
+  setCurrentClinic(membership.clinicId);
+
+  const token = issueToken({ sub: user.id, email: user.email, cid: membership.clinicId });
 
   const response = NextResponse.json({
     user: {
@@ -48,9 +62,10 @@ export const POST = withApiErrors(async (request: NextRequest) => {
       email: user.email,
       fullName: user.fullName,
       language: user.language,
-      roleId: user.roleId,
-      roleName: user.role.name,
-      permissions,
+      roleId: membership.roleId,
+      roleName: membership.roleName,
+      permissions: membership.permissions,
+      clinic: { id: membership.clinicId, name: membership.clinicName },
     },
   });
 

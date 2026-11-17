@@ -20,6 +20,19 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # A throwaway database to prove the migrations apply cleanly from empty and match the schema.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +44,18 @@ jobs:
       # fails on missing model types rather than on anything real.
       - run: npx prisma generate
       - run: npx nx test api
+      # Every migration applies on an empty database, and together they produce exactly the schema
+      # in schema.prisma. A schema edit without its migration (or the reverse) fails here instead of
+      # on the server, where it would stop the deploy with the clinic's data on the line.
+      - name: Migrations apply and match the schema
+        run: |
+          PGPASSWORD=ci psql -h localhost -U ci -d ci -c 'CREATE DATABASE ci_shadow'
+          npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://ci:ci@localhost:5432/ci_shadow \
+            --exit-code
       - run: npx nx build api
       - run: npx nx build web
 

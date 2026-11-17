@@ -6,6 +6,8 @@ export interface AuthUser {
   roleId: string;
   roleName: string;
   permissions: string[];
+  /** The clinic this session acts for. */
+  clinic: { id: string; name: string };
 }
 
 export interface LoginRequest {

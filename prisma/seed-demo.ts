@@ -1,6 +1,9 @@
 /* Fictional demo data for tests and promo footage. Resumable: reuses rows already inserted.
+ * Loads into the oldest clinic (the one a fresh install's seed creates). NEVER run it against a
+ * database with real patients.
  * Run: npx tsx prisma/seed-demo.ts */
-import { PrismaClient } from '@prisma/client';
+import { prisma, prismaUnscoped } from '../apps/api/src/lib/prisma/client';
+import { currentClinicId, runAsClinic } from '../apps/api/src/lib/tenancy/context';
 import { deflateSync } from 'zlib';
 import { resolve } from 'path';
 import { saveFile } from '../apps/api/src/lib/storage/file-storage';
@@ -9,7 +12,6 @@ import {
   DEFAULT_DECLARATION_AFTER,
 } from '../libs/shared/types/src/lib/consent-boilerplate';
 
-const prisma = new PrismaClient();
 const day = (offset: number, h: number, m = 0) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -57,20 +59,30 @@ const P = [
 ] as const;
 
 async function main() {
-  process.env.STORAGE_ROOT = resolve(__dirname, '../apps/api/storage');
+  // The stack's STORAGE_ROOT when run in a container; the dev server's folder otherwise.
+  process.env.STORAGE_ROOT ??= resolve(__dirname, '../apps/api/storage');
+  const clinic = await prismaUnscoped.clinic.findFirst({ orderBy: { createdAt: 'asc' } });
+  if (!clinic) throw new Error('No clinic yet: run the seed (prisma db seed) first');
+  await runAsClinic(clinic.id, demo);
+}
+
+async function demo() {
+  // The scoped client adds clinicId to every top-level query; rows created nested inside another
+  // create need it written explicitly.
+  const clinicId = currentClinicId();
   await prisma.clinicSettings.upsert({
-    where: { id: 'singleton' },
+    where: { clinicId },
     update: { clinicName: 'Clínica Demo Estética', defaultPlace: 'Ciudad de México', doctorTitle: 'Dra.', doctorName: 'Ana Demo Ficticia', doctorLicense: '00000000' },
     create: { clinicName: 'Clínica Demo Estética', defaultPlace: 'Ciudad de México', doctorTitle: 'Dra.', doctorName: 'Ana Demo Ficticia', doctorLicense: '00000000', declarationBefore: DEFAULT_DECLARATION_BEFORE, declarationAfter: DEFAULT_DECLARATION_AFTER },
   });
-  const settings = await prisma.clinicSettings.findUniqueOrThrow({ where: { id: 'singleton' } });
+  const settings = await prisma.clinicSettings.findUniqueOrThrow({ where: { clinicId } });
 
   const types = [];
   for (const [name, consentDescription, consentRisks, consentAlternatives, consentAftercare, consentContraindications] of TYPES) {
     types.push((await prisma.treatmentType.findFirst({ where: { name } })) ?? await prisma.treatmentType.create({ data: { name, consentDescription, consentRisks, consentAlternatives, consentAftercare, consentContraindications } }));
   }
   const allergies: Record<string, string> = {};
-  for (const name of ALLERGIES) allergies[name] = (await prisma.allergy.upsert({ where: { name }, update: {}, create: { name } })).id;
+  for (const name of ALLERGIES) allergies[name] = (await prisma.allergy.upsert({ where: { clinicId_name: { clinicId, name } }, update: {}, create: { name } })).id;
 
   const patients: string[] = [];
   for (const [i, [fullName, phone, sexo, born, ocupacion, quiere, alg]] of P.entries()) {
@@ -81,7 +93,7 @@ async function main() {
         fullName, phone, documentId: `DEMO-${1000 + i}`,
         historiaClinica: {
           create: {
-            ocupacion, sexo, fechaNacimiento: new Date(born), queQuiereElPaciente: quiere,
+            clinicId, ocupacion, sexo, fechaNacimiento: new Date(born), queQuiereElPaciente: quiere,
             queNecesitaElPaciente: 'Plan gradual y natural, con seguimiento',
             atributosEmocionales: 'Motivada, busca verse descansada',
             enfermedadesActuales: i % 4 === 0 ? 'Hipotiroidismo controlado' : 'Ninguna',
@@ -118,8 +130,8 @@ async function main() {
         patientId: patients[i], fecha: day(-14 - i, 12),
         items: {
           create: {
-            treatmentTypeId: type.id, notes: 'Procedimiento sin incidentes. Se indican cuidados posteriores.',
-            products: { create: { patientId: patients[i], brand: brands[i][0], lotNumber: brands[i][1], expiryDate: new Date(Date.UTC(2027, 5 + (i % 6), 30)) } },
+            clinicId, treatmentTypeId: type.id, notes: 'Procedimiento sin incidentes. Se indican cuidados posteriores.',
+            products: { create: { clinicId, patientId: patients[i], brand: brands[i][0], lotNumber: brands[i][1], expiryDate: new Date(Date.UTC(2027, 5 + (i % 6), 30)) } },
           },
         },
       },
@@ -161,4 +173,4 @@ async function main() {
   }
   console.log('Demo data inserted: 10 patients, 5 treatment types, 6 consents, 10 appointments.');
 }
-main().finally(() => prisma.$disconnect());
+main().finally(() => prismaUnscoped.$disconnect());
