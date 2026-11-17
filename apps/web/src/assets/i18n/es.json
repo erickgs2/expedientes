@@ -1,6 +1,6 @@
 {
   "shell": {
-    "title": "Expedientes",
+    "title": "MedCloud",
     "toggleTheme": "Cambiar tema",
     "language": "Idioma",
     "menu": "Menú",
@@ -34,7 +34,8 @@
     "email": "Correo electrónico",
     "password": "Contraseña",
     "login": "Iniciar sesión",
-    "invalidCredentials": "Correo o contraseña inválidos"
+    "invalidCredentials": "Correo o contraseña inválidos",
+    "tooManyAttempts": "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo."
   },
   "rbacAdmin": {
     "users": {

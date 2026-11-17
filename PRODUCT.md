@@ -1,5 +1,7 @@
 # Product
 
+Name: **MedCloud** (the codebase and database are still called `expedientes`).
+
 <!-- impeccable:product-schema 1 -->
 
 ## Platform
@@ -29,11 +31,11 @@ Built around one clinic's real workflow rather than a generic EMR: facial-diagra
 
 - Angular 22 + Angular Material (M3 `mat.theme()` tokens), Next.js API, PostgreSQL/Prisma.
 - Patient data is sensitive health data; irreversible actions (e.g. permanent patient deletion) need explicit confirmation and a dedicated permission.
-- Brand identity, visual voice and accessibility standard are not defined yet.
+- The name (MedCloud) and logo (a lotus rising from a cloud) are defined. Visual voice and the accessibility standard are not yet.
 
 ## Brand Commitments
 
-None confirmed. Undecided.
+Name: MedCloud. Logo: lotus rising from a cloud, with a rose dot. Nothing else confirmed.
 
 ## Evidence on Hand
 
