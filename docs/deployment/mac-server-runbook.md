@@ -40,6 +40,15 @@ sudo apt update && sudo apt full-upgrade -y
 sudo apt install -y git curl ca-certificates openssl ufw
 ```
 
+**Nombre de la máquina.** Si tiene el mismo nombre que la Pi, cámbialo: con datos reales en la Pi es
+fácil correr un comando en la equivocada, y Tailscale necesita nombres distintos. Vuelve a entrar por
+SSH para ver el nombre nuevo en el prompt.
+
+```bash
+hostname
+sudo hostnamectl set-hostname medcloud-mac
+```
+
 **Suspensión.** Sáltalo si el inventario muestra `masked` y `HandleLidSwitch=ignore`, que ya
 configuraste antes:
 
@@ -85,6 +94,15 @@ Según lo que haya mostrado el inventario en `== DuckDNS`:
   Si certbot no tiene otros certificados, `sudo apt purge -y certbot`.
 
 Si el inventario no mostró nada en `== DuckDNS`, no hay nada que quitar.
+
+Quita también del firewall los puertos web que se abrieron para DuckDNS y Caddy; con el túnel no se
+usan:
+
+```bash
+sudo ufw delete allow 80/tcp
+sudo ufw delete allow 443/tcp
+sudo ufw status                     # debe quedar solo OpenSSH
+```
 
 **En el router de la casa de la Mac**, borra los reenvíos de puertos hacia la Mac (80, 443 y el de
 SSH). Con el túnel y Tailscale ya no hacen falta, y cada puerto abierto es una entrada menos que
