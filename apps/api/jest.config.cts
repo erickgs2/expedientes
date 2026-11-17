@@ -12,7 +12,9 @@ const config = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   coverageDirectory: '../../coverage/apps/api',
-  testEnvironment: 'jsdom',
+  // The API runs on Node, not in a browser. jsdom also lacks TextDecoder, which the S3 client needs
+  // as soon as it is imported, so any spec touching file storage failed to load under it.
+  testEnvironment: 'node',
 };
 
 const jestConfig = createJestConfig(config);
