@@ -1,8 +1,15 @@
 import { randomUUID } from 'crypto';
 import { existsSync, realpathSync } from 'fs';
-import { mkdir, readFile, writeFile } from 'fs/promises';
-import { extname, join, resolve, sep } from 'path';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { mkdir, readFile, rm, stat, writeFile } from 'fs/promises';
+import { dirname, extname, join, resolve, sep } from 'path';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { addClinicStorageBytes } from '../plan/storage-accounting';
 
 function storageRoot(): string {
   return process.env.STORAGE_ROOT ?? './storage';
@@ -69,6 +76,7 @@ export async function saveFile(
         ContentType: contentTypeFor(originalName),
       })
     );
+    await addClinicStorageBytes(buffer.length);
     return key;
   }
 
@@ -77,6 +85,7 @@ export async function saveFile(
   // `key` is built with forward slashes; split it back apart so the local path uses this platform's
   // separator rather than embedding a literal "/" in a Windows filename.
   await writeFile(join(dir, key.split('/')[2]), buffer);
+  await addClinicStorageBytes(buffer.length);
   return key;
 }
 
@@ -136,4 +145,89 @@ export async function readStoredFile(relativePath: string): Promise<Buffer> {
     throw new Error(`Empty response body for storage key: ${relativePath}`);
   }
   return Buffer.from(await response.Body.transformToByteArray());
+}
+
+/**
+ * Suffix of the thumbnail derived from a stored image (see thumbnail.ts). Thumbnails live next to
+ * their original under the original's path plus this suffix, so they need no database column and
+ * are removed together with it.
+ */
+export const THUMBNAIL_SUFFIX = '.thumb.jpg';
+
+function assertSafeKey(relativePath: string): void {
+  // A key arriving here came from a database column this app wrote, but treat it as untrusted
+  // anyway: a leading slash or a `..` segment would address a different object.
+  if (relativePath.includes('..') || relativePath.startsWith('/')) {
+    throw new InvalidFilePathError(`Invalid storage key: ${relativePath}`);
+  }
+}
+
+/**
+ * Writes bytes at an exact stored path, for files derived from one already stored (thumbnails).
+ * New uploads go through `saveFile`, which picks a fresh UUID path instead.
+ */
+export async function writeStoredFileAt(relativePath: string, buffer: Buffer): Promise<void> {
+  const bucket = s3Bucket();
+  if (bucket) {
+    assertSafeKey(relativePath);
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: relativePath,
+        Body: buffer,
+        ContentType: contentTypeFor(relativePath),
+      })
+    );
+    await addClinicStorageBytes(buffer.length);
+    return;
+  }
+
+  const target = resolveFilePath(relativePath);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, buffer);
+  await addClinicStorageBytes(buffer.length);
+}
+
+/** Size of a stored file in bytes, or 0 when it does not exist. */
+export async function storedFileSize(relativePath: string): Promise<number> {
+  const bucket = s3Bucket();
+  if (!bucket) {
+    try {
+      return (await stat(resolveFilePath(relativePath))).size;
+    } catch {
+      return 0;
+    }
+  }
+  assertSafeKey(relativePath);
+  try {
+    const head = await s3().send(new HeadObjectCommand({ Bucket: bucket, Key: relativePath }));
+    return head.ContentLength ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function deleteOne(relativePath: string): Promise<void> {
+  // Measured before deleting so the clinic's storage usage can be reduced by what it frees.
+  const size = await storedFileSize(relativePath);
+  const bucket = s3Bucket();
+  if (!bucket) {
+    await rm(resolveFilePath(relativePath), { force: true });
+  } else {
+    assertSafeKey(relativePath);
+    // S3 DeleteObject succeeds on a missing key, so no existence check is needed.
+    await s3().send(new DeleteObjectCommand({ Bucket: bucket, Key: relativePath }));
+  }
+  await addClinicStorageBytes(-size);
+}
+
+/**
+ * Removes a stored file, and its thumbnail if one was generated, from S3 or the local disk depending
+ * on configuration. A file that is already gone is not an error — deleting must be safe to repeat.
+ */
+export async function deleteStoredFile(relativePath: string): Promise<void> {
+  await deleteOne(relativePath);
+  if (!relativePath.endsWith(THUMBNAIL_SUFFIX)) {
+    await deleteOne(relativePath + THUMBNAIL_SUFFIX);
+  }
 }

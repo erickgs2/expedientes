@@ -1,7 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { ClinicSettings, ClinicSettingsInput } from '@expedientes/shared-types';
+import type {
+  ClinicSettings,
+  ClinicSettingsInput,
+  WhatsAppSendResponse,
+  WhatsAppTestInput,
+} from '@expedientes/shared-types';
 
 @Injectable({ providedIn: 'root' })
 export class ClinicSettingsService {
@@ -11,6 +16,13 @@ export class ClinicSettingsService {
     return firstValueFrom(
       this.http.get<{ clinicSettings: ClinicSettings | null }>('/api/clinic-settings')
     ).then((r) => r.clinicSettings);
+  }
+
+  /** Sends a sample confirmation or reminder to `phone`, using the saved WhatsApp settings. */
+  testWhatsApp(input: WhatsAppTestInput): Promise<WhatsAppSendResponse> {
+    return firstValueFrom(
+      this.http.post<WhatsAppSendResponse>('/api/clinic-settings/whatsapp-test', input)
+    );
   }
 
   save(

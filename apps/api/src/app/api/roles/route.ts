@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma/client';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
+import { assertFeature } from '../../../lib/plan/limits';
 import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
@@ -24,6 +25,8 @@ export const GET = withApiErrors(async (request: NextRequest) => {
 
 export const POST = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'rbac-admin', 'create');
+  // Free has only the Admin role; creating or reshaping roles is a Premium capability.
+  await assertFeature('customRoles');
 
   const body = (await request.json()) as { name?: string };
   if (!body.name) return apiError('INVALID_INPUT', 'name is required', 400);

@@ -89,7 +89,7 @@ import type { ConsentBlock, ConsentSignatureRole } from '@expedientes/shared-typ
         margin-bottom: -8px;
       }
       .signature-line {
-        border-top: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.6));
+        border-top: 1px solid var(--plate-line-strong);
         margin-top: 40px;
       }
       .signature-caption {
@@ -98,7 +98,7 @@ import type { ConsentBlock, ConsentSignatureRole } from '@expedientes/shared-typ
       }
       .signature-subcaption {
         margin: 0;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        color: var(--mat-sys-on-surface-variant);
         font-size: 0.9em;
       }
     `,

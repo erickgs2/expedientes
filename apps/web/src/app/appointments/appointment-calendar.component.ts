@@ -9,6 +9,7 @@ import { AuthService } from '../auth/auth.service';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { AppointmentService } from './appointment.service';
 import { AppointmentFormComponent, type AppointmentFormDialogData } from './appointment-form.component';
+import { AppointmentQuickViewComponent } from './appointment-quick-view.component';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -200,7 +201,9 @@ function isSameDay(a: Date, b: Date): boolean {
       }
       .range-label {
         margin: 0 8px;
-        font-weight: 500;
+        font-weight: 600;
+        text-transform: capitalize;
+        font-variant-numeric: tabular-nums;
       }
       .month-list {
         padding: 0;
@@ -208,8 +211,8 @@ function isSameDay(a: Date, b: Date): boolean {
       .month-day-row {
         display: flex;
         gap: 12px;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        padding: 10px 0;
+        border-bottom: 1px solid var(--plate-line);
       }
       .month-day-label {
         min-width: 180px;
@@ -228,15 +231,35 @@ function isSameDay(a: Date, b: Date): boolean {
       }
       .appt-chip {
         text-align: left;
-        border: none;
-        border-radius: 4px;
-        padding: 4px 8px;
-        background: var(--mat-sys-primary-container, #ffd9dd);
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 6px 10px;
+        min-height: 36px;
+        font: inherit;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        color: var(--mat-sys-on-secondary-container);
+        background: var(--mat-sys-secondary-container);
         cursor: pointer;
+        transition: border-color 150ms ease-out;
       }
+      .appt-chip:hover,
+      .appt-block:hover {
+        border-color: var(--plate-mark);
+      }
+      /* Cancelled and no-show stay legible (contrast holds) but read as struck from the chart. */
       .appt-chip.status-cancelled,
-      .appt-chip.status-no-show {
-        opacity: 0.5;
+      .appt-block.status-cancelled {
+        background: transparent;
+        border: 1px dashed var(--plate-line-strong);
+        color: var(--mat-sys-on-surface-variant);
+        text-decoration: line-through;
+      }
+      .appt-chip.status-no-show,
+      .appt-block.status-no-show {
+        background: transparent;
+        border: 1px dashed var(--plate-mark);
+        color: var(--mat-sys-on-surface-variant);
       }
       .no-appts {
         color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
@@ -270,15 +293,19 @@ function isSameDay(a: Date, b: Date): boolean {
       .day-header-cell {
         flex: 1;
         text-align: center;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 13px;
         text-transform: capitalize;
-        padding: 4px;
+        padding: 8px 4px;
+        color: var(--mat-sys-on-surface-variant);
+        border-bottom: 1px solid var(--plate-line-strong);
       }
       .time-grid {
         display: flex;
         position: relative;
         overflow-y: auto;
         max-height: 70vh;
+        border-bottom: 1px solid var(--plate-line);
       }
       .time-axis {
         width: 56px;
@@ -291,7 +318,8 @@ function isSameDay(a: Date, b: Date): boolean {
         right: 8px;
         text-align: right;
         font-size: 12px;
-        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
+        font-variant-numeric: tabular-nums;
+        color: var(--mat-sys-on-surface-variant);
         transform: translateY(-50%);
       }
       .day-columns {
@@ -302,25 +330,32 @@ function isSameDay(a: Date, b: Date): boolean {
       .day-column {
         flex: 1;
         position: relative;
-        border-left: 1px solid var(--mat-sys-outline-variant, rgba(0, 0, 0, 0.12));
+        border-left: 1px solid var(--plate-line);
+        /* Hour rules: one faint hairline per hour so appointments read against the time axis. */
+        background-image: linear-gradient(var(--plate-line) 1px, transparent 1px);
+        background-size: 100% calc(60px * var(--ppm, 1));
         cursor: pointer;
+      }
+      .day-column:focus-visible {
+        outline-offset: -2px;
       }
       .appt-block {
         position: absolute;
-        left: 2px;
-        right: 2px;
-        border: none;
-        border-radius: 4px;
-        background: var(--mat-sys-primary-container, #ffd9dd);
+        left: 3px;
+        right: 3px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: var(--mat-sys-secondary-container);
+        color: var(--mat-sys-on-secondary-container);
         text-align: left;
-        padding: 2px 4px;
+        padding: 3px 6px;
+        font: inherit;
         font-size: 12px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
         overflow: hidden;
         cursor: pointer;
-      }
-      .appt-block.status-cancelled,
-      .appt-block.status-no-show {
-        opacity: 0.5;
+        transition: border-color 150ms ease-out;
       }
     `,
   ],
@@ -527,8 +562,17 @@ export class AppointmentCalendarComponent implements OnInit {
 
   protected onAppointmentClick(event: MouseEvent, appointment: AppointmentSummary): void {
     event.stopPropagation();
-    if (!this.auth.hasPermission('appointments', 'edit')) return;
-    this.openEdit(appointment.id);
+    // The first move is the summary, not the edit form: most taps mean "I'm about to see this
+    // patient". Editing is one button away inside it.
+    this.dialog
+      .open<AppointmentQuickViewComponent, AppointmentSummary, 'edit' | undefined>(
+        AppointmentQuickViewComponent,
+        { data: appointment }
+      )
+      .afterClosed()
+      .subscribe((result) => {
+        if (result === 'edit') void this.openEdit(appointment.id);
+      });
   }
 
   protected openCreate(startTime?: Date): void {

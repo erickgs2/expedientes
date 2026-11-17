@@ -1,0 +1,197 @@
+name: Deploy dev (MacBook server)
+
+# Pushing to `dev` deploys to the MacBook Pro server (intech-mac, Ubuntu Server, x86_64).
+#
+# The work is split by where it runs best:
+#   verify, build-and-push  GitHub-hosted runners. The images are built here and pushed to GHCR, the
+#                           same way QA does it. Compiling Angular and Next.js on a 4 GB laptop took
+#                           all its memory and pushed it into swap on a spinning disk, slowing the app
+#                           for every clinic during each deploy. GitHub's runners are amd64, like the
+#                           Mac, so the images run there unchanged.
+#   deploy                  The self-hosted runner on the Mac (labels `self-hosted`, `dev-server`). It
+#                           only pulls the new images, migrates and restarts. It polls GitHub
+#                           outbound, so no SSH port is opened and no key for the home network is
+#                           stored in GitHub. The app is published through a Cloudflare Tunnel (see
+#                           docker-compose.mac.yml).
+#
+# Setting the server and runner up is documented in docs/deployment/mac-server-runbook.md.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  # Two overlapping deploys would race `docker compose up` against the same stack. Queue rather
+  # than cancel: cancelling between the migration and the restart would leave a migrated database
+  # serving the old containers.
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPO: ghcr.io/${{ github.repository }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # A throwaway database to prove the migrations apply cleanly from empty and match the schema.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The Prisma client is generated code the tests depend on.
+      - run: npx prisma generate
+      # Tests run before anything is built, so a red build never reaches the running stack. The
+      # image builds below compile both apps, so a type error fails there.
+      - run: npx nx test api
+      # Every migration applies on an empty database, and together they produce exactly the schema
+      # in schema.prisma. A schema edit without its migration (or the reverse) fails here instead of
+      # on the server, where it would stop the deploy with the clinic's data on the line.
+      - name: Migrations apply and match the schema
+        run: |
+          PGPASSWORD=ci psql -h localhost -U ci -d ci -c 'CREATE DATABASE ci_shadow'
+          npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://ci:ci@localhost:5432/ci_shadow \
+            --exit-code
+
+  build-and-push:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Three images from the one root Dockerfile, as in QA. api-pdf on the Mac runs the api image.
+      # The cache scopes match QA's, so a commit that already built there reuses its layers.
+      - name: Build and push api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: api-runtime
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push migrate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: migrate
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-migrate:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=migrate
+
+      - name: Build and push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: web-runtime
+          push: true
+          tags: ${{ env.IMAGE_REPO }}-web:${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    needs: build-and-push
+    runs-on: [self-hosted, dev-server]
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 30
+    env:
+      # Every `docker compose` call needs the env file: compose interpolates the whole file on any
+      # command, so the `${VAR:?...}` guards fire otherwise. The secrets live only in
+      # /opt/expedientes/.env on the Mac and never pass through GitHub; the job adds the image
+      # version to it below.
+      COMPOSE: docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env
+
+    steps:
+      # Only the compose file is needed from the checkout, so a change to the stack ships with the
+      # code that expects it.
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # IMAGE_REPO and IMAGE_TAG are the only values CI controls. Written into the env file rather
+      # than passed only to this job, so `docker compose ps`, `logs` or `run` typed by hand on the
+      # Mac address the version that is running. mktemp creates the file 0600, like the original, so
+      # the secrets never become readable by other users for the instant before the rename.
+      - name: Record the version being deployed
+        run: |
+          set -euo pipefail
+          ENV_FILE=/opt/expedientes/.env
+          tmp=$(mktemp /opt/expedientes/.env.XXXXXX)
+          grep -vE '^(IMAGE_REPO|IMAGE_TAG)=' "$ENV_FILE" > "$tmp" || true
+          echo "IMAGE_REPO=${IMAGE_REPO}" >> "$tmp"
+          echo "IMAGE_TAG=${{ github.sha }}" >> "$tmp"
+          mv "$tmp" "$ENV_FILE"
+
+      - name: Pull images
+        run: $COMPOSE --profile tools pull
+
+      - name: Migrate and restart
+        run: |
+          set -euo pipefail
+          $COMPOSE up -d db
+          $COMPOSE --profile tools run --rm migrate
+          $COMPOSE up -d --remove-orphans
+
+      - name: Smoke check
+        run: |
+          set -euo pipefail
+          # Probed from the web container rather than from inside api itself, so this exercises the
+          # same path nginx uses to reach the API — a server listening only on its own interface
+          # would pass a localhost check inside its own container while still being unreachable.
+          for i in $(seq 1 15); do
+            if $COMPOSE exec -T web wget -q -O /dev/null http://api:3000/api/hello \
+              && $COMPOSE exec -T web wget -q -O /dev/null http://api-pdf:3000/api/hello; then
+              echo "API healthy"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "API did not become healthy" >&2
+          $COMPOSE logs --tail=50 api api-pdf >&2
+          exit 1
+
+      # Every deploy leaves the previous images behind, and a full disk is the most likely way this
+      # server breaks. `always()` so the cleanup still runs when the smoke check failed.
+      - name: Prune old images
+        if: always()
+        run: docker image prune -f

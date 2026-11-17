@@ -20,17 +20,42 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # A throwaway database to prove the migrations apply cleanly from empty and match the schema.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       # The Prisma client is generated code the type-check depends on; without this the API build
       # fails on missing model types rather than on anything real.
       - run: npx prisma generate
       - run: npx nx test api
+      # Every migration applies on an empty database, and together they produce exactly the schema
+      # in schema.prisma. A schema edit without its migration (or the reverse) fails here instead of
+      # on the server, where it would stop the deploy with the clinic's data on the line.
+      - name: Migrations apply and match the schema
+        run: |
+          PGPASSWORD=ci psql -h localhost -U ci -d ci -c 'CREATE DATABASE ci_shadow'
+          npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://ci:ci@localhost:5432/ci_shadow \
+            --exit-code
       - run: npx nx build api
       - run: npx nx build web
 
@@ -51,17 +76,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Three images, all from this repo's existing Dockerfiles:
-      #   api      the Next.js standalone server
-      #   web      nginx serving the Angular bundle and proxying /api/
-      #   migrate  the api image's build stage, which still has the Prisma CLI and the workspace,
-      #            used for the one-off `migrate deploy && db seed` job
+      # Three images, all targets of the one root Dockerfile so they share a single `npm ci`:
+      #   api-runtime  the Next.js standalone server
+      #   migrate      workspace + Prisma CLI, for the one-off `migrate deploy && db seed` job
+      #   web-runtime  nginx serving the Angular bundle and proxying /api/
       - name: Build and push api
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/api/Dockerfile
-          target: runtime
+          file: Dockerfile
+          target: api-runtime
           push: true
           tags: ${{ env.IMAGE_REPO }}-api:${{ github.sha }}
           cache-from: type=gha,scope=api
@@ -71,8 +95,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/api/Dockerfile
-          target: build
+          file: Dockerfile
+          target: migrate
           push: true
           tags: ${{ env.IMAGE_REPO }}-migrate:${{ github.sha }}
           cache-from: type=gha,scope=api
@@ -82,7 +106,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/web/Dockerfile
+          file: Dockerfile
+          target: web-runtime
           push: true
           tags: ${{ env.IMAGE_REPO }}-web:${{ github.sha }}
           cache-from: type=gha,scope=web
@@ -144,10 +169,10 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/expedientes
-            # Checked from inside the network so this tests the app, not DNS or the certificate.
-            # Retried: the API needs a moment to accept connections after a restart.
+            # Probed from the web container, the same path nginx uses — not from inside api on
+            # localhost, which would pass even if the server were bound to one interface only.
             for i in $(seq 1 10); do
-              if docker compose -f docker-compose.qa.yml exec -T api node -e "fetch('http://localhost:3000/api/hello').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              if docker compose -f docker-compose.qa.yml exec -T web wget -q -O /dev/null http://api:3000/api/hello; then
                 echo "API healthy"
                 exit 0
               fi

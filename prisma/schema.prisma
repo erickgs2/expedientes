@@ -7,6 +7,166 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// A clinic or practice. Everything a clinic records (patients, records, catalog, settings, roles,
+/// audit log) carries its clinicId, and no clinic can read another's rows.
+model Clinic {
+  id        String       @id @default(uuid())
+  name      String
+  phone     String?
+  /// IANA time zone the clinic's day is computed in (the front desk, reminders, consent dates).
+  timeZone  String       @default("America/Mexico_City")
+  status    ClinicStatus @default(ACTIVE)
+
+  // Optional tax details, kept for invoicing (CFDI) later.
+  taxId         String?
+  legalName     String?
+  taxRegime     String?
+  taxPostalCode String?
+
+  /// Bytes of uploaded files this clinic holds, kept up to date as files are saved and deleted and
+  /// recounted from the stored files when storageCountedAt is empty (see lib/plan/storage-usage.ts).
+  storageBytes     BigInt    @default(0)
+  storageCountedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscription          Subscription?
+  planGrants            PlanGrant[]
+  invitations           Invitation[]
+  memberships           Membership[]
+  settings              ClinicSettings?
+  roles                 Role[]
+  patients              Patient[]
+  auditLogs             AuditLog[]
+  historias             HistoriaClinica[]
+  allergies             Allergy[]
+  valoraciones          Valoracion[]
+  valoracionDiagrams    ValoracionDiagram[]
+  photos                Photo[]
+  treatmentTypes        TreatmentType[]
+  treatments            Treatment[]
+  treatmentItems        TreatmentItem[]
+  consents              Consent[]
+  consentScans          ConsentScan[]
+  treatmentItemDiagrams TreatmentItemDiagram[]
+  treatmentItemPhotos   TreatmentItemPhoto[]
+  treatmentItemProducts TreatmentItemProduct[]
+  appointments          Appointment[]
+}
+
+enum ClinicStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlanTier {
+  FREE
+  PREMIUM
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  /// Paid up to currentPeriodEnd.
+  ACTIVE
+  /// A card charge failed; Premium continues until graceEndsAt while Stripe retries.
+  PAST_DUE
+  /// Will not renew; Premium continues until currentPeriodEnd.
+  CANCELED
+}
+
+enum PaymentMethod {
+  CARD
+  OXXO
+}
+
+/// A clinic's paid plan. Written only by the payment flow and the platform portal, never by a
+/// clinic's own requests, so it is read and written through prismaUnscoped. A clinic with no row is
+/// on Free unless a PlanGrant covers it.
+model Subscription {
+  id                   String             @id @default(uuid())
+  clinicId             String             @unique
+  clinic               Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan                 PlanTier           @default(PREMIUM)
+  status               SubscriptionStatus
+  interval             BillingInterval
+  method               PaymentMethod
+  currentPeriodEnd     DateTime
+  graceEndsAt          DateTime?
+  priceId              String?
+  price                PlanPrice?         @relation(fields: [priceId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?            @unique
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+/// Premium given by hand from the platform portal, for a number of months. Never touches the
+/// subscription or Stripe. Expiry is computed when the plan is read, so nothing has to run when a
+/// grant ends.
+model PlanGrant {
+  id            String    @id @default(uuid())
+  clinicId      String
+  clinic        Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan          PlanTier  @default(PREMIUM)
+  startsAt      DateTime
+  endsAt        DateTime
+  months        Int
+  reason        String
+  /// Who granted it: a platform admin id, or "migration" for the founder grant.
+  grantedBy     String
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedBy     String?
+  revokedReason String?
+
+  @@index([clinicId, endsAt])
+}
+
+/// One version of the Premium price. Never edited: a change is a new row, so every past charge keeps
+/// the price it was made at. The current price is the latest row whose effectiveFrom has passed.
+model PlanPrice {
+  id                    String         @id @default(uuid())
+  /// Monthly price in centavos, IVA included.
+  monthlyCents          Int
+  /// Discount for paying a year at once, in whole percent.
+  annualDiscountPercent Int
+  /// monthly × 12 × (1 − discount), rounded to whole pesos, in centavos.
+  annualCents           Int
+  stripeMonthlyPriceId  String?
+  stripeAnnualPriceId   String?
+  effectiveFrom         DateTime       @default(now())
+  createdBy             String
+  createdAt             DateTime       @default(now())
+  subscriptions         Subscription[]
+
+  @@index([effectiveFrom])
+}
+
+/// A user's access to one clinic, with the role they hold there. A user (one email, one password)
+/// may belong to several clinics; what they can do is decided per clinic.
+model Membership {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  /// The person who registered the clinic and manages its plan.
+  isOwner   Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, clinicId])
+  @@index([clinicId])
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -14,19 +174,35 @@ model User {
   fullName     String
   language     String   @default("es")
   active       Boolean  @default(true)
-  roleId       String
-  role         Role     @relation(fields: [roleId], references: [id])
+  /// Legacy, from before memberships: what a user can do now depends on the clinic, and lives in
+  /// Membership.roleId. Kept nullable until a later migration drops it.
+  roleId       String?
+  role         Role?    @relation(fields: [roleId], references: [id])
+  memberships  Membership[]
+  legalAcceptances TermsAcceptance[]
+  invitationsSent  Invitation[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model Role {
   id          String           @id @default(uuid())
-  name        String           @unique
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  name        String
+  /// Legacy: User.roleId from before memberships. Kept until a later migration drops it.
   users       User[]
+  memberships Membership[]
+  invitations Invitation[]
   permissions RolePermission[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@unique([clinicId, name])
 }
 
 model Permission {
@@ -49,9 +225,22 @@ model RolePermission {
 
 model Patient {
   id              String           @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   fullName        String
+  /// Empty when the patient receives WhatsApp notices through `contactPatient` instead.
   phone           String
   documentId      String?
+  /// Another patient — usually who they come with (partner, mother, daughter) — whose phone receives
+  /// this patient's appointment confirmations and reminders. One level only: a contact never has a
+  /// contact of their own. Cleared automatically if that patient is deleted.
+  contactPatientId String?
+  contactPatient   Patient?        @relation("NotificationContact", fields: [contactPatientId], references: [id], onDelete: SetNull)
+  dependents       Patient[]       @relation("NotificationContact")
   historiaClinica HistoriaClinica?
   valoraciones    Valoracion[]
   treatments      Treatment[]
@@ -60,12 +249,20 @@ model Patient {
   updatedAt       DateTime         @updatedAt
 
   @@index([fullName])
+  @@index([clinicId, fullName])
   @@index([phone])
   @@index([documentId])
+  @@index([contactPatientId])
 }
 
 model AuditLog {
   id        String   @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   userId    String
   action    String
   entity    String
@@ -76,10 +273,17 @@ model AuditLog {
 
   @@index([patientId])
   @@index([userId])
+  @@index([clinicId])
 }
 
 model HistoriaClinica {
   id        String  @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   patientId String  @unique
   patient   Patient @relation(fields: [patientId], references: [id])
 
@@ -114,12 +318,22 @@ model HistoriaClinica {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
 }
 
 model Allergy {
   id        String                   @id @default(uuid())
-  name      String                   @unique
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  name      String
   historias HistoriaClinicaAllergy[]
+
+  @@unique([clinicId, name])
 }
 
 model HistoriaClinicaAllergy {
@@ -133,6 +347,12 @@ model HistoriaClinicaAllergy {
 
 model Valoracion {
   id        String  @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   patientId String
   patient   Patient @relation(fields: [patientId], references: [id])
 
@@ -148,16 +368,27 @@ model Valoracion {
   updatedAt DateTime @updatedAt
 
   @@index([patientId])
+  @@index([clinicId])
 }
 
 enum DiagramView {
   FRONT
   LEFT_PROFILE
   RIGHT_PROFILE
+  // Close-ups of the front view, each with its own annotations.
+  EYES
+  NOSE
+  LIPS
 }
 
 model ValoracionDiagram {
   id           String      @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   valoracionId String
   valoracion   Valoracion  @relation(fields: [valoracionId], references: [id])
   view         DiagramView
@@ -165,6 +396,7 @@ model ValoracionDiagram {
   updatedAt    DateTime    @updatedAt
 
   @@unique([valoracionId, view])
+  @@index([clinicId])
 }
 
 enum PhotoTag {
@@ -174,6 +406,12 @@ enum PhotoTag {
 
 model Photo {
   id           String     @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   patientId    String
   valoracionId String
   valoracion   Valoracion @relation(fields: [valoracionId], references: [id])
@@ -183,10 +421,17 @@ model Photo {
 
   @@index([patientId])
   @@index([valoracionId])
+  @@index([clinicId])
 }
 
 model TreatmentType {
   id                       String                     @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   name                     String
   consentDescription       String
   consentRisks             String?
@@ -198,10 +443,18 @@ model TreatmentType {
   appointments             AppointmentTreatmentType[]
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
+
+  @@index([clinicId])
 }
 
 model Treatment {
   id        String          @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   patientId String
   patient   Patient         @relation(fields: [patientId], references: [id])
   fecha     DateTime        @default(now())
@@ -210,10 +463,17 @@ model Treatment {
   updatedAt DateTime        @updatedAt
 
   @@index([patientId])
+  @@index([clinicId])
 }
 
 model TreatmentItem {
   id              String                 @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   treatmentId     String
   treatment       Treatment              @relation(fields: [treatmentId], references: [id])
   treatmentTypeId String
@@ -225,12 +485,27 @@ model TreatmentItem {
   products        TreatmentItemProduct[]
 
   @@unique([treatmentId, treatmentTypeId])
+  @@index([clinicId])
+}
+
+enum ConsentSignatureMethod {
+  DIGITAL
+  PAPER
 }
 
 model Consent {
-  id                        String        @id @default(uuid())
-  treatmentItemId           String        @unique
-  treatmentItem             TreatmentItem @relation(fields: [treatmentItemId], references: [id])
+  id                        String                 @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  treatmentItemId           String                 @unique
+  treatmentItem             TreatmentItem          @relation(fields: [treatmentItemId], references: [id])
+  signatureMethod           ConsentSignatureMethod @default(DIGITAL)
+  scanId                    String?
+  scan                      ConsentScan?           @relation(fields: [scanId], references: [id])
   place                     String
   signedDateSnapshot        String
   patientNameSnapshot       String
@@ -242,14 +517,53 @@ model Consent {
   declarationBeforeSnapshot String
   declarationAfterSnapshot  String
   sections                  Json
-  patientSignatureImagePath String
+  patientSignatureImagePath String?
   witnessName               String?
   witnessSignatureImagePath String?
-  signedAt                  DateTime      @default(now())
+  signedAt                  DateTime               @default(now())
+
+  @@index([scanId])
+  @@index([clinicId])
+}
+
+/// One scanned (photographed) set of pages carrying the handwritten signatures of one or more
+/// consents signed the same day. `patientId` is a plain column, like TreatmentItemPhoto's.
+model ConsentScan {
+  id         String            @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  patientId  String
+  signedDate String
+  createdAt  DateTime          @default(now())
+  pages      ConsentScanPage[]
+  consents   Consent[]
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+model ConsentScanPage {
+  id       String      @id @default(uuid())
+  scanId   String
+  scan     ConsentScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  position Int
+  filePath String
+
+  @@unique([scanId, position])
 }
 
 model TreatmentItemDiagram {
   id              String        @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   treatmentItemId String
   treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
   view            DiagramView
@@ -257,10 +571,17 @@ model TreatmentItemDiagram {
   updatedAt       DateTime      @updatedAt
 
   @@unique([treatmentItemId, view])
+  @@index([clinicId])
 }
 
 model TreatmentItemPhoto {
   id              String        @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   treatmentItemId String
   treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
   patientId       String
@@ -270,10 +591,17 @@ model TreatmentItemPhoto {
 
   @@index([treatmentItemId])
   @@index([patientId])
+  @@index([clinicId])
 }
 
 model TreatmentItemProduct {
   id              String        @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   treatmentItemId String
   treatmentItem   TreatmentItem @relation(fields: [treatmentItemId], references: [id], onDelete: Cascade)
   patientId       String
@@ -286,6 +614,7 @@ model TreatmentItemProduct {
 
   @@index([treatmentItemId])
   @@index([lotNumber])
+  @@index([clinicId])
 }
 
 enum AppointmentStatus {
@@ -298,6 +627,12 @@ enum AppointmentStatus {
 
 model Appointment {
   id              String                     @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   patientId       String
   patient         Patient                    @relation(fields: [patientId], references: [id])
   startTime       DateTime
@@ -305,12 +640,18 @@ model Appointment {
   status          AppointmentStatus          @default(SCHEDULED)
   notes           String?
   reminderSentAt  DateTime?
+  /// When the booking-confirmation WhatsApp went out successfully. Null = never sent (or failed).
+  confirmationSentAt DateTime?
+  /// When reception registered that the patient arrived. Kept as a timestamp rather than a new
+  /// `AppointmentStatus` so the calendar and the reminder sweep keep working unchanged.
+  arrivedAt       DateTime?
   treatmentTypes  AppointmentTreatmentType[]
   createdAt       DateTime                   @default(now())
   updatedAt       DateTime                   @updatedAt
 
   @@index([patientId])
   @@index([startTime])
+  @@index([clinicId, startTime])
 }
 
 model AppointmentTreatmentType {
@@ -324,7 +665,13 @@ model AppointmentTreatmentType {
 }
 
 model ClinicSettings {
-  id                  String   @id @default("singleton")
+  id                  String   @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId String @unique @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
   clinicName          String
   defaultPlace        String
   doctorTitle         String
@@ -342,6 +689,117 @@ model ClinicSettings {
   whatsappConfirmationTemplate String?
   whatsappReminderTemplate     String?
   whatsappTemplateLanguage     String?
+  /// Master switch for messages sent to real patients (booking confirmation, automatic and manual
+  /// reminders). Off by default so a clinic can configure and test the templates first; the
+  /// settings screen's test sends ignore it, because they go to a number the user types.
+  whatsappNotificationsEnabled Boolean @default(false)
 
   updatedAt           DateTime @updatedAt
+}
+
+/// A registration waiting for its email code. No user or clinic exists until the code is confirmed;
+/// confirming creates both in one transaction. One row per email: registering again replaces it.
+model PendingSignup {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  passwordHash      String
+  fullName          String
+  clinicName        String
+  phone             String
+  /// The legal document versions shown and accepted on the form.
+  privacyDocumentId String
+  termsDocumentId   String
+  marketingConsent  Boolean  @default(false)
+  codeHash          String
+  codeExpiresAt     DateTime
+  attempts          Int      @default(0)
+  /// Sends in the current hour window, for the resend cap.
+  sendCount         Int      @default(1)
+  sendWindowStart   DateTime @default(now())
+  lastSentAt        DateTime @default(now())
+  ip                String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// A password-reset code sent to a user's email. One row per user: requesting again replaces it.
+model PasswordResetCode {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  codeHash        String
+  codeExpiresAt   DateTime
+  attempts        Int      @default(0)
+  sendCount       Int      @default(1)
+  sendWindowStart DateTime @default(now())
+  lastSentAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// An invitation to join a clinic with a role. The account (or, for an existing account, the
+/// membership) is created only when the invitee accepts from the emailed link, so a clinic cannot
+/// claim someone else's email.
+model Invitation {
+  id          String    @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId    String    @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic      Clinic    @relation(fields: [clinicId], references: [id])
+  email       String
+  roleId      String
+  role        Role      @relation(fields: [roleId], references: [id])
+  /// SHA-256 of the token in the link; the token itself is never stored.
+  tokenHash   String    @unique
+  invitedById String
+  invitedBy   User      @relation(fields: [invitedById], references: [id])
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([clinicId])
+}
+
+enum LegalDocumentKind {
+  PRIVACY
+  TERMS
+}
+
+/// One published version of the privacy notice or the terms. Never edited: a change is a new
+/// version. The one in force is the latest whose effectiveFrom has passed.
+model LegalDocument {
+  id                 String            @id @default(uuid())
+  kind               LegalDocumentKind
+  version            String
+  /// Markdown (the subset in libs/shared/types/src/lib/legal-markdown.ts).
+  body               String
+  changeSummary      String
+  effectiveFrom      DateTime
+  /// Users who have not accepted this version are asked to before they can go on.
+  requiresAcceptance Boolean           @default(false)
+  publishedBy        String
+  createdAt          DateTime          @default(now())
+  acceptances        TermsAcceptance[]
+
+  @@unique([kind, version])
+  @@index([kind, effectiveFrom])
+}
+
+/// That a user accepted a version of a legal document, when and from where.
+model TermsAcceptance {
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId       String
+  document         LegalDocument @relation(fields: [documentId], references: [id])
+  /// For the privacy notice: whether the additional purposes (promotions, surveys) were accepted.
+  marketingConsent Boolean       @default(false)
+  ip               String?
+  userAgent        String?
+  acceptedAt       DateTime      @default(now())
+
+  @@unique([userId, documentId])
+  @@index([documentId])
 }

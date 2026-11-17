@@ -2,6 +2,8 @@ import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@
 import type { ConsentSignatureRole } from '@expedientes/shared-types';
 import { readStoredFile } from '../storage/file-storage';
 import { isPng } from '../storage/image-signature';
+import { groupPaperScans } from './group-paper-scans';
+import { ConsentScanPages } from './consent-scan-pdf';
 import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 import { ConsentPage } from './consent-document-pdf';
@@ -11,6 +13,7 @@ import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 const styles = StyleSheet.create({
   // `paddingTop` leaves room for the fixed letterhead below, which sits outside the flow.
   page: { padding: 40, paddingTop: 84, fontSize: 10, fontFamily: 'Helvetica' },
+  brandFooter: { position: 'absolute', bottom: 18, left: 40, right: 40, fontSize: 7, color: '#999999', textAlign: 'center' },
   letterhead: {
     position: 'absolute',
     top: 24,
@@ -42,8 +45,8 @@ const styles = StyleSheet.create({
   },
   itemBlock: { marginBottom: 8 },
   itemTitle: { fontWeight: 'bold' },
-  diagramRow: { flexDirection: 'row', marginTop: 6, marginBottom: 6 },
-  diagramImage: { width: 130, height: 162, marginRight: 8 },
+  diagramRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, marginBottom: 6 },
+  diagramImage: { marginRight: 8, marginBottom: 8 },
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
 });
@@ -57,6 +60,19 @@ function Field({ label, value }: { label: string; value: string | null }) {
     </View>
   );
 }
+
+/**
+ * Printed size per view, matching each view's canvas aspect ratio in the web editor (full views are
+ * 480×600; the close-ups are cropped to their own shape) so no diagram is stretched.
+ */
+const DIAGRAM_IMAGE_SIZES: Record<ExportDiagramRef['view'], { width: number; height: number }> = {
+  FRONT: { width: 130, height: 162 },
+  LEFT_PROFILE: { width: 130, height: 162 },
+  RIGHT_PROFILE: { width: 130, height: 162 },
+  EYES: { width: 220, height: 110 },
+  NOSE: { width: 104, height: 130 },
+  LIPS: { width: 176, height: 110 },
+};
 
 function DiagramImages({
   diagrams,
@@ -72,7 +88,7 @@ function DiagramImages({
       {present.map((d) => (
         <Image
           key={d.imageKey}
-          style={styles.diagramImage}
+          style={[styles.diagramImage, DIAGRAM_IMAGE_SIZES[d.view]]}
           src={{ data: diagramImages.get(d.imageKey) as Buffer, format: 'png' }}
         />
       ))}
@@ -277,7 +293,9 @@ function TreatmentsSection({
 export async function buildExportPdf(
   data: ExportData,
   diagramImages: Map<string, Buffer>,
-  language: 'es' | 'en'
+  language: 'es' | 'en',
+  /** Free plan exports carry a small "Generated with MedCloud" line on the record pages. */
+  options: { brandFooter?: boolean } = {}
 ): Promise<Buffer> {
   const labels = PDF_LABELS[language];
 
@@ -286,6 +304,8 @@ export async function buildExportPdf(
   const signatureImages = new Map<string, Buffer>();
   for (const entry of data.consents ?? []) {
     const id = entry.treatmentItemId;
+    // A paper-signed consent has no signature image — its evidence is the scan, read below.
+    if (entry.consent.method !== 'DIGITAL' || !entry.consent.patientSignatureImagePath) continue;
     try {
       const buffer = await readStoredFile(entry.consent.patientSignatureImagePath);
       signatureImages.set(`${id}:patient`, buffer);
@@ -300,6 +320,23 @@ export async function buildExportPdf(
         console.error(`Failed to read witness signature image for treatment item ${id}`, error);
       }
     }
+  }
+
+  // Each scan is read once however many letters it covers; an unreadable page is skipped (logged)
+  // rather than failing the export, like every other stored image here.
+  const paperGroups = groupPaperScans(data.consents ?? []);
+  const scanImages = new Map<string, Array<{ data: Buffer; format: 'jpg' | 'png' }>>();
+  for (const group of paperGroups.values()) {
+    const images: Array<{ data: Buffer; format: 'jpg' | 'png' }> = [];
+    for (const path of group.pagePaths) {
+      try {
+        const data = await readStoredFile(path);
+        images.push({ data, format: isPng(data) ? 'png' : 'jpg' });
+      } catch (error) {
+        console.error(`Failed to read scan page ${path}`, error);
+      }
+    }
+    scanImages.set(group.scanId, images);
   }
 
   // Read once — the same physician signature is stamped onto every signed consent in the export.
@@ -331,7 +368,27 @@ export async function buildExportPdf(
     </View>
   ) : null;
 
+  const emittedScans = new Set<string>();
   const consentPages = (data.consents ?? []).map((entry) => {
+    if (entry.consent.method === 'PAPER' && entry.consent.scanId) {
+      // A scan covering several letters is printed once, after the first letter it covers.
+      const scanId = entry.consent.scanId;
+      const group = paperGroups.get(scanId);
+      if (emittedScans.has(scanId) || !group) return null;
+      emittedScans.add(scanId);
+      return (
+        <ConsentScanPages
+          key={`scan-${scanId}`}
+          title={labels.treatments.consentScan.title}
+          coversLabel={labels.treatments.consentScan.covers}
+          signedOnLabel={labels.treatments.consentScan.signedOn}
+          signedDate={group.signedDate}
+          treatmentTypeNames={group.treatmentTypeNames}
+          images={scanImages.get(scanId) ?? []}
+        />
+      );
+    }
+
     const signatures: Partial<Record<ConsentSignatureRole, Buffer>> = {};
     const patientSignature = signatureImages.get(`${entry.treatmentItemId}:patient`);
     if (patientSignature) signatures.patient = patientSignature;
@@ -388,8 +445,15 @@ export async function buildExportPdf(
             treatments={data.treatments}
             diagramImages={diagramImages}
             labels={labels}
-            annexIncluded={consentPages.length > 0}
+            annexIncluded={(data.consents ?? []).length > 0}
           />
+        )}
+        {options.brandFooter && (
+          // Only on the record pages: the consent annex reproduces signed legal documents and gets
+          // nothing added to it.
+          <Text style={styles.brandFooter} fixed>
+            {labels.generatedWith}
+          </Text>
         )}
       </Page>
       {consentPages}

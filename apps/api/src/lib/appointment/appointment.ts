@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from '@prisma/client';
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 function toDetail(appointment: {
   id: string;
@@ -9,6 +10,7 @@ function toDetail(appointment: {
   durationMinutes: number;
   status: AppointmentStatus;
   notes: string | null;
+  arrivedAt: Date | null;
   treatmentTypes: { treatmentTypeId: string; treatmentType: { name: string } }[];
 }) {
   return {
@@ -19,6 +21,7 @@ function toDetail(appointment: {
     durationMinutes: appointment.durationMinutes,
     status: appointment.status,
     notes: appointment.notes,
+    arrivedAt: appointment.arrivedAt,
     treatmentTypeIds: appointment.treatmentTypes.map((t) => t.treatmentTypeId),
     treatmentTypeNames: appointment.treatmentTypes.map((t) => t.treatmentType.name),
   };
@@ -50,6 +53,8 @@ export interface CreateAppointmentData {
 }
 
 export async function createAppointment(data: CreateAppointmentData) {
+  await assertInClinic('patient', [data.patientId]);
+  await assertInClinic('treatmentType', data.treatmentTypeIds);
   const appointment = await prisma.appointment.create({
     data: {
       patientId: data.patientId,
@@ -75,6 +80,8 @@ export async function getAppointment(id: string) {
 }
 
 export interface UpdateAppointmentData {
+  /** Front-desk check-in time; `null` undoes it. */
+  arrivedAt?: Date | null;
   patientId?: string;
   startTime?: Date;
   durationMinutes?: number;
@@ -93,13 +100,18 @@ export interface UpdateAppointmentData {
  */
 export async function updateAppointment(id: string, data: UpdateAppointmentData) {
   const { treatmentTypeIds, ...rest } = data;
+  await assertInClinic('patient', [rest.patientId]);
+  await assertInClinic('treatmentType', treatmentTypeIds ?? []);
   await prisma.appointment.update({
     where: { id },
     data: {
       ...rest,
       // Rescheduling must re-arm the reminder — otherwise an appointment whose reminder already
-      // went out for its old time would silently never get one for the new time.
-      ...(rest.startTime !== undefined ? { reminderSentAt: null } : {}),
+      // went out for its old time would silently never get one for the new time. A check-in
+      // belongs to the old slot too, unless this same request sets it.
+      ...(rest.startTime !== undefined
+        ? { reminderSentAt: null, ...(rest.arrivedAt === undefined ? { arrivedAt: null } : {}) }
+        : {}),
     },
   });
 

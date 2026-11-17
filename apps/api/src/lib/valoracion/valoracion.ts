@@ -1,5 +1,6 @@
 import type { DiagramView, Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 export interface ValoracionUpdateData {
   fecha?: Date;
@@ -50,6 +51,9 @@ export interface DiagramViewsUpdate {
   front?: Prisma.InputJsonValue | null;
   leftProfile?: Prisma.InputJsonValue | null;
   rightProfile?: Prisma.InputJsonValue | null;
+  eyes?: Prisma.InputJsonValue | null;
+  nose?: Prisma.InputJsonValue | null;
+  lips?: Prisma.InputJsonValue | null;
 }
 
 /**
@@ -64,6 +68,9 @@ export const VIEW_KEY_TO_ENUM: Record<keyof DiagramViewsUpdate, DiagramView> = {
   front: 'FRONT',
   leftProfile: 'LEFT_PROFILE',
   rightProfile: 'RIGHT_PROFILE',
+  eyes: 'EYES',
+  nose: 'NOSE',
+  lips: 'LIPS',
 };
 
 /**
@@ -73,6 +80,7 @@ export const VIEW_KEY_TO_ENUM: Record<keyof DiagramViewsUpdate, DiagramView> = {
  * per-view records. All writes run in one transaction.
  */
 export async function updateValoracionDiagrams(id: string, views: DiagramViewsUpdate) {
+  await assertInClinic('valoracion', [id]);
   const operations = (Object.entries(views) as [keyof DiagramViewsUpdate, Prisma.InputJsonValue | null | undefined][])
     .filter(
       (entry): entry is [keyof DiagramViewsUpdate, Prisma.InputJsonValue | null] =>

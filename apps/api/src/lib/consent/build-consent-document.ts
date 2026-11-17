@@ -44,6 +44,8 @@ const SECTION_ORDER: ConsentSectionKey[] = [
  * page, not silently delete a clause.
  */
 export function interpolate(text: string, values: Record<string, string>): string {
+  // Mirrored by `interpolateConsentText` in shared-types for the settings screen's live preview;
+  // kept local because the API only ever imports types from that package. Change both together.
   return text.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
     key in values ? values[key] : match
   );

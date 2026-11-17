@@ -3,6 +3,12 @@ import jwt from 'jsonwebtoken';
 export interface AuthTokenPayload {
   sub: string;
   email: string;
+  /**
+   * The clinic the session acts for. Only a preference: every request re-checks in the database that
+   * the user still holds an active membership there (see lib/rbac/permissions.ts). Tokens issued
+   * before memberships existed lack it; those fall back to the user's first clinic.
+   */
+  cid?: string;
 }
 
 const TOKEN_EXPIRY = '8h';

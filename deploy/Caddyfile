@@ -1,15 +1,15 @@
 # TLS termination for the QA stack. Caddy obtains and renews a Let's Encrypt certificate for
-# QA_DOMAIN automatically, which is what makes the app's `secure` session cookie work — over plain
+# APP_DOMAIN automatically, which is what makes the app's `secure` session cookie work — over plain
 # HTTP the browser discards it and login fails with no visible error.
 #
-# Requires QA_DOMAIN to resolve to this instance and ports 80 and 443 reachable from the internet:
+# Requires APP_DOMAIN to resolve to this host and ports 80 and 443 reachable from the internet:
 # the ACME HTTP challenge is served on 80, so closing it breaks renewal roughly every 60 days.
 
 {
 	email {$ACME_EMAIL}
 }
 
-{$QA_DOMAIN} {
+{$APP_DOMAIN} {
 	encode gzip
 
 	# Everything goes to the web container, which serves the Angular bundle and proxies /api/ on to
@@ -17,7 +17,8 @@
 	reverse_proxy web:80
 
 	header {
-		# QA is not indexed: it holds test patient records that must never appear in a search engine.
+		# Non-production environments are never indexed: they hold test patient records that must not
+		# appear in a search engine.
 		X-Robots-Tag "noindex, nofollow"
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"

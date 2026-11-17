@@ -39,6 +39,7 @@ export const GET = withApiErrors(
 );
 
 interface UpdateAppointmentBody {
+  arrivedAt?: string | null;
   patientId?: string;
   startTime?: string;
   durationMinutes?: number;
@@ -59,6 +60,13 @@ export const PATCH = withApiErrors(
     if (body.durationMinutes !== undefined && body.durationMinutes <= 0) {
       return apiError('INVALID_INPUT', 'durationMinutes must be positive', 400);
     }
+    if (
+      body.arrivedAt !== undefined &&
+      body.arrivedAt !== null &&
+      Number.isNaN(new Date(body.arrivedAt).getTime())
+    ) {
+      return apiError('INVALID_INPUT', 'arrivedAt must be a valid date or null', 400);
+    }
     if (body.status !== undefined && !VALID_STATUSES.includes(body.status)) {
       return apiError('INVALID_INPUT', `Unknown status "${body.status}"`, 400);
     }
@@ -72,6 +80,12 @@ export const PATCH = withApiErrors(
       status: body.status,
       notes: body.notes,
       treatmentTypeIds: body.treatmentTypeIds,
+      arrivedAt:
+        body.arrivedAt === undefined
+          ? undefined
+          : body.arrivedAt === null
+            ? null
+            : new Date(body.arrivedAt),
     });
 
     await writeAuditLogSafe({

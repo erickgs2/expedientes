@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -12,7 +11,6 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
   selector: 'app-role-list',
   standalone: true,
   imports: [
-    MatListModule,
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
@@ -31,10 +29,10 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
         <mat-icon>add</mat-icon> {{ 'rbacAdmin.roles.new' | transloco }}
       </button>
     </div>
-    <mat-list>
+    <div class="role-list">
       @for (role of roles(); track role.id) {
-        <mat-list-item>
-          <span matListItemTitle>{{ role.name }}</span>
+        <div class="role-row">
+          <span class="role-name">{{ role.name }}</span>
           <button
             *appHasPermission="'rbac-admin:edit'"
             mat-icon-button
@@ -43,9 +41,9 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
           >
             <mat-icon>edit</mat-icon>
           </button>
-        </mat-list-item>
+        </div>
       }
-    </mat-list>
+    </div>
   `,
   styles: [
     `
@@ -54,6 +52,18 @@ import { RoleFormDialogComponent } from './role-form-dialog.component';
         justify-content: space-between;
         align-items: center;
         padding: 0 0 16px;
+      }
+      .role-row {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 56px;
+        padding: 4px 4px 4px 8px;
+        border-bottom: 1px solid var(--plate-line);
+      }
+      .role-name {
+        font-weight: 500;
       }
     `,
   ],

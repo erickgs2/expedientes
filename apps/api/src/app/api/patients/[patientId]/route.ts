@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPatientById, updatePatient } from '../../../../lib/patients/patient-search';
+import {
+  getPatientById,
+  updatePatient,
+  type UpdatePatientData,
+} from '../../../../lib/patients/patient-search';
+import { deletePatient } from '../../../../lib/patients/patient-delete';
+import { checkContactLink, CONTACT_LINK_MESSAGES } from '../../../../lib/patients/notification-contact';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
@@ -26,34 +32,85 @@ export const GET = withApiErrors(
 );
 
 const MAX_DOCUMENT_ID_LENGTH = 64;
+const MAX_PHONE_LENGTH = 32;
 
 /**
- * Updates the patient's own record. Only the CURP is editable here — it is optional at
- * registration, so it needs a way in later, and the clinical-history screen is where it is filled.
- * Name and phone stay out deliberately: nothing asks to edit them yet, and a patient's identity
- * changing under existing clinical records deserves its own deliberate flow.
+ * Updates the patient's own record: the CURP and the phone number, the two fields that routinely
+ * need correcting after registration — a CURP because it is optional at first, a phone because it
+ * gets mistyped or simply changes.
  *
- * An omitted `documentId` leaves the stored value alone; an empty one clears it back to NULL, so
- * "not recorded" stays distinguishable from "recorded as empty".
+ * `fullName` deliberately stays out. A patient's name changing under existing consents, exports and
+ * audit entries is not a field edit; it deserves its own considered flow.
+ *
+ * Each field is independent: omit one and its stored value is untouched. An empty `documentId`
+ * clears it back to NULL, so "not recorded" stays distinguishable from "recorded as empty". An
+ * empty `phone` is rejected instead — the column is non-null, and a blank number would silently
+ * stop that patient's WhatsApp appointment reminders with nothing on screen to explain why.
  */
 export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'patients', 'edit');
 
     const { patientId } = await params;
-    const body = (await request.json()) as { documentId?: string | null };
+    const body = (await request.json()) as {
+      documentId?: string | null;
+      phone?: string;
+      contactPatientId?: string | null;
+    };
 
-    if (body.documentId === undefined) {
-      return apiError('INVALID_INPUT', 'documentId is required', 400);
+    const current = await getPatientById(patientId);
+    if (!current) return apiError('NOT_FOUND', 'Patient not found', 404);
+
+    const data: UpdatePatientData = {};
+
+    if (body.contactPatientId !== undefined) {
+      const contactId = typeof body.contactPatientId === 'string' ? body.contactPatientId.trim() : '';
+      if (contactId) {
+        const problem = await checkContactLink(patientId, contactId);
+        if (problem) return apiError(problem, CONTACT_LINK_MESSAGES[problem], 400);
+        data.contactPatientId = contactId;
+      } else {
+        data.contactPatientId = null;
+      }
     }
-    const trimmed = typeof body.documentId === 'string' ? body.documentId.trim() : '';
-    if (trimmed.length > MAX_DOCUMENT_ID_LENGTH) {
-      return apiError('INVALID_INPUT', 'documentId is too long', 400);
+    // After this request, will the patient's notices go to a companion?
+    const willHaveContact =
+      data.contactPatientId !== undefined ? data.contactPatientId !== null : !!current.contactPatientId;
+
+    if (body.documentId !== undefined) {
+      const trimmed = typeof body.documentId === 'string' ? body.documentId.trim() : '';
+      if (trimmed.length > MAX_DOCUMENT_ID_LENGTH) {
+        return apiError('INVALID_INPUT', 'documentId is too long', 400);
+      }
+      data.documentId = trimmed || null;
+    }
+
+    if (body.phone !== undefined) {
+      const trimmed = typeof body.phone === 'string' ? body.phone.trim() : '';
+      // Blank is allowed only while a companion receives the notices; otherwise the reminders
+      // would silently have nowhere to go.
+      if (!trimmed && !willHaveContact) {
+        return apiError('INVALID_INPUT', 'phone cannot be empty', 400);
+      }
+      if (trimmed.length > MAX_PHONE_LENGTH) {
+        return apiError('INVALID_INPUT', 'phone is too long', 400);
+      }
+      data.phone = trimmed;
+    }
+
+    // Unlinking the companion of a patient with no phone of their own would leave them with no way
+    // to be reached.
+    if (!willHaveContact && !(data.phone ?? current.phone).trim()) {
+      return apiError('INVALID_INPUT', 'A phone is required when no contact receives the notices', 400);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return apiError('INVALID_INPUT', 'documentId, phone or contactPatientId is required', 400);
     }
 
     // No existence pre-check needed: Prisma's update throws P2025 for a missing id, which
     // `withApiErrors` already maps to a 404.
-    const patient = await updatePatient(patientId, { documentId: trimmed || null });
+    const patient = await updatePatient(patientId, data);
 
     await writeAuditLogSafe({
       userId,
@@ -64,5 +121,30 @@ export const PATCH = withApiErrors(
     });
 
     return NextResponse.json({ patient });
+  }
+);
+
+/**
+ * Permanently deletes the patient and all of their records and uploaded files. Irreversible, so it
+ * has its own `patients:delete` permission rather than riding on `edit`. The audit entry is written
+ * after the delete and outlives it — `AuditLog` keeps the patient id with no foreign key.
+ */
+export const DELETE = withApiErrors(
+  async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
+    const userId = await requireAuth(request, 'patients', 'delete');
+
+    const { patientId } = await params;
+    const deleted = await deletePatient(patientId);
+    if (!deleted) return apiError('NOT_FOUND', 'Patient not found', 404);
+
+    await writeAuditLogSafe({
+      userId,
+      action: 'delete',
+      entity: 'Patient',
+      entityId: patientId,
+      patientId,
+    });
+
+    return new NextResponse(null, { status: 204 });
   }
 );

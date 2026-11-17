@@ -1,12 +1,7 @@
 import { FabricImage, StaticCanvas, util } from 'fabric';
 import type { DiagramView } from '@expedientes/shared-types';
-import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
-  DIAGRAM_IMAGE_URLS,
-  findDisallowedDiagramType,
-  fitBackgroundToCanvas,
-} from './facial-diagram-canvas.component';
+import { findDisallowedDiagramType } from './facial-diagram-canvas.component';
+import { DIAGRAM_CANVAS_SIZES, DIAGRAM_IMAGE_URLS, fitBackgroundToCanvas } from './diagram-geometry';
 
 /**
  * Renders a stored diagram (the same JSON shape `FacialDiagramCanvasComponent` loads
@@ -30,14 +25,14 @@ export async function renderDiagramToBlob(
   data: Record<string, unknown>
 ): Promise<Blob | null> {
   const canvasEl = document.createElement('canvas');
-  canvasEl.width = CANVAS_WIDTH;
-  canvasEl.height = CANVAS_HEIGHT;
+  canvasEl.width = DIAGRAM_CANVAS_SIZES[view].width;
+  canvasEl.height = DIAGRAM_CANVAS_SIZES[view].height;
   const canvas = new StaticCanvas(canvasEl, { backgroundColor: '#ffffff' });
 
   try {
     const background = await FabricImage.fromURL(DIAGRAM_IMAGE_URLS[view]);
     background.set({ selectable: false, evented: false });
-    fitBackgroundToCanvas(background);
+    fitBackgroundToCanvas(background, view);
     canvas.backgroundImage = background;
 
     if (Array.isArray(data['objects'])) {

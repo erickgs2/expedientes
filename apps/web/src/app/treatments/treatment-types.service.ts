@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import type { TreatmentType, TreatmentTypeUpdateInput } from '@expedientes/shared-types';
+import type {
+  TreatmentType,
+  TreatmentTypeUpdateInput,
+  TreatmentTypeWithUsage,
+} from '@expedientes/shared-types';
 
 export interface TreatmentTypeConsentSections {
   consentDescription: string;
@@ -18,6 +22,15 @@ export class TreatmentTypesService {
   list(): Promise<TreatmentType[]> {
     return firstValueFrom(
       this.http.get<{ treatmentTypes: TreatmentType[] }>('/api/treatment-types')
+    ).then((r) => r.treatmentTypes);
+  }
+
+  /** The catalog screen's list: every type plus how widely it has been used. */
+  listWithUsage(): Promise<TreatmentTypeWithUsage[]> {
+    return firstValueFrom(
+      this.http.get<{ treatmentTypes: TreatmentTypeWithUsage[] }>('/api/treatment-types', {
+        params: { include: 'usage' },
+      })
     ).then((r) => r.treatmentTypes);
   }
 

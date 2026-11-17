@@ -7,6 +7,8 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { HasPermissionDirective } from '../../auth/has-permission.directive';
 import { AdminRole, AdminUser, UsersService } from './users.service';
 import { UserFormDialogComponent } from './user-form-dialog.component';
+import { InviteUserDialogComponent } from './invite-user-dialog.component';
+import type { PendingInvitation } from '@expedientes/shared-types';
 
 @Component({
   selector: 'app-user-list',
@@ -26,9 +28,9 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
         *appHasPermission="'rbac-admin:create'"
         mat-flat-button
         color="primary"
-        (click)="openCreate()"
+        (click)="openInvite()"
       >
-        <mat-icon>add</mat-icon> {{ 'rbacAdmin.users.new' | transloco }}
+        <mat-icon>person_add</mat-icon> {{ 'rbacAdmin.invitations.invite' | transloco }}
       </button>
     </div>
     <div class="table-scroll">
@@ -68,6 +70,32 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
       <tr mat-row *matRowDef="let row; columns: columns"></tr>
     </table>
     </div>
+
+    @if (invitations().length > 0) {
+      <section class="pending">
+        <h2>{{ 'rbacAdmin.invitations.pending' | transloco }}</h2>
+        <ul>
+          @for (inv of invitations(); track inv.id) {
+            <li>
+              <span class="who">
+                <strong>{{ inv.email }}</strong>
+                <span class="meta">
+                  {{ inv.roleName }} · {{ 'rbacAdmin.invitations.expires' | transloco: { date: date(inv.expiresAt) } }}
+                </span>
+              </span>
+              <button
+                *appHasPermission="'rbac-admin:create'"
+                mat-button
+                type="button"
+                (click)="revoke(inv)"
+              >
+                {{ 'rbacAdmin.invitations.revoke' | transloco }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
   `,
   styles: [
     `
@@ -80,6 +108,38 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
       table {
         width: 100%;
       }
+      .pending {
+        margin-top: 24px;
+      }
+      .pending h2 {
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+      .pending ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+      }
+      .pending li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+      }
+      .pending li + li {
+        border-top: 1px solid var(--plate-line);
+      }
+      .who {
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+      }
     `,
   ],
 })
@@ -89,6 +149,7 @@ export class UserListComponent implements OnInit {
 
   protected readonly columns = ['fullName', 'email', 'roleName', 'active', 'edit'];
   protected readonly users = signal<AdminUser[]>([]);
+  protected readonly invitations = signal<PendingInvitation[]>([]);
   protected roles: AdminRole[] = [];
 
   async ngOnInit(): Promise<void> {
@@ -98,13 +159,23 @@ export class UserListComponent implements OnInit {
   private async refresh(): Promise<void> {
     this.roles = await this.usersService.listRoles();
     this.users.set(await this.usersService.listUsers());
+    this.invitations.set(await this.usersService.listInvitations());
   }
 
-  openCreate(): void {
-    const ref = this.dialog.open(UserFormDialogComponent, { data: { user: null, roles: this.roles } });
-    ref.afterClosed().subscribe((saved) => {
-      if (saved) this.refresh();
+  openInvite(): void {
+    const ref = this.dialog.open(InviteUserDialogComponent, { data: { roles: this.roles }, maxWidth: 440 });
+    ref.afterClosed().subscribe((sent) => {
+      if (sent) this.refresh();
     });
+  }
+
+  async revoke(invitation: PendingInvitation): Promise<void> {
+    await this.usersService.revokeInvitation(invitation.id);
+    await this.refresh();
+  }
+
+  protected date(iso: string): string {
+    return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
   }
 
   openEdit(user: AdminUser): void {

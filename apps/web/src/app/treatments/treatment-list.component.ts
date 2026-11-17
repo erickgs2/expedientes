@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,15 +16,10 @@ import { TreatmentsService } from './treatments.service';
     MatListModule,
     MatButtonModule,
     MatIconModule,
-    RouterLink,
     TranslocoModule,
     HasPermissionDirective,
   ],
   template: `
-    <a mat-button class="back-link" routerLink="/historia-clinica">
-      <mat-icon>arrow_back</mat-icon>
-      {{ 'common.backToHistoria' | transloco }}
-    </a>
     <div class="page-header">
       <h1>{{ 'treatments.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <div class="page-actions">

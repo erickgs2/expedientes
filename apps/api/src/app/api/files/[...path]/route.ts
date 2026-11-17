@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readStoredFile } from '../../../../lib/storage/file-storage';
-import { isJpeg } from '../../../../lib/storage/image-signature';
+import { readStoredFile, THUMBNAIL_SUFFIX } from '../../../../lib/storage/file-storage';
+import { readThumbnail } from '../../../../lib/storage/thumbnail';
+import { storedFileBelongsToCurrentClinic } from '../../../../lib/storage/file-access';
+import { inlineImageType } from '../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
@@ -23,9 +25,21 @@ export const GET = withApiErrors(
 
     const relativePath = path.join('/');
 
+    // Another clinic's file is answered exactly like a missing one.
+    if (!(await storedFileBelongsToCurrentClinic(path))) {
+      return apiError('NOT_FOUND', 'File not found', 404);
+    }
+
+    // `?thumb=1` asks for a small version for gallery tiles. It falls back to the original whenever
+    // no thumbnail can be produced, so a client can always ask for it.
+    const wantsThumbnail =
+      request.nextUrl.searchParams.get('thumb') === '1' && !relativePath.endsWith(THUMBNAIL_SUFFIX);
+
     let buffer: Buffer;
     try {
-      buffer = await readStoredFile(relativePath);
+      buffer =
+        (wantsThumbnail ? await readThumbnail(relativePath) : null) ??
+        (await readStoredFile(relativePath));
     } catch {
       // A path that escapes the storage root is answered the same as a missing file, so the
       // response never confirms what does or doesn't exist outside the root.
@@ -44,21 +58,33 @@ export const GET = withApiErrors(
       patientId,
     });
 
-    // Only a file whose actual bytes are a real JPEG is served inline — never the client's
+    // Only a file whose actual bytes are a real JPEG or PNG is served inline — never the client's
     // declared content-type or the storage category in the path, which are both
     // attacker-controllable. Everything else keeps the locked-down default: an opaque, forced
     // download instead of letting the browser sniff and render (or execute) it inline in this
     // app's own origin, with the viewer's session cookie.
-    if (isJpeg(buffer)) {
+    // Every stored file is written under a fresh UUID and never overwritten, so the bytes behind a
+    // path never change and the browser can keep them instead of downloading the same photo again on
+    // every gallery and timeline view. `private` keeps shared caches (Cloudflare, any proxy) from
+    // storing patient images; only the viewer's own browser does. 30 days rather than a year bounds
+    // how long a copy can outlive a deleted patient on a shared device.
+    //
+    // Trade-off: a view served from the browser cache never reaches this handler, so it writes no
+    // audit entry. The first fetch on each device is still logged.
+    const cacheControl = 'private, max-age=2592000, immutable';
+
+    const imageType = inlineImageType(buffer);
+    if (imageType) {
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
-          'Content-Type': 'image/jpeg',
+          'Content-Type': imageType,
           'X-Content-Type-Options': 'nosniff',
           // Defense in depth, matching how user-content-hosting services isolate uploaded bytes:
           // even if a browser edge case treated this response as a document, it could load nothing
           // and run nothing. `inline` is stated explicitly rather than left implicit.
           'Content-Security-Policy': "default-src 'none'; sandbox",
           'Content-Disposition': 'inline',
+          'Cache-Control': cacheControl,
         },
       });
     }
@@ -68,6 +94,7 @@ export const GET = withApiErrors(
         'Content-Type': 'application/octet-stream',
         'X-Content-Type-Options': 'nosniff',
         'Content-Disposition': 'attachment',
+        'Cache-Control': cacheControl,
       },
     });
   }

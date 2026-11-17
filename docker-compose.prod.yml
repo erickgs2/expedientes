@@ -38,8 +38,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-      target: runtime
+      dockerfile: Dockerfile
+      target: api-runtime
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
@@ -59,8 +59,8 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-      target: build
+      dockerfile: Dockerfile
+      target: migrate
     # Deliberately no `restart` policy: this is a one-off job that must run once and exit, not
     # restart-loop after it completes.
     environment:
@@ -76,7 +76,8 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: Dockerfile
+      target: web-runtime
     restart: unless-stopped
     ports:
       - '80:80'

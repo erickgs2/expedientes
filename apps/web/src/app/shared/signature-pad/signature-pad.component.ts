@@ -26,7 +26,7 @@ const SIGNATURE_JPEG_QUALITY = 0.9;
   styles: [
     `
       .signature-canvas {
-        border: 1px solid var(--mat-sys-outline, rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--plate-line-strong);
         touch-action: none;
         max-width: 100%;
         display: block;

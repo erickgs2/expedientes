@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,20 +18,11 @@ import { ValoracionService } from './valoracion.service';
     MatIconModule,
     TranslocoModule,
     HasPermissionDirective,
-    RouterLink,
   ],
   template: `
-    <a mat-button class="back-link" routerLink="/historia-clinica">
-      <mat-icon>arrow_back</mat-icon>
-      {{ 'common.backToHistoria' | transloco }}
-    </a>
     <div class="page-header">
       <h1>{{ 'valoracion.listTitle' | transloco }} — {{ patient()?.fullName }}</h1>
       <div class="page-actions">
-        <a *appHasPermission="'valoracion:view'" mat-button routerLink="/photos">
-          <mat-icon>photo_library</mat-icon>
-          {{ 'photoTimeline.navLink' | transloco }}
-        </a>
         <button
           *appHasPermission="'valoracion:create'"
           mat-flat-button
@@ -64,11 +55,11 @@ import { ValoracionService } from './valoracion.service';
     `
       .clickable {
         cursor: pointer;
-        border-radius: 8px;
+        border-radius: var(--plate-radius);
         transition: background-color 150ms ease-out;
       }
       .clickable:hover {
-        background-color: var(--mat-sys-surface-container-high, rgba(0, 0, 0, 0.04));
+        background-color: var(--mat-sys-surface-container-low);
       }
     `,
   ],

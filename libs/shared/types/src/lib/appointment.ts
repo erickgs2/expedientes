@@ -22,6 +22,8 @@ export interface Appointment {
   durationMinutes: number;
   status: AppointmentStatus;
   notes: string | null;
+  /** When reception registered the patient's arrival. */
+  arrivedAt?: string | null;
   treatmentTypeIds: string[];
   treatmentTypeNames: string[];
 }
@@ -35,6 +37,8 @@ export interface CreateAppointmentInput {
 }
 
 export interface UpdateAppointmentInput {
+  /** ISO time the patient arrived; `null` undoes a check-in. */
+  arrivedAt?: string | null;
   patientId?: string;
   startTime?: string;
   durationMinutes?: number;

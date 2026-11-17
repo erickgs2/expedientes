@@ -89,7 +89,7 @@ function toLocalDateString(date: Date): string {
           @if (photoPreviewUrl()) {
             <img [src]="photoPreviewUrl()" alt="" class="photo-preview" />
           }
-          <app-camera-capture (captured)="onPhotoCaptured($event)" />
+          <app-camera-capture [allowMultiple]="false" (captured)="onPhotoCaptured($event)" />
         </div>
       </form>
     </mat-dialog-content>

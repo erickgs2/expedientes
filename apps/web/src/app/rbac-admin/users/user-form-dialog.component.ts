@@ -118,14 +118,6 @@ export class UserFormDialogComponent {
           active: value.active ?? undefined,
           newPassword: value.password || undefined,
         });
-      } else {
-        await this.usersService.createUser({
-          email: value.email ?? '',
-          password: value.password ?? '',
-          fullName: value.fullName ?? '',
-          roleId: value.roleId ?? '',
-          language: value.language ?? 'es',
-        });
       }
       this.dialogRef.close(true);
     } finally {

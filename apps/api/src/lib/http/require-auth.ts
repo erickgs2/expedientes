@@ -1,20 +1,24 @@
 import type { NextRequest } from 'next/server';
-import { getUserIdFromRequest } from '../auth/session';
-import { requirePermission, ForbiddenError, InactiveUserError } from '../rbac/permissions';
+import { getSessionFromRequest } from '../auth/session';
+import { authorize, ForbiddenError, InactiveUserError } from '../rbac/permissions';
 
 export class UnauthenticatedError extends Error {}
 
+/**
+ * Authenticates the request, sets its clinic (every scoped query below this point is limited to
+ * it), and checks the permission in that clinic. Returns the user's id.
+ */
 export async function requireAuth(
   request: NextRequest,
   module: string,
   action: string
 ): Promise<string> {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) {
+  const session = getSessionFromRequest(request);
+  if (!session) {
     throw new UnauthenticatedError('Not logged in');
   }
-  await requirePermission(userId, module, action);
-  return userId;
+  await authorize(session.sub, session.cid, module, action);
+  return session.sub;
 }
 
 export { ForbiddenError, InactiveUserError };

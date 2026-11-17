@@ -24,7 +24,7 @@ writeFileSync(
 
 const config: CapacitorConfig = {
   appId: 'com.expedientes.app',
-  appName: 'Expedientes',
+  appName: 'MedCloud',
   webDir: 'www',
   android: {
     webContentsDebuggingEnabled: false,

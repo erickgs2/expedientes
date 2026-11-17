@@ -1,4 +1,5 @@
-export type DiagramView = 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE';
+/** `EYES`, `NOSE` and `LIPS` are close-ups of the front view, annotated separately from it. */
+export type DiagramView = 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE' | 'EYES' | 'NOSE' | 'LIPS';
 
 export interface ValoracionDiagram {
   view: DiagramView;
@@ -39,5 +40,8 @@ export interface ValoracionDiagramsUpdateInput {
     front?: Record<string, unknown> | null;
     leftProfile?: Record<string, unknown> | null;
     rightProfile?: Record<string, unknown> | null;
+    eyes?: Record<string, unknown> | null;
+    nose?: Record<string, unknown> | null;
+    lips?: Record<string, unknown> | null;
   };
 }

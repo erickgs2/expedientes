@@ -1,4 +1,5 @@
 import { prisma } from '../prisma/client';
+import { currentClinicId } from '../tenancy/context';
 
 export interface HistoriaClinicaData {
   ocupacion?: string | null;
@@ -34,7 +35,14 @@ function scalarFields(data: HistoriaClinicaData) {
 async function resolveAllergyIds(names: string[]): Promise<string[]> {
   const trimmed = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
   const allergies = await Promise.all(
-    trimmed.map((name) => prisma.allergy.upsert({ where: { name }, update: {}, create: { name } }))
+    trimmed.map((name) =>
+      prisma.allergy.upsert({
+        // Each clinic keeps its own allergy catalog: names typed in one are never offered to another.
+        where: { clinicId_name: { clinicId: currentClinicId(), name } },
+        update: {},
+        create: { name },
+      })
+    )
   );
   return allergies.map((allergy) => allergy.id);
 }

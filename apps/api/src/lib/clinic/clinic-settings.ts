@@ -1,12 +1,10 @@
 import { prisma } from '../prisma/client';
+import { currentClinicId } from '../tenancy/context';
 
 /**
- * The clinic identity is a single row. Every read and write targets this id, so the application
- * cannot create a second one — the "there is exactly one clinic identity" invariant lives here and
- * in the schema's `@default("singleton")`, not in a uniqueness constraint that could be bypassed.
+ * The clinic identity: one row per clinic, keyed by clinicId. The scoped client limits every read and
+ * write to the current clinic's row.
  */
-export const CLINIC_SETTINGS_ID = 'singleton';
-
 export interface ClinicSettingsUpdate {
   clinicName?: string;
   defaultPlace: string;
@@ -22,6 +20,7 @@ export interface ClinicSettingsUpdate {
   whatsappConfirmationTemplate?: string | null;
   whatsappReminderTemplate?: string | null;
   whatsappTemplateLanguage?: string | null;
+  whatsappNotificationsEnabled?: boolean;
 }
 
 /**
@@ -38,17 +37,17 @@ export function toPublicClinicSettings<T extends { whatsappAccessToken: string |
 }
 
 export function getClinicSettings() {
-  return prisma.clinicSettings.findUnique({ where: { id: CLINIC_SETTINGS_ID } });
+  return prisma.clinicSettings.findUnique({ where: { clinicId: currentClinicId() } });
 }
 
 export function upsertClinicSettings(data: ClinicSettingsUpdate) {
   return prisma.clinicSettings.upsert({
-    where: { id: CLINIC_SETTINGS_ID },
+    where: { clinicId: currentClinicId() },
     update: data,
     // `clinicName` is optional on the way in (the settings screen no longer edits it — the export's
     // letterhead is the uploaded logo) but the column is non-null, so a first-ever create needs a
-    // value. An update simply omits it and keeps whatever is stored.
-    create: { id: CLINIC_SETTINGS_ID, ...data, clinicName: data.clinicName ?? '' },
+    // value. An update simply omits it and keeps whatever is stored. The scoped client adds clinicId.
+    create: { ...data, clinicName: data.clinicName ?? '' },
   });
 }
 

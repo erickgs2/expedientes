@@ -13,3 +13,8 @@ export * from './lib/treatment-product.js';
 export * from './lib/appointment.js';
 export * from './lib/clinic-settings.js';
 export * from './lib/consent-boilerplate.js';
+export * from './lib/today.js';
+export * from './lib/plan.js';
+export * from './lib/legal.js';
+export * from './lib/signup.js';
+export * from './lib/legal-markdown.js';

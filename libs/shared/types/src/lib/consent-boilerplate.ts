@@ -63,3 +63,12 @@ Ejemplo: No frotar ni masajear la zona tratada durante 24 horas. Permanecer en p
 
 Ejemplo: Embarazo o lactancia. Enfermedades neuromusculares (miastenia gravis, síndrome de Eaton-Lambert). Infección activa en la zona a tratar. Alergia conocida a la toxina botulínica o a la albúmina. Tratamiento con aminoglucósidos.`,
 } as const;
+
+/**
+ * Fills `{{key}}` markers from `values`, leaving unknown markers as written. The single
+ * implementation behind both the signed consent (API) and the settings screen's live preview, so
+ * the preview can never word a declaration differently from what gets signed.
+ */
+export function interpolateConsentText(text: string, values: Record<string, string>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key: string) => (key in values ? values[key] : match));
+}
