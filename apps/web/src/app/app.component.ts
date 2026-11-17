@@ -1,6 +1,8 @@
 import { Component, effect, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -48,6 +50,7 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         <mat-icon>workspace_premium</mat-icon>{{ 'shell.nav.plan' | transloco }}
       </a>
     </mat-menu>
+    @if (!onPlatform()) {
     <mat-toolbar class="app-toolbar">
       <a routerLink="/pacientes" class="brand">
         <!-- The MedCloud mark: a lotus rising from a cloud, its rose dot the point a practitioner places on a face map. -->
@@ -149,6 +152,10 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
     <main class="page-content">
       <router-outlet></router-outlet>
     </main>
+    } @else {
+      <!-- The platform portal has its own frame (platform-shell) and no clinic chrome. -->
+      <router-outlet></router-outlet>
+    }
   `,
   styles: [
     `
@@ -275,6 +282,15 @@ export class AppComponent {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private legalDialogOpen = false;
+
+  /** The platform portal (/plataforma) is a separate product for the operator, without clinic chrome. */
+  protected readonly onPlatform = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects.startsWith('/plataforma'))
+    ),
+    { initialValue: location.pathname.startsWith('/plataforma') }
+  );
 
   constructor() {
     // A new privacy notice or terms version that requires acceptance blocks the app until the user

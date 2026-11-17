@@ -31,7 +31,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const planEndedSession =
         error.error?.error?.code === 'PLAN_MEMBER_INACTIVE' && !req.url.endsWith('/api/auth/login');
 
-      if (error.status === 401 || planEndedSession) {
+      if (error.status === 401 && req.url.startsWith('/api/plataforma')) {
+        // The platform portal has its own sign-in.
+        router.navigate(['/plataforma/login']);
+      } else if (error.status === 401 || planEndedSession) {
         router.navigate(['/login']);
       } else if (error.status === 402 && error.error?.error?.code === 'PLAN_LIMIT') {
         // What the plan does not include gets an explanation and a way to Premium, not an error.

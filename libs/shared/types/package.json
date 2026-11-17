@@ -21,6 +21,11 @@
       "import": "./src/lib/consent-boilerplate.ts",
       "default": "./src/lib/consent-boilerplate.ts"
     },
+    "./legal-markdown": {
+      "types": "./src/lib/legal-markdown.ts",
+      "import": "./src/lib/legal-markdown.ts",
+      "default": "./src/lib/legal-markdown.ts"
+    },
     "./package.json": "./package.json"
   },
   "dependencies": {}

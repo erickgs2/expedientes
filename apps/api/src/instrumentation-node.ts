@@ -10,4 +10,9 @@ export async function registerNode(): Promise<void> {
     .catch((error) => console.error('Storage recount failed', error));
   const { startReminderScheduler } = await import('./lib/notifications/reminder-scheduler');
   startReminderScheduler();
+  // The platform portal's server load chart, and the "your Premium ends in 7 days" emails.
+  const { startServerMetrics } = await import('./lib/platform/server-metrics');
+  startServerMetrics();
+  const { startGrantNotices } = await import('./lib/platform/grant-notices');
+  startGrantNotices();
 }

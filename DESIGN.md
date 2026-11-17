@@ -135,6 +135,12 @@ Sticky pearl bar with hairline, lotus-and-cloud logo and wordmark, text navigati
 ### Patient banner
 Proof Grey strip, 44px link, name in ink, CURP muted.
 
+### Charts
+Data marks are the one place the plate admits more hues: `--chart-series-1..3` (blue, orange, aqua; validated for colour-blind separation on the light and dark surfaces, separate dark steps). Lines are 2px on a 0–100 recessive grid, with a legend, direct labels at the line ends, a crosshair tooltip and a table view (aqua sits under 3:1 on the light surface, so a series is never identified by colour alone). Text stays in ink tokens, never in a series colour. One axis per chart.
+
+### Platform portal (`/plataforma`)
+The operator's own surface, Operate mode, same world: a Proof Grey side navigation whose current page carries the rose dot, a page title in Display, summary counts in one hairline-divided plate (not a row of cards), and dense hairline tables with tabular numerals. Loading shows skeleton blocks in the shape of the content. Destructive actions (suspend, revoke) confirm in a dialog that asks for the reason and keeps Cancel focused.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -145,4 +151,4 @@ Proof Grey strip, 44px link, name in ink, CURP muted.
 ### Don't:
 - **Don't** add resting shadows or a second accent.
 - **Don't** use rose as decoration.
-- **Don't** hard-code hex in components.
+- **Don't** hard-code hex in components; chart series colours live in `--chart-series-*` tokens.

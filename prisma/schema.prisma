@@ -123,6 +123,8 @@ model PlanGrant {
   revokedAt     DateTime?
   revokedBy     String?
   revokedReason String?
+  /// When the owner was told the grant ends in 7 days, so the notice goes out once.
+  endingNoticeSentAt DateTime?
 
   @@index([clinicId, endsAt])
 }
@@ -802,4 +804,55 @@ model TermsAcceptance {
 
   @@unique([userId, documentId])
   @@index([documentId])
+}
+
+/// The operator of the whole service (you), separate from every clinic's users: own table, own
+/// sign-in at /plataforma, own cookie, and a TOTP second factor that is required.
+model PlatformAdmin {
+  id              String              @id @default(uuid())
+  email           String              @unique
+  passwordHash    String
+  fullName        String
+  /// TOTP secret, encrypted with AES-256-GCM (lib/platform/secret-box.ts). Set during enrolment;
+  /// only trusted once totpEnabledAt is set.
+  totpSecret      String?
+  totpEnabledAt   DateTime?
+  /// Last 30-second step accepted, so a code cannot be used twice.
+  totpLastStep    Int?
+  active          Boolean             @default(true)
+  lastLoginAt     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  auditLogs       PlatformAuditLog[]
+}
+
+/// Every action taken from the platform portal.
+model PlatformAuditLog {
+  id         String        @id @default(uuid())
+  adminId    String
+  admin      PlatformAdmin @relation(fields: [adminId], references: [id])
+  /// e.g. "clinic.suspend", "grant.create", "price.create", "legal.publish", "session.login"
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  ip         String?
+  createdAt  DateTime      @default(now())
+
+  @@index([createdAt])
+}
+
+/// A sample of the server's load for the portal's charts: one every 5 minutes, kept 7 days.
+model ServerMetricSample {
+  id              String   @id @default(uuid())
+  takenAt         DateTime @default(now())
+  cpuPercent      Float
+  memUsedBytes    BigInt
+  memTotalBytes   BigInt
+  diskUsedBytes   BigInt
+  diskTotalBytes  BigInt
+  dbSizeBytes     BigInt
+  processRssBytes BigInt
+
+  @@index([takenAt])
 }

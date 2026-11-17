@@ -123,6 +123,34 @@ async function main() {
   }
 
   console.log(`Seeded ${permissions.length} permissions for ${clinics.length} clinic(s)`);
+
+  await seedPlatformAdmin();
+}
+
+/**
+ * The first platform admin, from PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_PASSWORD, created once
+ * and never updated from here (so a password changed later is not reset on the next deploy). The
+ * account has no second factor yet: the first sign-in at /plataforma requires enrolling an
+ * authenticator app before anything else. Remove the password from the server's .env afterwards.
+ */
+async function seedPlatformAdmin() {
+  const email = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.PLATFORM_ADMIN_PASSWORD;
+  if (!email || !password) return;
+  const existing = await prisma.platformAdmin.findUnique({ where: { email } });
+  if (existing) return;
+  if (password.length < 12) {
+    console.warn('PLATFORM_ADMIN_PASSWORD must have at least 12 characters; platform admin not created');
+    return;
+  }
+  await prisma.platformAdmin.create({
+    data: {
+      email,
+      passwordHash: await hashPassword(password),
+      fullName: process.env.PLATFORM_ADMIN_NAME?.trim() || 'Administrador',
+    },
+  });
+  console.log(`Created platform admin ${email}; enrol an authenticator at /plataforma`);
 }
 
 main()
