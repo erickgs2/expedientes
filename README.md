@@ -182,7 +182,7 @@ different id would install as a second app on devices that already have it.
 
 | Environment | Target | Guide |
 |---|---|---|
-| `dev` | Raspberry Pi on a home network, DuckDNS hostname | [docs/deployment/dev-pi-runbook.md](docs/deployment/dev-pi-runbook.md) |
+| `dev` (pilot) | MacBook Pro server on a home network, published at `medcloud.intech-erp.com` through a Cloudflare Tunnel | [docs/deployment/mac-server-runbook.md](docs/deployment/mac-server-runbook.md) |
 | `qa` | EC2 instance, Postgres on the box, images in S3 | [docs/deployment/qa-runbook.md](docs/deployment/qa-runbook.md) |
 
 `docker-compose.prod.yml` is a plain stack with **no** TLS termination, meant to sit behind your own
@@ -193,9 +193,11 @@ An Android APK for testers is built from the same source: see
 the deployed web app, so the server URL is baked in at build time and each APK points at one
 environment.
 
-Both deploy automatically on a push to their branch. Both terminate TLS with Caddy, which is not
-optional: the session cookie is `secure` in production, so over plain HTTP a browser discards it and
-login fails with no visible error.
+Both deploy automatically on a push to their branch. TLS is not optional: the session cookie is
+`secure` in production, so over plain HTTP a browser discards it and login fails with no visible
+error. QA terminates TLS with Caddy; the Mac relies on Cloudflare, so nginx sets the security headers
+itself. The Raspberry Pi ([docs/deployment/dev-pi-runbook.md](docs/deployment/dev-pi-runbook.md))
+no longer receives deploys and keeps running its last version until its data is migrated to the Mac.
 
 ## Design documents
 

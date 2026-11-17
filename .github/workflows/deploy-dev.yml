@@ -1,16 +1,16 @@
-name: Deploy dev (Raspberry Pi)
+name: Deploy dev (MacBook server)
 
-# Pushing to `dev` deploys to the Raspberry Pi on the home network.
+# Pushing to `dev` deploys to the MacBook Pro server (Ubuntu Server, x86_64) on the home network.
+# It replaced the Raspberry Pi as the deploy target; the Pi keeps running its last deployed version
+# and no longer receives deploys.
 #
-# This runs on a SELF-HOSTED runner on the Pi itself rather than SSHing in from GitHub, for two
-# reasons that both matter here:
-#   * The Pi sits behind a home router. A self-hosted runner polls outbound, so no inbound SSH port
-#     has to be forwarded and no key for the home network is stored in GitHub.
-#   * The Pi is arm64. Building on it is native; cross-building on GitHub's amd64 runners means
-#     QEMU emulation, which makes an npm build roughly ten times slower.
+# This runs on a SELF-HOSTED runner on the Mac itself rather than SSHing in from GitHub: the Mac
+# sits behind a home router, and a self-hosted runner polls outbound, so no inbound SSH port has to
+# be forwarded and no key for the home network is stored in GitHub. The app is published through a
+# Cloudflare Tunnel (see docker-compose.mac.yml), so no port is opened for it either.
 #
-# Setting the runner up is documented in docs/deployment/dev-pi-runbook.md. It must carry the
-# labels `self-hosted` and `raspberrypi`.
+# Setting the server and runner up is documented in docs/deployment/mac-server-runbook.md. The
+# runner must carry the labels `self-hosted` and `dev-server`.
 on:
   push:
     branches: [dev]
@@ -25,24 +25,24 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, raspberrypi]
+    runs-on: [self-hosted, dev-server]
     env:
       # Every `docker compose` call needs this, `build` included: compose interpolates the whole
       # file on any command, so the `${VAR:?...}` guards fire before a build would even start.
-      COMPOSE: docker compose -f docker-compose.pi.yml --env-file /opt/expedientes/.env
-    # A Pi builds Angular and Next much more slowly than a cloud runner; the default 360-minute cap
-    # would let a wedged build sit for hours before anyone noticed.
+      COMPOSE: docker compose -f docker-compose.mac.yml --env-file /opt/expedientes/.env
+    # A 2011 laptop with 4 GB builds Angular and Next much more slowly than a cloud runner; the
+    # default 360-minute cap would let a wedged build sit for hours before anyone noticed.
     timeout-minutes: 60
 
     steps:
       # `clean: false` keeps node_modules between deploys. The default `git clean -ffdx` deletes
-      # it, forcing a full npm ci on a Pi every time. Tracked files are still reset to the commit.
+      # it, forcing a full npm ci on every deploy. Tracked files are still reset to the commit.
       - uses: actions/checkout@v4
         with:
           clean: false
 
-      # No actions/setup-node: the runner uses the Pi's installed Node rather than downloading an
-      # x64 toolchain. Confirm the version rather than assume it — a mismatch shows up here instead
+      # No actions/setup-node: the runner uses the server's installed Node 22 rather than
+      # downloading a toolchain on every deploy. Confirm the version rather than assume it — a mismatch shows up here instead
       # of as a confusing build failure later.
       - name: Show toolchain
         run: |
@@ -68,7 +68,7 @@ jobs:
       - name: Migrate and restart
         run: |
           set -euo pipefail
-          # The stack's secrets live in /opt/expedientes/.env on the Pi and never pass through
+          # The stack's secrets live in /opt/expedientes/.env on the server and never pass through
           # GitHub. --env-file points at it while the compose file comes from this checkout, so a
           # change to the stack ships with the code that expects it.
           $COMPOSE up -d db
@@ -92,7 +92,7 @@ jobs:
           $COMPOSE logs --tail=50 api >&2
           exit 1
 
-      # An SD card fills quickly, and a full disk is the most likely way this Pi breaks. `always()`
+      # Old images pile up with every deploy, and a full disk is the most likely way this server breaks. `always()`
       # so the cleanup still runs when the smoke check failed and left a half-built image behind.
       - name: Prune old images
         if: always()

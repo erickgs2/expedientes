@@ -1,0 +1,105 @@
+# Pilot stack for the MacBook Pro server (Ubuntu Server, x86_64), published to the internet through a
+# Cloudflare Tunnel instead of open router ports.
+#
+# Why a tunnel rather than Caddy + DuckDNS, as on the Pi:
+#   * The home connection has a dynamic public IP. cloudflared opens an OUTBOUND connection to
+#     Cloudflare, so the IP can change freely, no port is forwarded on the router, and the home IP
+#     is never exposed.
+#   * Cloudflare terminates TLS for medcloud.<domain>, so there is no certificate to issue or renew
+#     here. Traffic from Cloudflare to this machine travels inside the tunnel, encrypted, and reaches
+#     nginx (`web`) over the internal Docker network.
+#
+# The tunnel and its public hostname (medcloud.intech-erp.com -> http://web:80) are configured in the
+# Cloudflare dashboard. This file only runs the connector with the tunnel's token.
+#
+# Required environment, in /opt/expedientes/.env on the Mac (never in the repo):
+#   CLOUDFLARE_TUNNEL_TOKEN  token of the `medcloud-mac` tunnel
+#   JWT_SECRET               signing key for session tokens
+#   POSTGRES_USER / POSTGRES_PASSWORD
+#   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD
+#
+# Nothing in this stack publishes a port on the host. The only way in is the tunnel.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: expedientes
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api-runtime
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      STORAGE_ROOT: /data/storage
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-}
+      # Every request arrives through Cloudflare, which sets CF-Connecting-IP to the real visitor
+      # address and overwrites any value a client sends. X-Forwarded-For, by contrast, keeps whatever
+      # the client put first, so trusting it here would let anyone dodge the login rate limit.
+      TRUSTED_CLIENT_IP_HEADER: cf-connecting-ip
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_CONFIRMATION_TEMPLATE: ${WHATSAPP_CONFIRMATION_TEMPLATE:-appointment_confirmation}
+      WHATSAPP_REMINDER_TEMPLATE: ${WHATSAPP_REMINDER_TEMPLATE:-appointment_reminder}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_MX}
+    volumes:
+      - storage_data:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/expedientes
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@clinic.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set}
+    command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ['tools']
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-runtime
+    restart: unless-stopped
+    # Not published: only cloudflared reaches it, on the internal network.
+    depends_on:
+      - api
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.1
+    restart: unless-stopped
+    # The token is read from the environment rather than passed with --token, so it never shows up
+    # in `ps` output or in the container's command line.
+    command: ['tunnel', '--no-autoupdate', 'run']
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
+    depends_on:
+      - web
+
+volumes:
+  db_data:
+  storage_data:
