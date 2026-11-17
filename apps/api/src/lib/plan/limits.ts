@@ -1,9 +1,5 @@
-import {
-  PLAN_LIMITS,
-  type PlanFeature,
-  type PlanLimitDetails,
-  type PlanQuota,
-} from '@expedientes/shared-types';
+import type { PlanFeature, PlanLimitDetails, PlanQuota } from '@expedientes/shared-types';
+import { PLAN_LIMITS } from '../shared/runtime';
 import { prisma, prismaUnscoped } from '../prisma/client';
 import { currentClinicId } from '../tenancy/context';
 import { currentClinicPlan } from './clinic-plan';
@@ -49,8 +45,14 @@ export async function assertFeature(feature: PlanFeature): Promise<void> {
   }
 }
 
-/** Throws unless the current clinic can have one more active user or treatment type. */
-export async function assertCanAddOne(quota: Exclude<PlanQuota, 'storage'>): Promise<void> {
+/**
+ * Throws unless the current clinic can have one more active user or treatment type. `reserved`
+ * counts seats already promised but not yet taken (pending invitations).
+ */
+export async function assertCanAddOne(
+  quota: Exclude<PlanQuota, 'storage'>,
+  reserved = 0
+): Promise<void> {
   const plan = await currentClinicPlan();
   const max = PLAN_LIMITS[plan.tier][quota];
   if (max === null) return;
@@ -58,7 +60,7 @@ export async function assertCanAddOne(quota: Exclude<PlanQuota, 'storage'>): Pro
     quota === 'users'
       ? await prisma.membership.count({ where: { active: true } })
       : await prisma.treatmentType.count({ where: { active: true } });
-  if (current >= max) {
+  if (current + reserved >= max) {
     throw new PlanLimitError({ limit: quota, max, requiredPlan: 'PREMIUM' });
   }
 }

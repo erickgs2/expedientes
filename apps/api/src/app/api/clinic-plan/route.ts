@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PLAN_LIMITS, type ClinicPlanDetails } from '@expedientes/shared-types';
+import type { ClinicPlanDetails } from '@expedientes/shared-types';
+import { PLAN_LIMITS } from '../../../lib/shared/runtime';
 import { prismaUnscoped } from '../../../lib/prisma/client';
 import { currentClinicPlan, currentPlanPrice } from '../../../lib/plan/clinic-plan';
 import { currentClinicUsage } from '../../../lib/plan/limits';

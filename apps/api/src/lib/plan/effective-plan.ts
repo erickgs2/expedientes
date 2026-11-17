@@ -1,4 +1,5 @@
-import { PLAN_LIMITS, type ClinicPlanSummary, type PlanTier } from '@expedientes/shared-types';
+import type { ClinicPlanSummary, PlanTier } from '@expedientes/shared-types';
+import { PLAN_LIMITS } from '../shared/runtime';
 
 export interface SubscriptionLike {
   plan: PlanTier;
