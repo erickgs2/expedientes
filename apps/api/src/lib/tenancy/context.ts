@@ -10,6 +10,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  */
 interface TenancyStore {
   clinicId?: string;
+  /** Values computed once per request (see requestMemo). */
+  memo?: Map<string, Promise<unknown>>;
 }
 
 const storage = new AsyncLocalStorage<TenancyStore>();
@@ -53,4 +55,21 @@ export function currentClinicId(): string {
   const clinicId = currentClinicIdOrNull();
   if (!clinicId) throw new NoClinicContextError();
   return clinicId;
+}
+
+/**
+ * Computes `compute()` once per request (or background run) and returns the same promise to every
+ * later caller with the same key: the clinic's plan, for instance, is needed by authentication and
+ * again by each limit check. Outside any context it just computes.
+ */
+export function requestMemo<T>(key: string, compute: () => Promise<T>): Promise<T> {
+  const store = storage.getStore();
+  if (!store) return compute();
+  store.memo ??= new Map();
+  let value = store.memo.get(key) as Promise<T> | undefined;
+  if (!value) {
+    value = compute();
+    store.memo.set(key, value);
+  }
+  return value;
 }

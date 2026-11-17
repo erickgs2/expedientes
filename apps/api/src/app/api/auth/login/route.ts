@@ -8,6 +8,7 @@ import { setCurrentClinic } from '../../../../lib/tenancy/context';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
+import { toAuthUser } from '../../../../lib/auth/auth-user';
 import {
   checkLoginAllowed,
   getClientIp,
@@ -40,7 +41,9 @@ export const POST = withApiErrors(async (request: NextRequest) => {
   }
 
   // A correct password with no active membership in an active clinic (deactivated everywhere, or
-  // the clinic suspended) is still refused, with the same answer as a wrong password.
+  // the clinic suspended) is still refused, with the same answer as a wrong password. A member of a
+  // clinic now on Free gets 403 PLAN_MEMBER_INACTIVE instead (see with-api-errors): the password was
+  // right, and the screen should say why they cannot enter.
   let membership;
   try {
     membership = await resolveMembership(user.id);
@@ -56,18 +59,7 @@ export const POST = withApiErrors(async (request: NextRequest) => {
 
   const token = issueToken({ sub: user.id, email: user.email, cid: membership.clinicId });
 
-  const response = NextResponse.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      language: user.language,
-      roleId: membership.roleId,
-      roleName: membership.roleName,
-      permissions: membership.permissions,
-      clinic: { id: membership.clinicId, name: membership.clinicName },
-    },
-  });
+  const response = NextResponse.json({ user: toAuthUser(membership) });
 
   response.cookies.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,

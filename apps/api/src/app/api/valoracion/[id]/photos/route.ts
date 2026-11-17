@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPhoto, getValoracionPatientId, listPhotos } from '../../../../../lib/photo/photo';
+import { assertStorageFor } from '../../../../../lib/plan/limits';
 import { saveFile } from '../../../../../lib/storage/file-storage';
 import { isJpeg } from '../../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
@@ -74,6 +75,10 @@ export const POST = withApiErrors(
     if (!isJpeg(buffer)) {
       return apiError('INVALID_INPUT', 'File must be a JPEG image', 400);
     }
+
+    // New photos count against the plan's storage quota; nothing stored is ever removed for it.
+
+    await assertStorageFor(buffer.length);
 
     const filePath = await saveFile(buffer, 'photos', patientId, 'photo.jpg');
     const photo = await createPhoto(id, patientId, tag as 'BEFORE' | 'AFTER', filePath);

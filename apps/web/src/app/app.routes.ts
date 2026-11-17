@@ -142,6 +142,11 @@ export const appRoutes: Routes = [
       ),
   },
   {
+    path: 'admin/plan',
+    canActivate: [authGuard, permissionGuard('clinic-settings', 'view')],
+    loadComponent: () => import('./plan/plan.component').then((m) => m.PlanComponent),
+  },
+  {
     path: 'admin/clinic',
     canActivate: [authGuard, permissionGuard('clinic-settings', 'view')],
     loadComponent: () =>

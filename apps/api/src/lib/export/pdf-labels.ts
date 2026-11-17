@@ -1,5 +1,7 @@
 export interface PdfLabels {
   generatedOn: string;
+  /** Footer on the record pages of PDFs exported on the Free plan. */
+  generatedWith: string;
   patientInfo: { phone: string; documentId: string };
   historiaClinica: {
     sectionTitle: string;
@@ -50,6 +52,7 @@ export interface PdfLabels {
 export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   es: {
     generatedOn: 'Generado el',
+    generatedWith: 'Generado con MedCloud',
     patientInfo: { phone: 'Teléfono', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Historia clínica',
@@ -102,6 +105,7 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   },
   en: {
     generatedOn: 'Generated on',
+    generatedWith: 'Generated with MedCloud',
     patientInfo: { phone: 'Phone', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Medical History',

@@ -4,6 +4,7 @@ import {
   InvalidExpiryError,
   normalizeExpiryToMonthEnd,
 } from '../../../../../../lib/treatment/product-expiry';
+import { assertStorageFor } from '../../../../../../lib/plan/limits';
 import { saveFile } from '../../../../../../lib/storage/file-storage';
 import { isJpeg } from '../../../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../../../lib/audit/audit-log';
@@ -82,6 +83,8 @@ export const PATCH = withApiErrors(
       if (!isJpeg(buffer)) {
         return apiError('INVALID_INPUT', 'File must be a JPEG image', 400);
       }
+      // New photos count against the plan's storage quota; nothing stored is ever removed for it.
+      await assertStorageFor(buffer.length);
       photoPath = await saveFile(buffer, 'treatment-products', product.patientId, 'product.jpg');
     }
 

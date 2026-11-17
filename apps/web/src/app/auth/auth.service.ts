@@ -1,8 +1,8 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import type { AuthUser, LoginRequest, LoginResponse } from '@expedientes/shared-types';
+import type { AuthUser, LoginRequest, LoginResponse, PlanFeature } from '@expedientes/shared-types';
 
 const SUPPORTED_LANGS = ['es', 'en'];
 
@@ -12,6 +12,9 @@ export class AuthService {
   private readonly transloco = inject(TranslocoService);
 
   readonly currentUser = signal<AuthUser | null>(null);
+
+  /** The clinic's effective plan, as of the last sign-in or session restore. */
+  readonly plan = computed(() => this.currentUser()?.plan ?? null);
 
   private restoreInFlight: Promise<void> | null = null;
 
@@ -48,6 +51,14 @@ export class AuthService {
     } catch {
       this.currentUser.set(null);
     }
+  }
+
+  /**
+   * Whether the clinic's plan includes a feature. Only for what the screen shows: the API enforces
+   * the plan on every request regardless.
+   */
+  hasFeature(feature: PlanFeature): boolean {
+    return this.currentUser()?.plan.features[feature] ?? false;
   }
 
   hasPermission(module: string, action: string): boolean {

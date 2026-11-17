@@ -15,7 +15,8 @@
       "export": "Export",
       "today": "Today",
       "admin": "Administration",
-      "treatmentCatalog": "Treatment catalog"
+      "treatmentCatalog": "Treatment catalog",
+      "plan": "Plan"
     }
   },
   "common": {
@@ -37,7 +38,8 @@
     "password": "Password",
     "login": "Log in",
     "invalidCredentials": "Invalid email or password",
-    "tooManyAttempts": "Too many failed attempts. Wait a few minutes and try again."
+    "tooManyAttempts": "Too many failed attempts. Wait a few minutes and try again.",
+    "planMemberInactive": "Your clinic is on the Free plan, where only its owner can sign in. Ask them to turn on Premium."
   },
   "rbacAdmin": {
     "users": {
@@ -869,5 +871,66 @@
     "marks": "{{n}} mark(s)",
     "noMarks": "No marks",
     "noMarksEdit": "Tap to annotate"
+  },
+  "plan": {
+    "title": "Plan",
+    "subtitle": "Your plan, how much of each limit you use, and what Premium adds.",
+    "tier": {
+      "FREE": "Free",
+      "PREMIUM": "Premium"
+    },
+    "source": {
+      "FREE": "Free plan, no expiry. Your data and PDF export are always available.",
+      "GRANT": "Courtesy Premium until {{date}}.",
+      "SUBSCRIPTION": "Paid Premium until {{date}}."
+    },
+    "endingSoon": "Your Premium ends in {{days}} days. You then return to Free and keep all your data.",
+    "unlimited": "unlimited",
+    "usage": {
+      "title": "What you use",
+      "users": "Active users",
+      "treatmentTypes": "Active treatment types",
+      "storage": "Photos and documents",
+      "of": "of {{max}}",
+      "full": "You reached the limit: what you have keeps working, but you cannot add more."
+    },
+    "compare": {
+      "title": "Plans",
+      "freePrice": "$0",
+      "perMonth": "per month",
+      "annual": "or {{amount}} per year",
+      "save": "Save {{percent}}%",
+      "taxIncluded": "VAT included",
+      "current": "Your current plan",
+      "buy": "Get Premium",
+      "paymentsSoon": "Card and OXXO payments are coming soon. Meanwhile, the MedCloud team can turn on Premium for you.",
+      "rows": {
+        "users": "{{count}} user",
+        "usersUnlimited": "Unlimited users",
+        "treatmentTypes": "Up to {{count}} treatment types",
+        "treatmentTypesUnlimited": "Unlimited treatment types",
+        "storage": "{{size}} for photos and documents",
+        "patients": "Unlimited patients",
+        "pdf": "PDF export of the record",
+        "whatsapp": "WhatsApp reminders and confirmations",
+        "roles": "Custom roles",
+        "unbranded": "PDFs without the MedCloud footer"
+      }
+    },
+    "upgrade": {
+      "title": "This is part of Premium",
+      "notNow": "Not now",
+      "seePlan": "See my plan",
+      "hint": "Premium has unlimited users and treatments, WhatsApp and more space.",
+      "askOwner": "Ask the clinic's owner to turn on Premium.",
+      "reason": {
+        "users": "The Free plan includes {{max}} user.",
+        "treatmentTypes": "The Free plan includes up to {{max}} active treatment types. You can deactivate one to create another.",
+        "storage": "You reached your plan's space for photos and documents.",
+        "whatsappReminders": "WhatsApp reminders are part of Premium.",
+        "customRoles": "Custom roles are part of Premium.",
+        "unbrandedPdf": "PDFs without the MedCloud footer are part of Premium."
+      }
+    }
   }
 }

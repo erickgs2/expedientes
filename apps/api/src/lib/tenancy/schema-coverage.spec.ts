@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { CHILD_MODELS, GLOBAL_MODELS, TENANT_MODELS } from './scope';
+import { CHILD_MODELS, GLOBAL_MODELS, PLATFORM_MODELS, TENANT_MODELS } from './scope';
 
 /**
  * Keeps the tenancy lists honest as the schema grows. A new model must be put in exactly one list,
@@ -32,7 +32,7 @@ describe('tenancy classification of the Prisma schema', () => {
     const unclassified: string[] = [];
     const twice: string[] = [];
     for (const name of all.keys()) {
-      const hits = [TENANT_MODELS, CHILD_MODELS, GLOBAL_MODELS].filter((set) => set.has(name)).length;
+      const hits = [TENANT_MODELS, CHILD_MODELS, GLOBAL_MODELS, PLATFORM_MODELS].filter((set) => set.has(name)).length;
       if (hits === 0) unclassified.push(name);
       if (hits > 1) twice.push(name);
     }
@@ -40,11 +40,15 @@ describe('tenancy classification of the Prisma schema', () => {
   });
 
   it('lists no model that does not exist', () => {
-    const listed = [...TENANT_MODELS, ...CHILD_MODELS, ...GLOBAL_MODELS];
+    const listed = [...TENANT_MODELS, ...CHILD_MODELS, ...GLOBAL_MODELS, ...PLATFORM_MODELS];
     expect(listed.filter((name) => !all.has(name))).toEqual([]);
   });
 
-  it('gives every tenant model a required clinicId, and no other model one', () => {
+  it('keys every platform model by a clinic', () => {
+    expect([...PLATFORM_MODELS].filter((name) => !/^\s*clinicId\s+String/m.test(all.get(name) ?? ''))).toEqual([]);
+  });
+
+  it('gives every tenant model a required clinicId, and no child or global model one', () => {
     const tenantWithout = [...TENANT_MODELS].filter((name) => !hasRequiredClinicId(all.get(name) ?? ''));
     const othersWith = [...CHILD_MODELS, ...GLOBAL_MODELS].filter((name) =>
       hasRequiredClinicId(all.get(name) ?? '')

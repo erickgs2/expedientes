@@ -1,8 +1,15 @@
 import { randomUUID } from 'crypto';
 import { existsSync, realpathSync } from 'fs';
-import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'fs/promises';
 import { dirname, extname, join, resolve, sep } from 'path';
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { addClinicStorageBytes } from '../plan/storage-accounting';
 
 function storageRoot(): string {
   return process.env.STORAGE_ROOT ?? './storage';
@@ -69,6 +76,7 @@ export async function saveFile(
         ContentType: contentTypeFor(originalName),
       })
     );
+    await addClinicStorageBytes(buffer.length);
     return key;
   }
 
@@ -77,6 +85,7 @@ export async function saveFile(
   // `key` is built with forward slashes; split it back apart so the local path uses this platform's
   // separator rather than embedding a literal "/" in a Windows filename.
   await writeFile(join(dir, key.split('/')[2]), buffer);
+  await addClinicStorageBytes(buffer.length);
   return key;
 }
 
@@ -169,23 +178,47 @@ export async function writeStoredFileAt(relativePath: string, buffer: Buffer): P
         ContentType: contentTypeFor(relativePath),
       })
     );
+    await addClinicStorageBytes(buffer.length);
     return;
   }
 
   const target = resolveFilePath(relativePath);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, buffer);
+  await addClinicStorageBytes(buffer.length);
+}
+
+/** Size of a stored file in bytes, or 0 when it does not exist. */
+export async function storedFileSize(relativePath: string): Promise<number> {
+  const bucket = s3Bucket();
+  if (!bucket) {
+    try {
+      return (await stat(resolveFilePath(relativePath))).size;
+    } catch {
+      return 0;
+    }
+  }
+  assertSafeKey(relativePath);
+  try {
+    const head = await s3().send(new HeadObjectCommand({ Bucket: bucket, Key: relativePath }));
+    return head.ContentLength ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 async function deleteOne(relativePath: string): Promise<void> {
+  // Measured before deleting so the clinic's storage usage can be reduced by what it frees.
+  const size = await storedFileSize(relativePath);
   const bucket = s3Bucket();
   if (!bucket) {
     await rm(resolveFilePath(relativePath), { force: true });
-    return;
+  } else {
+    assertSafeKey(relativePath);
+    // S3 DeleteObject succeeds on a missing key, so no existence check is needed.
+    await s3().send(new DeleteObjectCommand({ Bucket: bucket, Key: relativePath }));
   }
-  assertSafeKey(relativePath);
-  // S3 DeleteObject succeeds on a missing key, so no existence check is needed.
-  await s3().send(new DeleteObjectCommand({ Bucket: bucket, Key: relativePath }));
+  await addClinicStorageBytes(-size);
 }
 
 /**

@@ -8,6 +8,7 @@ import {
 import { saveFile } from '../../../lib/storage/file-storage';
 import { isJpeg, isPng } from '../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
+import { assertFeature } from '../../../lib/plan/limits';
 import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
@@ -124,6 +125,11 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
   // flip messages on or off by accident.
   const notificationsEnabled = formData.get('whatsappNotificationsEnabled');
   if (notificationsEnabled === 'true' || notificationsEnabled === 'false') {
+    // Turning messages on needs Premium. A form that resends "on" for a clinic already switched on
+    // (now back on Free) still saves its other fields; the plan stops the messages themselves.
+    if (notificationsEnabled === 'true' && !(await getClinicSettings())?.whatsappNotificationsEnabled) {
+      await assertFeature('whatsappReminders');
+    }
     data.whatsappNotificationsEnabled = notificationsEnabled === 'true';
   }
 
