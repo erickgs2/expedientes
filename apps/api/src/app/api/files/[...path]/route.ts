@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readStoredFile, THUMBNAIL_SUFFIX } from '../../../../lib/storage/file-storage';
 import { readThumbnail } from '../../../../lib/storage/thumbnail';
+import { storedFileBelongsToCurrentClinic } from '../../../../lib/storage/file-access';
 import { inlineImageType } from '../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
@@ -23,6 +24,11 @@ export const GET = withApiErrors(
     );
 
     const relativePath = path.join('/');
+
+    // Another clinic's file is answered exactly like a missing one.
+    if (!(await storedFileBelongsToCurrentClinic(path))) {
+      return apiError('NOT_FOUND', 'File not found', 404);
+    }
 
     // `?thumb=1` asks for a small version for gallery tiles. It falls back to the original whenever
     // no thumbnail can be produced, so a client can always ask for it.

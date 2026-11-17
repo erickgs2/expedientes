@@ -1,4 +1,5 @@
 import { getClinicSettings } from '../clinic/clinic-settings';
+import { prismaUnscoped } from '../prisma/client';
 
 export interface WhatsAppConfig {
   accessToken: string;
@@ -30,9 +31,15 @@ function fromEnv(name: string): string {
 export async function resolveWhatsAppConfig(): Promise<WhatsAppConfig | null> {
   const settings = await getClinicSettings();
 
-  const accessToken = settings?.whatsappAccessToken?.trim() || fromEnv('WHATSAPP_ACCESS_TOKEN');
+  // The environment is one server-wide WhatsApp account. With several clinics it would make every
+  // clinic that has not configured its own send from that account, under that clinic's name, so the
+  // fallback only applies while the server holds a single clinic.
+  const envAllowed = (await prismaUnscoped.clinic.count()) <= 1;
+  const env = (name: string) => (envAllowed ? fromEnv(name) : '');
+
+  const accessToken = settings?.whatsappAccessToken?.trim() || env('WHATSAPP_ACCESS_TOKEN');
   const phoneNumberId =
-    settings?.whatsappPhoneNumberId?.trim() || fromEnv('WHATSAPP_PHONE_NUMBER_ID');
+    settings?.whatsappPhoneNumberId?.trim() || env('WHATSAPP_PHONE_NUMBER_ID');
 
   if (!accessToken || !phoneNumberId) return null;
 

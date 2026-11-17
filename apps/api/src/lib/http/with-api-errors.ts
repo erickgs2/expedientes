@@ -4,6 +4,9 @@ import { apiError } from './api-error';
 import { UnauthenticatedError } from './require-auth';
 import { ForbiddenError, InactiveUserError } from '../rbac/permissions';
 import { InvalidFilePathError } from '../storage/file-storage';
+import { NoClinicContextError, runWithRequestContext } from '../tenancy/context';
+import { TenancyViolationError } from '../tenancy/scope';
+import { NotInClinicError } from '../tenancy/assert';
 
 function conflictTarget(error: Prisma.PrismaClientKnownRequestError): string {
   const target = error.meta?.['target'];
@@ -28,6 +31,15 @@ export function toApiErrorResponse(error: unknown): NextResponse {
   if (error instanceof ForbiddenError) {
     return apiError('FORBIDDEN', error.message, 403);
   }
+  if (error instanceof NotInClinicError) {
+    return apiError('NOT_FOUND', 'Record not found', 404);
+  }
+  // Both mean the code tried to reach outside the current clinic or had no clinic at all. Never a
+  // client mistake: logged loudly and answered as a plain server error, revealing nothing.
+  if (error instanceof NoClinicContextError || error instanceof TenancyViolationError) {
+    console.error('Tenancy guard stopped a query', error);
+    return apiError('INTERNAL_ERROR', 'Internal server error', 500);
+  }
   if (error instanceof InvalidFilePathError) {
     return apiError('INVALID_INPUT', 'Invalid file path', 400);
   }
@@ -51,16 +63,20 @@ export function toApiErrorResponse(error: unknown): NextResponse {
 
 /**
  * Wraps a Next.js route handler so anything it throws — auth errors, Prisma errors, JSON parse
- * errors — becomes a structured `ApiErrorBody` response with the right status code.
+ * errors — becomes a structured `ApiErrorBody` response with the right status code, and runs it in
+ * its own tenancy context.
  */
 export function withApiErrors<TArgs extends unknown[]>(
   handler: (...args: TArgs) => Promise<Response>
 ): (...args: TArgs) => Promise<Response> {
-  return async (...args: TArgs) => {
-    try {
-      return await handler(...args);
-    } catch (error) {
-      return toApiErrorResponse(error);
-    }
-  };
+  // Each request runs in its own tenancy context; authentication sets its clinic (see
+  // lib/tenancy/context.ts).
+  return (...args: TArgs) =>
+    runWithRequestContext(async () => {
+      try {
+        return await handler(...args);
+      } catch (error) {
+        return toApiErrorResponse(error);
+      }
+    });
 }

@@ -12,6 +12,9 @@ export const PATCH = withApiErrors(
     const body = (await request.json()) as { name?: string; permissionIds?: string[] };
 
     await prisma.$transaction(async (tx) => {
+      // The role must be this clinic's before anything touches its permissions: RolePermission has
+      // no clinicId of its own, so deleting by roleId alone would reach another clinic's role.
+      await tx.role.findFirstOrThrow({ where: { id }, select: { id: true } });
       if (body.name !== undefined) {
         await tx.role.update({ where: { id }, data: { name: body.name } });
       }

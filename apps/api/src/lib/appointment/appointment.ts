@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from '@prisma/client';
 import { prisma } from '../prisma/client';
+import { assertInClinic } from '../tenancy/assert';
 
 function toDetail(appointment: {
   id: string;
@@ -52,6 +53,8 @@ export interface CreateAppointmentData {
 }
 
 export async function createAppointment(data: CreateAppointmentData) {
+  await assertInClinic('patient', [data.patientId]);
+  await assertInClinic('treatmentType', data.treatmentTypeIds);
   const appointment = await prisma.appointment.create({
     data: {
       patientId: data.patientId,
@@ -97,6 +100,8 @@ export interface UpdateAppointmentData {
  */
 export async function updateAppointment(id: string, data: UpdateAppointmentData) {
   const { treatmentTypeIds, ...rest } = data;
+  await assertInClinic('patient', [rest.patientId]);
+  await assertInClinic('treatmentType', treatmentTypeIds ?? []);
   await prisma.appointment.update({
     where: { id },
     data: {

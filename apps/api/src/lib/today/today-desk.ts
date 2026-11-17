@@ -23,12 +23,14 @@ export interface DeskAccess {
  */
 export async function getTodayDesk(
   date: string,
+  /** The clinic's IANA time zone, which decides where its day starts and ends. */
+  timeZone: string,
   userId: string,
   access: DeskAccess,
   now: Date = new Date()
 ): Promise<TodayDesk> {
-  const { start, end } = clinicDayRange(date);
-  const tomorrow = clinicDayRange(addDays(date, 1));
+  const { start, end } = clinicDayRange(date, timeZone);
+  const tomorrow = clinicDayRange(addDays(date, 1), timeZone);
 
   const [appointments, tomorrowRows, afterPhotosMissing, noShowsThisWeek, recentPatients, settings] =
     await Promise.all([

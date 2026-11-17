@@ -1,4 +1,5 @@
 import { prisma } from '../prisma/client';
+import { currentClinicId } from '../tenancy/context';
 
 export interface TreatmentTypeSections {
   consentDescription: string;
@@ -28,6 +29,7 @@ export interface TreatmentTypeUsageRow {
  * never used are simply absent from the map.
  */
 export async function getTreatmentTypeUsage(): Promise<Map<string, TreatmentTypeUsageRow>> {
+  // Raw SQL is not scoped by the Prisma extension, so it filters by clinic itself.
   const rows = await prisma.$queryRaw<
     { treatmentTypeId: string; patientCount: number; lastUsedAt: Date | null }[]
   >`
@@ -36,6 +38,7 @@ export async function getTreatmentTypeUsage(): Promise<Map<string, TreatmentType
            MAX(t."fecha") AS "lastUsedAt"
     FROM "TreatmentItem" ti
     JOIN "Treatment" t ON t."id" = ti."treatmentId"
+    WHERE ti."clinicId" = ${currentClinicId()}
     GROUP BY ti."treatmentTypeId"
   `;
   return new Map(
