@@ -1,9 +1,10 @@
 import type { PhotoTag } from '@prisma/client';
 import { prisma } from '../prisma/client';
 
-export async function listTreatmentItemPhotos(treatmentItemId: string) {
+/** The item's gallery; `archived: true` lists the photos retired from it instead. */
+export async function listTreatmentItemPhotos(treatmentItemId: string, options: { archived?: boolean } = {}) {
   return prisma.treatmentItemPhoto.findMany({
-    where: { treatmentItemId },
+    where: { treatmentItemId, archivedAt: options.archived ? { not: null } : null },
     orderBy: { createdAt: 'asc' },
   });
 }
@@ -15,7 +16,7 @@ export async function listTreatmentItemPhotos(treatmentItemId: string) {
  */
 export async function listPatientTreatmentPhotos(patientId: string) {
   const photos = await prisma.treatmentItemPhoto.findMany({
-    where: { patientId },
+    where: { patientId, archivedAt: null },
     orderBy: { createdAt: 'asc' },
     include: { treatmentItem: { include: { treatmentType: true, treatment: true } } },
   });
@@ -42,16 +43,23 @@ export async function createTreatmentItemPhoto(
   });
 }
 
-/**
- * Deletes a photo only if it actually belongs to `treatmentItemId` — same atomic
- * ownership-check-and-delete pattern as the Valoración photo lib's `deletePhoto`.
- */
-export async function deleteTreatmentItemPhoto(
+/** Retires a treatment photo instead of deleting it; same rules as the valoración photo lib's `retirePhoto`. */
+export async function retireTreatmentItemPhoto(
   treatmentItemId: string,
-  photoId: string
+  photoId: string,
+  userId: string
 ): Promise<boolean> {
-  const result = await prisma.treatmentItemPhoto.deleteMany({
-    where: { id: photoId, treatmentItemId },
+  const result = await prisma.treatmentItemPhoto.updateMany({
+    where: { id: photoId, treatmentItemId, archivedAt: null },
+    data: { archivedAt: new Date(), archivedById: userId },
+  });
+  return result.count > 0;
+}
+
+export async function restoreTreatmentItemPhoto(treatmentItemId: string, photoId: string): Promise<boolean> {
+  const result = await prisma.treatmentItemPhoto.updateMany({
+    where: { id: photoId, treatmentItemId, archivedAt: { not: null } },
+    data: { archivedAt: null, archivedById: null },
   });
   return result.count > 0;
 }

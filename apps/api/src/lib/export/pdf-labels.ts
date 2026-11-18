@@ -2,6 +2,16 @@ export interface PdfLabels {
   generatedOn: string;
   /** Footer on the record pages of PDFs exported on the Free plan. */
   generatedWith: string;
+  /** Annex of photos retired from the galleries (exported only when asked for). */
+  retiredPhotos: {
+    title: string;
+    intro: string;
+    valoracion: string;
+    tags: { BEFORE: string; AFTER: string };
+    takenOn: string;
+    retiredOn: string;
+    by: string;
+  };
   patientInfo: { phone: string; documentId: string };
   historiaClinica: {
     sectionTitle: string;
@@ -53,6 +63,15 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   es: {
     generatedOn: 'Generado el',
     generatedWith: 'Generado con MedCloud',
+    retiredPhotos: {
+      title: 'Fotos retiradas de la galería',
+      intro: 'Fotos que se quitaron de la galería del expediente. Se conservan como parte del expediente clínico.',
+      valoracion: 'Valoración',
+      tags: { BEFORE: 'Antes', AFTER: 'Después' },
+      takenOn: 'Tomada el',
+      retiredOn: 'Retirada el',
+      by: 'por',
+    },
     patientInfo: { phone: 'Teléfono', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Historia clínica',
@@ -106,6 +125,15 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   en: {
     generatedOn: 'Generated on',
     generatedWith: 'Generated with MedCloud',
+    retiredPhotos: {
+      title: 'Photos retired from the gallery',
+      intro: 'Photos taken out of the record\'s gallery. They are kept as part of the clinical record.',
+      valoracion: 'Assessment',
+      tags: { BEFORE: 'Before', AFTER: 'After' },
+      takenOn: 'Taken on',
+      retiredOn: 'Retired on',
+      by: 'by',
+    },
     patientInfo: { phone: 'Phone', documentId: 'CURP' },
     historiaClinica: {
       sectionTitle: 'Medical History',

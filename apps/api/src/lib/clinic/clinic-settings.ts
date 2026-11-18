@@ -15,6 +15,8 @@ export interface ClinicSettingsUpdate {
   declarationAfter: string;
   doctorSignaturePath?: string;
   clinicLogoPath?: string;
+  secondWitnessName?: string | null;
+  secondWitnessSignaturePath?: string | null;
   whatsappAccessToken?: string | null;
   whatsappPhoneNumberId?: string | null;
   whatsappConfirmationTemplate?: string | null;

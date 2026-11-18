@@ -4,6 +4,7 @@ import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../lib/patients/patient-archive';
 
 interface ValoracionBody {
   fecha?: string;
@@ -36,6 +37,7 @@ export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'valoracion', 'edit');
     const { id } = await params;
+    await assertRecordWritable('valoracion', id);
     const body = (await request.json()) as ValoracionBody;
 
     // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which

@@ -24,7 +24,8 @@ function isValidModulesSelection(value: unknown): value is ExportModulesSelectio
     typeof v['historiaClinica'] === 'boolean' &&
     typeof v['valoracion'] === 'boolean' &&
     typeof v['treatments'] === 'boolean' &&
-    typeof v['consents'] === 'boolean'
+    typeof v['consents'] === 'boolean' &&
+    (v['retiredPhotos'] === undefined || typeof v['retiredPhotos'] === 'boolean')
   );
 }
 

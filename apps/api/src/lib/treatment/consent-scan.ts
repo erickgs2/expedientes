@@ -18,6 +18,8 @@ export interface RegisterPaperInput {
   place: string;
   patientIdentification: string;
   witnessName: string | null;
+  /** The second witness's name as written on the paper letter, when recorded. */
+  secondWitnessName?: string | null;
   pages: ScanPage[];
 }
 
@@ -82,6 +84,7 @@ export async function registerPaperConsents(
               place: input.place,
               signedDate: input.signedDate,
               witnessName: input.witnessName,
+              secondWitnessName: input.secondWitnessName ?? null,
               sections: sectionsFromTreatmentType(item.treatmentType),
             }),
           },

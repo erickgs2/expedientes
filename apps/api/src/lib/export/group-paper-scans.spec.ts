@@ -14,6 +14,7 @@ const consent = (
     method: 'PAPER',
     patientSignatureImagePath: null,
     witnessSignatureImagePath: null,
+    secondWitnessSignatureImagePath: null,
     scanId: 's1',
     scanPagePaths: ['p1.jpg', 'p2.jpg'],
     ...over,

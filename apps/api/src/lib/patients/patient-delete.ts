@@ -2,7 +2,10 @@ import { prisma } from '../prisma/client';
 import { deleteStoredFile } from '../storage/file-storage';
 
 /**
- * Permanently removes a patient and everything recorded under them: clinical history, valoraciones
+ * Permanently removes a patient. Only reachable through the owner's purge of an archived record
+ * five years after the last care (`app/api/patients/[patientId]/purge`); archiving is the normal path.
+ *
+ * Removes and everything recorded under them: clinical history, valoraciones
  * and their diagrams and photos, treatments with their consents (and paper-signed scans), products and
  * photos, and appointments. The schema declares no cascade from `Patient` to those tables, so they are removed
  * explicitly, children first, in one transaction — either the whole record goes or none of it does.
@@ -31,7 +34,11 @@ export async function deletePatient(patientId: string): Promise<boolean> {
       }),
       tx.consent.findMany({
         where: itemWhere,
-        select: { patientSignatureImagePath: true, witnessSignatureImagePath: true },
+        select: {
+          patientSignatureImagePath: true,
+          witnessSignatureImagePath: true,
+          secondWitnessSignatureImagePath: true,
+        },
       }),
       tx.consentScanPage.findMany({ where: { scan: { patientId } }, select: { filePath: true } }),
     ]);
@@ -55,7 +62,11 @@ export async function deletePatient(patientId: string): Promise<boolean> {
       ...valoracionPhotos.map((p) => p.filePath),
       ...itemPhotos.map((p) => p.filePath),
       ...products.map((p) => p.photoPath),
-      ...consents.flatMap((c) => [c.patientSignatureImagePath, c.witnessSignatureImagePath]),
+      ...consents.flatMap((c) => [
+        c.patientSignatureImagePath,
+        c.witnessSignatureImagePath,
+        c.secondWitnessSignatureImagePath,
+      ]),
       ...scanPages.map((p) => p.filePath),
     ].filter((path): path is string => !!path);
   });

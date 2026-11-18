@@ -39,9 +39,10 @@ import type { PhotoDataSource } from './photo-data-source';
                   class="photo-delete"
                   type="button"
                   (click)="delete(photo)"
-                  [attr.aria-label]="'valoracion.photos.delete' | transloco"
+                  [attr.aria-label]="'valoracion.photos.retire' | transloco"
+                  [attr.title]="'valoracion.photos.retire' | transloco"
                 >
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon>archive</mat-icon>
                 </button>
               }
             </div>
@@ -52,6 +53,49 @@ import type { PhotoDataSource } from './photo-data-source';
           <mat-icon>photo_library</mat-icon>
           <p>{{ 'valoracion.photos.empty' | transloco }}</p>
         </div>
+      }
+
+      <!-- Retired photos stay part of the record (NOM-004-SSA3-2012 5.4): folded away, never gone. -->
+      @if (retired().length) {
+        <section class="retired">
+          <button
+            type="button"
+            class="retired-toggle"
+            [attr.aria-expanded]="showRetired()"
+            (click)="showRetired.set(!showRetired())"
+          >
+            <mat-icon aria-hidden="true">{{ showRetired() ? 'expand_less' : 'expand_more' }}</mat-icon>
+            {{ 'valoracion.photos.retiredCount' | transloco: { n: retired().length } }}
+          </button>
+          @if (showRetired()) {
+            <p class="retired-note">{{ 'valoracion.photos.retiredNote' | transloco }}</p>
+            <ul class="retired-list">
+              @for (photo of retired(); track photo.id) {
+                <li class="retired-item">
+                  <button
+                    type="button"
+                    class="retired-open"
+                    (click)="openViewer(photo)"
+                    [attr.aria-label]="'common.viewPhoto' | transloco"
+                  >
+                    <img [src]="thumbnailUrl(photo)" alt="" loading="lazy" />
+                  </button>
+                  <div class="retired-text">
+                    <span class="retired-tag">{{ tagLabelKey(photo.tag) | transloco }}</span>
+                    <span class="retired-meta">
+                      {{ 'valoracion.photos.retiredOn' | transloco: { date: shortDate(photo.archivedAt), name: photo.archivedByName || '—' } }}
+                    </span>
+                  </div>
+                  @if (canEdit) {
+                    <button mat-stroked-button type="button" class="retired-restore" (click)="restore(photo)">
+                      {{ 'valoracion.photos.putBack' | transloco }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
       }
     </div>
   `,
@@ -140,13 +184,89 @@ import type { PhotoDataSource } from './photo-data-source';
         appearance: none;
         transition: background-color 150ms ease-out;
       }
+      /* Retiring is not destructive (the photo is kept), so it takes no alarm colour. */
       .photo-delete:hover {
-        background: var(--mat-sys-error);
+        background: rgba(0, 0, 0, 0.8);
       }
       .photo-delete mat-icon {
         font-size: 20px;
         width: 20px;
         height: 20px;
+      }
+      .retired {
+        margin-top: 20px;
+        padding-top: 12px;
+        border-top: 1px solid var(--plate-line);
+      }
+      .retired-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 12px 0 6px;
+        border: 0;
+        border-radius: 22px;
+        background: none;
+        color: var(--mat-sys-on-surface-variant);
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .retired-toggle:hover {
+        background: var(--mat-sys-surface-container-low);
+        color: var(--mat-sys-on-surface);
+      }
+      .retired-note {
+        margin: 4px 0 12px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .retired-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: var(--plate-radius);
+      }
+      .retired-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px 8px 8px;
+      }
+      .retired-item + .retired-item {
+        border-top: 1px solid var(--plate-line);
+      }
+      .retired-open {
+        flex: none;
+        padding: 0;
+        border: 0;
+        background: none;
+        border-radius: 8px;
+        cursor: zoom-in;
+      }
+      .retired-open img {
+        display: block;
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: var(--mat-sys-surface-container);
+      }
+      .retired-text {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .retired-tag {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .retired-meta {
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+        font-variant-numeric: tabular-nums;
       }
     `,
   ],
@@ -160,11 +280,27 @@ export class PhotoGalleryComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
 
   protected readonly photos = signal<PhotoRecord[]>([]);
+  protected readonly retired = signal<PhotoRecord[]>([]);
+  protected readonly showRetired = signal(false);
   protected canEdit = false;
 
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
-    this.photos.set(await this.dataSource.list());
+    const [photos, retired] = await Promise.all([
+      this.dataSource.list(),
+      this.dataSource.listRetired().catch(() => [] as PhotoRecord[]),
+    ]);
+    this.photos.set(photos);
+    this.retired.set(retired);
+  }
+
+  protected shortDate(iso: string | null | undefined): string {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString(this.transloco.getActiveLang(), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 
   protected photoUrl(photo: PhotoRecord): string {
@@ -191,11 +327,19 @@ export class PhotoGalleryComponent implements OnInit {
     this.photos.update((current) => [...current, photo]);
   }
 
+  /** Retires the photo from the gallery: it moves to the folded "retired" list and can be put back. */
   protected async delete(photo: PhotoRecord): Promise<void> {
     // Resolved fresh on each use so a live language switch is reflected, matching the facial
     // diagram tool's `clearAll` confirm pattern.
-    if (!confirm(this.transloco.translate('valoracion.photos.confirmDelete'))) return;
+    if (!confirm(this.transloco.translate('valoracion.photos.confirmRetire'))) return;
     await this.dataSource.delete(photo.id);
     this.photos.update((current) => current.filter((p) => p.id !== photo.id));
+    this.retired.set(await this.dataSource.listRetired().catch(() => this.retired()));
+  }
+
+  protected async restore(photo: PhotoRecord): Promise<void> {
+    await this.dataSource.restore(photo.id);
+    this.retired.update((current) => current.filter((p) => p.id !== photo.id));
+    this.photos.set(await this.dataSource.list());
   }
 }

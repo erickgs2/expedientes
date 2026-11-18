@@ -11,6 +11,7 @@ import { writeAuditLogSafe } from '../../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../../lib/patients/patient-archive';
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MIN_PHOTO_BYTES = 1024;
@@ -23,6 +24,7 @@ export const PATCH = withApiErrors(
   ) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id, productId } = await params;
+    await assertRecordWritable('treatmentItem', id);
 
     // Cheap early-out so an obviously-oversized request is never buffered — not authoritative,
     // the real check runs against the actually-read buffer below.
@@ -114,6 +116,7 @@ export const DELETE = withApiErrors(
   ) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id, productId } = await params;
+    await assertRecordWritable('treatmentItem', id);
 
     const product = await getProduct(productId);
     if (!product || product.treatmentItemId !== id) {

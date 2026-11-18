@@ -8,6 +8,7 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 // Derived from the service's mapping rather than typed out again, so request validation and the
 // key→enum mapping can never disagree about which views exist.
@@ -21,6 +22,7 @@ export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'valoracion', 'edit');
     const { id } = await params;
+    await assertRecordWritable('valoracion', id);
     const body = (await request.json()) as DiagramBody;
 
     if (!body.views || typeof body.views !== 'object') {

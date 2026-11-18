@@ -13,7 +13,7 @@ const LABELS = {
     aftercare: 'CUIDADOS POSTERIORES',
     contraindications: 'CONTRAINDICACIONES',
   },
-  signatures: { patient: 'PACIENTE', witness: 'TESTIGO', doctor: 'MEDICO' },
+  signatures: { patient: 'PACIENTE', witness: 'TESTIGO', secondWitness: 'TESTIGO', doctor: 'MEDICO' },
 };
 
 function input(overrides: Partial<ConsentDocumentInput> = {}): ConsentDocumentInput {
@@ -173,5 +173,27 @@ describe('buildConsentDocument', () => {
     const firstSignatureIndex = blocks.findIndex((b) => b.kind === 'signatureBlock');
     const lastParagraphIndex = blocks.lastIndexOf(lastParagraph!);
     expect(lastParagraphIndex).toBeLessThan(firstSignatureIndex);
+  });
+});
+
+describe('NOM-004 consent content', () => {
+  it('prints the second witness between the first one and the physician', () => {
+    const blocks = buildConsentDocument(input({ witnessName: 'ANA LOPEZ', secondWitnessName: 'LUIS RUIZ' }));
+    const roles = blocks.filter((b) => b.kind === 'signatureBlock').map((b) => (b as { role: string }).role);
+    expect(roles).toEqual(['patient', 'witness', 'secondWitness', 'doctor']);
+  });
+
+  it('prints the contingencies clause after the declarations, interpolated', () => {
+    const blocks = buildConsentDocument(
+      input({ contingencyClause: 'AUTORIZO A {{doctorTitle}} {{doctorName}} A ATENDER CONTINGENCIAS.' })
+    );
+    const paragraphs = blocks.filter((b) => b.kind === 'paragraph').map((b) => (b as { text: string }).text);
+    expect(paragraphs.at(-1)).toMatch(/^AUTORIZO A .+ A ATENDER CONTINGENCIAS\.$/);
+    expect(paragraphs.at(-1)).not.toContain('{{');
+  });
+
+  it('leaves a letter signed before the clause exactly as it was', () => {
+    const before = buildConsentDocument(input());
+    expect(before.some((b) => b.kind === 'paragraph' && /CONTINGENCIAS/.test(b.text))).toBe(false);
   });
 });

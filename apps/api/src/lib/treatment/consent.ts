@@ -1,10 +1,10 @@
 import type { ConsentBlock, ConsentSection } from '@expedientes/shared-types';
 import { prisma } from '../prisma/client';
-import { saveFile } from '../storage/file-storage';
+import { readStoredFile, saveFile } from '../storage/file-storage';
 import { getClinicSettings, hasUsableDoctorIdentity } from '../clinic/clinic-settings';
 import { buildConsentDocument, localSigningDate } from '../consent/build-consent-document';
 import { buildConsentSnapshot } from '../consent/consent-snapshot';
-import { CONSENT_LABELS } from '../consent/consent-labels';
+import { CONSENT_CONTINGENCY_CLAUSE, CONSENT_LABELS } from '../consent/consent-labels';
 
 export function sectionsFromTreatmentType(type: {
   consentDescription: string;
@@ -20,6 +20,49 @@ export function sectionsFromTreatmentType(type: {
     { key: 'aftercare', body: type.consentAftercare ?? '' },
     { key: 'contraindications', body: type.consentContraindications ?? '' },
   ].filter((s) => s.body.trim()) as ConsentSection[];
+}
+
+/** The fields of a signed Consent row that the printed letter is rebuilt from. */
+export interface ConsentSnapshotRow {
+  clinicNameSnapshot: string;
+  doctorTitleSnapshot: string;
+  doctorNameSnapshot: string;
+  doctorLicenseSnapshot: string;
+  patientNameSnapshot: string;
+  patientIdentification: string;
+  place: string;
+  signedDateSnapshot: string;
+  declarationBeforeSnapshot: string;
+  declarationAfterSnapshot: string;
+  sections: unknown;
+  witnessName: string | null;
+  secondWitnessName: string | null;
+  contingencyClauseSnapshot: string | null;
+}
+
+/**
+ * A signed letter, rebuilt entirely from its frozen snapshot — never from the live catalog or
+ * settings. Letters signed before the second witness or the contingencies clause existed print
+ * without them, exactly as they were signed.
+ */
+export function consentDocumentFromSnapshot(consent: ConsentSnapshotRow): ConsentBlock[] {
+  return buildConsentDocument({
+    clinicName: consent.clinicNameSnapshot,
+    doctorTitle: consent.doctorTitleSnapshot,
+    doctorName: consent.doctorNameSnapshot,
+    doctorLicense: consent.doctorLicenseSnapshot,
+    patientName: consent.patientNameSnapshot,
+    patientIdentification: consent.patientIdentification,
+    place: consent.place,
+    signedDate: consent.signedDateSnapshot,
+    declarationBefore: consent.declarationBeforeSnapshot,
+    declarationAfter: consent.declarationAfterSnapshot,
+    sections: consent.sections as ConsentSection[],
+    witnessName: consent.witnessName,
+    secondWitnessName: consent.secondWitnessName,
+    contingencyClause: consent.contingencyClauseSnapshot,
+    labels: CONSENT_LABELS.es,
+  });
 }
 
 export async function getTreatmentItemDetail(id: string) {
@@ -56,6 +99,7 @@ export async function getTreatmentItemDetail(id: string) {
           declarationAfter: settings.declarationAfter,
           sections: sectionsFromTreatmentType(item.treatmentType),
           witnessName: null,
+          contingencyClause: CONSENT_CONTINGENCY_CLAUSE,
           labels: CONSENT_LABELS.es,
         })
       : null;
@@ -64,21 +108,7 @@ export async function getTreatmentItemDetail(id: string) {
   // — the declarations were already interpolated at signing time, so `interpolate` finds nothing
   // left to replace here.
   const consentDocument: ConsentBlock[] | null = item.consent
-    ? buildConsentDocument({
-        clinicName: item.consent.clinicNameSnapshot,
-        doctorTitle: item.consent.doctorTitleSnapshot,
-        doctorName: item.consent.doctorNameSnapshot,
-        doctorLicense: item.consent.doctorLicenseSnapshot,
-        patientName: item.consent.patientNameSnapshot,
-        patientIdentification: item.consent.patientIdentification,
-        place: item.consent.place,
-        signedDate: item.consent.signedDateSnapshot,
-        declarationBefore: item.consent.declarationBeforeSnapshot,
-        declarationAfter: item.consent.declarationAfterSnapshot,
-        sections: item.consent.sections as unknown as ConsentSection[],
-        witnessName: item.consent.witnessName,
-        labels: CONSENT_LABELS.es,
-      })
+    ? consentDocumentFromSnapshot(item.consent)
     : null;
 
   return {
@@ -103,6 +133,8 @@ export async function getTreatmentItemDetail(id: string) {
           witnessName: item.consent.witnessName,
           patientSignatureImagePath: item.consent.patientSignatureImagePath,
           witnessSignatureImagePath: item.consent.witnessSignatureImagePath,
+          secondWitnessName: item.consent.secondWitnessName,
+          secondWitnessSignatureImagePath: item.consent.secondWitnessSignatureImagePath,
           signedDateSnapshot: item.consent.signedDateSnapshot,
           signedAt: item.consent.signedAt,
         }
@@ -110,6 +142,9 @@ export async function getTreatmentItemDetail(id: string) {
     consentTemplateUpdatedAt: item.treatmentType.updatedAt,
     settingsUpdatedAt: settings?.updatedAt ?? null,
     defaultPlace: settings?.defaultPlace ?? '',
+    defaultSecondWitness: settings?.secondWitnessName?.trim()
+      ? { name: settings.secondWitnessName.trim(), hasSignature: !!settings.secondWitnessSignaturePath }
+      : null,
     canSign,
     diagrams: item.diagrams.map((d) => ({
       view: d.view,
@@ -122,9 +157,12 @@ export async function getTreatmentItemDetail(id: string) {
 export interface SignConsentInput {
   place: string;
   patientIdentification: string;
-  witnessName: string | null;
+  witnessName: string;
   patientSignature: Buffer;
-  witnessSignature: Buffer | null;
+  witnessSignature: Buffer;
+  secondWitnessName: string;
+  /** Signed at the table, or null to use the clinic's stored second-witness signature. */
+  secondWitnessSignature: Buffer | null;
 }
 
 /**
@@ -157,9 +195,21 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
     patientId,
     'signature.jpg'
   );
-  const witnessSignatureImagePath = input.witnessSignature
-    ? await saveFile(input.witnessSignature, 'consents', patientId, 'witness.jpg')
-    : null;
+  const witnessSignatureImagePath = await saveFile(input.witnessSignature, 'consents', patientId, 'witness.jpg');
+
+  // The clinic's stored second-witness signature is copied onto the consent, never referenced: a
+  // later change in the settings must not alter a letter that was already signed.
+  let secondWitnessSignature = input.secondWitnessSignature;
+  if (!secondWitnessSignature) {
+    if (!settings.secondWitnessSignaturePath) return 'NO_SECOND_WITNESS_SIGNATURE' as const;
+    secondWitnessSignature = await readStoredFile(settings.secondWitnessSignaturePath);
+  }
+  const secondWitnessSignatureImagePath = await saveFile(
+    secondWitnessSignature,
+    'consents',
+    patientId,
+    'witness-2.jpg'
+  );
 
   const consent = await prisma.consent.create({
     data: {
@@ -172,10 +222,12 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
         place: input.place,
         signedDate: localSigningDate(),
         witnessName: input.witnessName,
+        secondWitnessName: input.secondWitnessName,
         sections: sectionsFromTreatmentType(item.treatmentType),
       }),
       patientSignatureImagePath,
       witnessSignatureImagePath,
+      secondWitnessSignatureImagePath,
     },
   });
   return { consent, patientId };

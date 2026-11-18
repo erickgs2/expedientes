@@ -11,6 +11,7 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 const MAX_FIELD_LENGTH = 200;
 const MAX_REQUEST_BYTES = MAX_SCAN_PAGE_BYTES * MAX_SCAN_PAGES;
@@ -24,6 +25,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('treatment', id);
 
     // Cheap early-out only; the authoritative size check runs on the buffers actually read.
     const declaredLength = Number(request.headers.get('content-length'));
@@ -37,6 +39,7 @@ export const POST = withApiErrors(
     const place = text(formData, 'place');
     const patientIdentification = text(formData, 'patientIdentification');
     const witnessName = text(formData, 'witnessName');
+    const secondWitnessName = text(formData, 'secondWitnessName');
 
     const dateError = validateSignedDate(signedDate, localSigningDate());
     if (dateError) return apiError('INVALID_INPUT', dateError, 400);
@@ -46,7 +49,7 @@ export const POST = withApiErrors(
     if (!patientIdentification || patientIdentification.length > MAX_FIELD_LENGTH) {
       return apiError('INVALID_INPUT', 'patientIdentification is required and must be short', 400);
     }
-    if (witnessName.length > MAX_FIELD_LENGTH) {
+    if (witnessName.length > MAX_FIELD_LENGTH || secondWitnessName.length > MAX_FIELD_LENGTH) {
       return apiError('INVALID_INPUT', 'witnessName is too long', 400);
     }
 
@@ -61,6 +64,7 @@ export const POST = withApiErrors(
       place,
       patientIdentification,
       witnessName: witnessName || null,
+      secondWitnessName: secondWitnessName || null,
       pages: validated.pages,
     });
 

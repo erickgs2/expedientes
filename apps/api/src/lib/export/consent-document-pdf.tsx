@@ -43,9 +43,11 @@ const styles = StyleSheet.create({
   fieldLineLabel: { fontWeight: 'bold', width: 140 },
   fieldLineValue: { flex: 1 },
   signatureRow: { flexDirection: 'row', marginTop: 24 },
-  signatureColumn: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
-  signatureImage: { width: 140, height: 50, objectFit: 'contain' },
-  signatureLine: { width: 140, height: 50, borderBottomWidth: 1, borderBottomColor: '#000000' },
+  // Four signatures (patient, two witnesses, physician) share one row on an A4 page, so each column
+  // shrinks to its share of the width and never exceeds the former 140pt.
+  signatureColumn: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
+  signatureImage: { width: '100%', maxWidth: 140, height: 50, objectFit: 'contain' },
+  signatureLine: { width: '100%', maxWidth: 140, height: 50, borderBottomWidth: 1, borderBottomColor: '#000000' },
   signatureCaption: { fontSize: 9, fontWeight: 'bold', marginTop: 4, textTransform: 'uppercase' },
   signatureSubCaption: { fontSize: 8, color: '#555555', marginTop: 2, textAlign: 'center' },
 });
@@ -89,8 +91,8 @@ function SignatureColumn({ block, buffer }: { block: SignatureBlock; buffer: Buf
 }
 
 /**
- * Walks the flat block list and groups consecutive `signatureBlock` entries (patient, optional
- * witness, doctor — always emitted back-to-back by `buildConsentDocument`) into a single
+ * Walks the flat block list and groups consecutive `signatureBlock` entries (patient, the
+ * witnesses, doctor — always emitted back-to-back by `buildConsentDocument`) into a single
  * `signatureRow` so they print side by side, wrapped in `wrap={false}` so a page break can never
  * split a signature from its caption or strand it alone at the top of a sheet.
  */

@@ -3,6 +3,7 @@ import { createTreatment, listTreatments } from '../../../../../lib/treatment/tr
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertPatientWritable } from '../../../../../lib/patients/patient-archive';
 
 export const GET = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
@@ -27,6 +28,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'treatments', 'create');
     const { patientId } = await params;
+    await assertPatientWritable(patientId);
 
     // `.catch(() => ({}))` because `request.json()` throws on an empty body — the frontend always
     // sends `fecha`, but a client that sends nothing still falls back to the schema default.

@@ -11,6 +11,9 @@ export interface Consent {
   /** Null for a paper-signed consent — its signatures are on the scan pages instead. */
   patientSignatureImagePath: string | null;
   witnessSignatureImagePath: string | null;
+  /** NOM-004-SSA3-2012 10.1.1 asks for two witnesses; null on consents signed before that. */
+  secondWitnessName: string | null;
+  secondWitnessSignatureImagePath: string | null;
   /** Stored paths of the scanned pages, in order. Empty for a digital consent. */
   scanPages: string[];
   /**
@@ -42,6 +45,8 @@ export interface TreatmentItemDetail {
   consentTemplateUpdatedAt: string;
   settingsUpdatedAt: string | null;
   defaultPlace: string;
+  /** The clinic's usual second witness, offered pre-filled at signing (null when none is set). */
+  defaultSecondWitness: { name: string; hasSignature: boolean } | null;
   /** False when clinic settings are missing or the physician identity is blank. */
   canSign: boolean;
   diagrams: DiagramViewRecord[];
@@ -59,7 +64,7 @@ export interface ConsentSection {
   body: string;
 }
 
-export type ConsentSignatureRole = 'patient' | 'witness' | 'doctor';
+export type ConsentSignatureRole = 'patient' | 'witness' | 'secondWitness' | 'doctor';
 
 export type ConsentBlock =
   | { kind: 'title'; text: string }

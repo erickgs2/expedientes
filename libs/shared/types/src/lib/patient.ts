@@ -17,6 +17,21 @@ export interface PatientSummary {
   contactPatient?: NotificationContact | null;
   /** Patients whose notices this patient receives. Only on the single-patient endpoint. */
   dependents?: { id: string; fullName: string }[];
+  /**
+   * Set when the patient is archived (NOM-004-SSA3-2012 5.4: the record is kept, read-only, and
+   * can be restored). ISO timestamp.
+   */
+  archivedAt?: string | null;
+  archiveReason?: string | null;
+  /** Who archived it. Only on the single-patient endpoint. */
+  archivedByName?: string | null;
+}
+
+/** When an archived patient's record could be purged (owner only, five years after the last care). */
+export interface PatientPurgeStatus {
+  lastCareAt: string;
+  purgeAllowedFrom: string;
+  canPurge: boolean;
 }
 
 export interface CreatePatientRequest {

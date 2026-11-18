@@ -13,6 +13,22 @@ export interface ExportModulesSelection {
   treatments: boolean;
   /** Independent of `treatments`: the signed consents can be exported on their own. */
   consents: boolean;
+  /**
+   * Photos retired from the galleries, as an annex with who retired them and when. Off unless asked
+   * for: they are part of the record (nothing clinical is deleted), but not of the working view.
+   */
+  retiredPhotos?: boolean;
+}
+
+/** One photo retired from a gallery, for the "retired photos" annex. */
+export interface ExportRetiredPhoto {
+  filePath: string;
+  tag: 'BEFORE' | 'AFTER';
+  /** Where it was taken: "Valoración" or the treatment type, with the visit date (`YYYY-MM-DD`). */
+  source: { kind: 'valoracion' | 'treatment'; treatmentTypeName: string | null; fecha: string };
+  takenAt: string;
+  archivedAt: string;
+  archivedByName: string | null;
 }
 
 export interface ExportDiagramRef {
@@ -75,6 +91,7 @@ export interface ExportTreatmentItem {
     /** Null for a paper-signed consent — its evidence is the scan pages. */
     patientSignatureImagePath: string | null;
     witnessSignatureImagePath: string | null;
+    secondWitnessSignatureImagePath: string | null;
     scanId: string | null;
     /** Stored paths of the scanned pages, in order; empty for a digital consent. */
     scanPagePaths: string[];
@@ -100,6 +117,7 @@ export interface ExportData {
   valoraciones: ExportValoracion[] | null;
   treatments: ExportTreatment[] | null;
   consents: ExportConsent[] | null;
+  retiredPhotos: ExportRetiredPhoto[] | null;
   clinicName: string;
   doctorSignaturePath: string | null;
   clinicLogoPath: string | null;
@@ -165,6 +183,7 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
               method: detail.consent.signatureMethod,
               patientSignatureImagePath: detail.consent.patientSignatureImagePath,
               witnessSignatureImagePath: detail.consent.witnessSignatureImagePath,
+              secondWitnessSignatureImagePath: detail.consent.secondWitnessSignatureImagePath,
               scanId: detail.consent.scanId,
               scanPagePaths: detail.consent.scanPages,
             };
@@ -210,6 +229,49 @@ function collectConsents(treatments: ExportTreatment[] | null): ExportConsent[] 
  * language, and the client-rendered diagram images themselves cross the request boundary as
  * client input). Returns `null` if the patient doesn't exist; the route handler maps that to 404.
  */
+const day = (d: Date) => d.toISOString().substring(0, 10);
+
+async function gatherRetiredPhotos(patientId: string): Promise<ExportRetiredPhoto[]> {
+  const [valoracionPhotos, itemPhotos] = await Promise.all([
+    prisma.photo.findMany({
+      where: { patientId, archivedAt: { not: null } },
+      orderBy: { createdAt: 'asc' },
+      include: { valoracion: { select: { fecha: true } } },
+    }),
+    prisma.treatmentItemPhoto.findMany({
+      where: { patientId, archivedAt: { not: null } },
+      orderBy: { createdAt: 'asc' },
+      include: { treatmentItem: { select: { treatmentType: { select: { name: true } }, treatment: { select: { fecha: true } } } } },
+    }),
+  ]);
+  const ids = [...new Set([...valoracionPhotos, ...itemPhotos].map((p) => p.archivedById).filter((id): id is string => !!id))];
+  const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } }) : [];
+  const names = new Map(users.map((u) => [u.id, u.fullName]));
+  const rows: ExportRetiredPhoto[] = [
+    ...valoracionPhotos.map((p) => ({
+      filePath: p.filePath,
+      tag: p.tag,
+      source: { kind: 'valoracion' as const, treatmentTypeName: null, fecha: day(p.valoracion.fecha) },
+      takenAt: p.createdAt.toISOString(),
+      archivedAt: (p.archivedAt as Date).toISOString(),
+      archivedByName: p.archivedById ? names.get(p.archivedById) ?? null : null,
+    })),
+    ...itemPhotos.map((p) => ({
+      filePath: p.filePath,
+      tag: p.tag,
+      source: {
+        kind: 'treatment' as const,
+        treatmentTypeName: p.treatmentItem.treatmentType.name,
+        fecha: day(p.treatmentItem.treatment.fecha),
+      },
+      takenAt: p.createdAt.toISOString(),
+      archivedAt: (p.archivedAt as Date).toISOString(),
+      archivedByName: p.archivedById ? names.get(p.archivedById) ?? null : null,
+    })),
+  ];
+  return rows.sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+}
+
 export async function gatherExportData(
   patientId: string,
   modules: ExportModulesSelection
@@ -221,11 +283,12 @@ export async function gatherExportData(
   // selected — then projected into the two independent outputs below.
   const needsTreatmentData = modules.treatments || modules.consents;
 
-  const [historiaClinica, valoraciones, treatmentData, settings] = await Promise.all([
+  const [historiaClinica, valoraciones, treatmentData, settings, retiredPhotos] = await Promise.all([
     modules.historiaClinica ? gatherHistoriaClinica(patientId) : Promise.resolve(null),
     modules.valoracion ? gatherValoraciones(patientId) : Promise.resolve(null),
     needsTreatmentData ? gatherTreatments(patientId) : Promise.resolve(null),
     getClinicSettings(),
+    modules.retiredPhotos ? gatherRetiredPhotos(patientId) : Promise.resolve(null),
   ]);
 
   return {
@@ -239,6 +302,7 @@ export async function gatherExportData(
     valoraciones,
     treatments: modules.treatments ? treatmentData : null,
     consents: modules.consents ? collectConsents(treatmentData) : null,
+    retiredPhotos,
     clinicName: settings?.clinicName ?? '',
     doctorSignaturePath: settings?.doctorSignaturePath ?? null,
     clinicLogoPath: settings?.clinicLogoPath ?? null,

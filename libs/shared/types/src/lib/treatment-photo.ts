@@ -7,6 +7,10 @@ export interface TreatmentItemPhoto {
   tag: PhotoTag;
   filePath: string;
   createdAt: string;
+  /** Set when the photo was retired from the gallery (kept, never deleted). */
+  archivedAt?: string | null;
+  /** Who retired it; only on the "retired photos" list. */
+  archivedByName?: string | null;
 }
 
 /** One patient-timeline photo sourced from a Treatment item, with enough denormalized context

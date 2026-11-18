@@ -22,7 +22,7 @@ import {
 import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
 import { ValoracionService } from '../valoracion/valoracion.service';
 import { ActivePatientStore } from './active-patient.store';
-import { DeletePatientDialogComponent } from './delete-patient-dialog.component';
+import { ArchivePatientDialogComponent } from './archive-patient-dialog.component';
 import {
   NotificationContactDialogComponent,
   type NotificationContactDialogData,
@@ -79,13 +79,16 @@ const HISTORIA_STEPS: { key: string; fields: (keyof HistoriaClinica)[] }[] = [
           }
         </div>
         <div class="actions">
+          <!-- An archived record is read-only: it can be read and exported, nothing new is registered. -->
           <a *appHasPermission="'export:view'" mat-stroked-button routerLink="../export">
             <mat-icon>picture_as_pdf</mat-icon>{{ 'patientOverview.export' | transloco }}
           </a>
+          @if (!archived()) {
           <button *appHasPermission="'appointments:create'" mat-stroked-button type="button" (click)="schedule()">
             <mat-icon>event_available</mat-icon>{{ 'historiaClinica.scheduleAppointment' | transloco }}
           </button>
-          @if (canCreateValoracion || canViewTreatments) {
+          }
+          @if (!archived() && (canCreateValoracion || canViewTreatments)) {
             <button mat-flat-button color="primary" type="button" [matMenuTriggerFor]="addMenu">
               <mat-icon>add</mat-icon>{{ 'patientOverview.register' | transloco }}
             </button>
@@ -102,7 +105,7 @@ const HISTORIA_STEPS: { key: string; fields: (keyof HistoriaClinica)[] }[] = [
               }
             </mat-menu>
           }
-          @if (canDelete || canEditPatient) {
+          @if (!archived() && (canDelete || canEditPatient)) {
             <button mat-icon-button type="button" [matMenuTriggerFor]="moreMenu" [attr.aria-label]="'patientOverview.more' | transloco">
               <mat-icon>more_vert</mat-icon>
             </button>
@@ -113,8 +116,8 @@ const HISTORIA_STEPS: { key: string; fields: (keyof HistoriaClinica)[] }[] = [
                 </button>
               }
               @if (canDelete) {
-                <button mat-menu-item type="button" class="danger" (click)="deletePatient()">
-                  <mat-icon>delete</mat-icon>{{ 'patientDrive.delete.action' | transloco }}
+                <button mat-menu-item type="button" (click)="archivePatient()">
+                  <mat-icon>inventory_2</mat-icon>{{ 'patientDrive.archive.action' | transloco }}
                 </button>
               }
             </mat-menu>
@@ -731,6 +734,7 @@ export class PatientOverviewComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
 
   protected readonly patient = this.activePatient.patient;
+  protected readonly archived = computed(() => !!this.activePatient.patient()?.archivedAt);
   protected readonly canViewHistoria = this.auth.hasPermission('historia-clinica', 'view');
   protected readonly canCreateValoracion = this.auth.hasPermission('valoracion', 'create');
   protected readonly canViewTreatments = this.auth.hasPermission('treatments', 'view');
@@ -870,20 +874,22 @@ export class PatientOverviewComponent implements OnInit {
       });
   }
 
-  protected async deletePatient(): Promise<void> {
+  /** Archives instead of deleting (NOM-004-SSA3-2012 5.4); the record stays reachable under "Archivados". */
+  protected async archivePatient(): Promise<void> {
     const p = this.patient();
     if (!p) return;
-    const confirmed = await firstValueFrom(
+    const reason = await firstValueFrom(
       this.dialog
-        .open<DeletePatientDialogComponent, { fullName: string }, boolean>(DeletePatientDialogComponent, {
+        .open<ArchivePatientDialogComponent, { fullName: string }, string | null>(ArchivePatientDialogComponent, {
           data: { fullName: p.fullName },
+          width: '520px',
+          maxWidth: '95vw',
         })
         .afterClosed()
     );
-    if (!confirmed) return;
-    await this.patientsService.delete(p.id);
-    // The active patient no longer exists; drop it so the banner and guarded routes stop pointing
-    // at a record the server would answer 404 for.
+    if (!reason) return;
+    await this.patientsService.archive(p.id, reason);
+    // Off the work lists now: leave the record and let the search show where it went.
     this.activePatient.clear();
     await this.router.navigateByUrl('/pacientes');
   }

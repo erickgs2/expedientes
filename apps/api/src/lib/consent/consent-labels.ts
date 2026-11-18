@@ -23,6 +23,7 @@ export const CONSENT_LABELS: Record<'es' | 'en', ConsentDocumentLabels> = {
     signatures: {
       patient: 'PACIENTE',
       witness: 'TESTIGO',
+      secondWitness: 'TESTIGO',
       doctor: 'MEDICO',
     },
   },
@@ -42,7 +43,19 @@ export const CONSENT_LABELS: Record<'es' | 'en', ConsentDocumentLabels> = {
     signatures: {
       patient: 'PATIENT',
       witness: 'WITNESS',
+      secondWitness: 'WITNESS',
       doctor: 'DOCTOR',
     },
   },
 };
+
+/**
+ * NOM-004-SSA3-2012 10.1.1 lists, among a consent letter's minimum content, the authorization to
+ * attend contingencies and emergencies derived from the authorized act. Printed on every new letter
+ * after the declarations and frozen onto the Consent row when it is signed; it is not part of the
+ * editable declarations, so no clinic can remove it by editing its text.
+ *
+ * Draft wording pending legal review.
+ */
+export const CONSENT_CONTINGENCY_CLAUSE =
+  'ASIMISMO, AUTORIZO A {{doctorTitle}} {{doctorName}} Y A SU EQUIPO PARA ATENDER LAS CONTINGENCIAS Y URGENCIAS QUE SE DERIVEN DEL ACTO AUTORIZADO, CONFORME A SU CRITERIO PROFESIONAL Y EN BENEFICIO DE MI SALUD.';

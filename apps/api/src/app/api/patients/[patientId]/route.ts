@@ -4,9 +4,10 @@ import {
   updatePatient,
   type UpdatePatientData,
 } from '../../../../lib/patients/patient-search';
-import { deletePatient } from '../../../../lib/patients/patient-delete';
+import { archivePatient, assertPatientWritable, normalizeArchiveReason } from '../../../../lib/patients/patient-archive';
 import { checkContactLink, CONTACT_LINK_MESSAGES } from '../../../../lib/patients/notification-contact';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
+import { prisma } from '../../../../lib/prisma/client';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
@@ -27,7 +28,12 @@ export const GET = withApiErrors(
       patientId: patient.id,
     });
 
-    return NextResponse.json({ patient });
+    // Who archived it, by name, for the band on the archived record.
+    const archivedBy = patient.archivedById
+      ? await prisma.user.findUnique({ where: { id: patient.archivedById }, select: { fullName: true } })
+      : null;
+
+    return NextResponse.json({ patient: { ...patient, archivedByName: archivedBy?.fullName ?? null } });
   }
 );
 
@@ -60,6 +66,7 @@ export const PATCH = withApiErrors(
 
     const current = await getPatientById(patientId);
     if (!current) return apiError('NOT_FOUND', 'Patient not found', 404);
+    await assertPatientWritable(patientId);
 
     const data: UpdatePatientData = {};
 
@@ -125,26 +132,34 @@ export const PATCH = withApiErrors(
 );
 
 /**
- * Permanently deletes the patient and all of their records and uploaded files. Irreversible, so it
- * has its own `patients:delete` permission rather than riding on `edit`. The audit entry is written
- * after the delete and outlives it — `AuditLog` keeps the patient id with no foreign key.
+ * Archives the patient (NOM-004-SSA3-2012 5.4: the record is kept at least five years after the last
+ * care, so nothing is deleted here). Keeps the `patients:delete` permission it always had: archiving
+ * takes the patient off every work list, which is what deleting used to be for. Needs a reason, which
+ * is shown on the archived record and kept in the audit log. Future appointments are cancelled.
  */
 export const DELETE = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'patients', 'delete');
 
     const { patientId } = await params;
-    const deleted = await deletePatient(patientId);
-    if (!deleted) return apiError('NOT_FOUND', 'Patient not found', 404);
+    const body = (await request.json().catch(() => ({}))) as { reason?: unknown };
+    const reason = normalizeArchiveReason(body.reason);
+    if (!reason) return apiError('INVALID_INPUT', 'reason is required (up to 500 characters)', 400);
 
-    await writeAuditLogSafe({
-      userId,
-      action: 'delete',
-      entity: 'Patient',
-      entityId: patientId,
-      patientId,
-    });
+    const result = await archivePatient(patientId, userId, reason);
+    if (!result) return apiError('NOT_FOUND', 'Patient not found', 404);
 
-    return new NextResponse(null, { status: 204 });
+    if (!result.alreadyArchived) {
+      await writeAuditLogSafe({
+        userId,
+        action: 'archive',
+        entity: 'Patient',
+        entityId: patientId,
+        patientId,
+        metadata: { reason, cancelledAppointments: result.cancelledAppointments },
+      });
+    }
+
+    return NextResponse.json({ archived: true, cancelledAppointments: result.cancelledAppointments });
   }
 );

@@ -74,32 +74,74 @@ import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
             <mat-label>{{ 'treatments.patientIdentification' | transloco }}</mat-label>
             <input matInput formControlName="patientIdentification" />
           </mat-form-field>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
-            <input matInput formControlName="witnessName" />
-          </mat-form-field>
         </form>
         <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
-        <h3>{{ 'treatments.patientSignature' | transloco }}</h3>
-        <app-signature-pad #patientPad [disabled]="signing()"></app-signature-pad>
-        @if (witnessNameValue()) {
-          <h3>{{ 'treatments.witnessSignature' | transloco }}</h3>
-          <app-signature-pad #witnessPad [disabled]="signing()"></app-signature-pad>
-        }
+
+        <!-- NOM-004-SSA3-2012 10.1.1: the patient, two witnesses and the physician sign. The
+             physician's signature comes from the clinic settings; the other three are taken here. -->
+        <section class="signatures" [attr.aria-label]="'treatments.signatures' | transloco">
+          <div class="signer">
+            <h3>{{ 'treatments.patientSignature' | transloco }}</h3>
+            <app-signature-pad #patientPad [disabled]="signing()"></app-signature-pad>
+          </div>
+
+          <div class="signer" [formGroup]="form">
+            <h3>{{ 'treatments.firstWitness' | transloco }}</h3>
+            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+              <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
+              <input matInput formControlName="witnessName" />
+            </mat-form-field>
+            <app-signature-pad #witnessPad [disabled]="signing()"></app-signature-pad>
+          </div>
+
+          <div class="signer" [formGroup]="form">
+            <h3>{{ 'treatments.secondWitness' | transloco }}</h3>
+            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+              <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
+              <input matInput formControlName="secondWitnessName" />
+            </mat-form-field>
+            @if (storedSecondWitness(); as stored) {
+              <div class="witness-source" role="radiogroup" [attr.aria-label]="'treatments.secondWitnessSource' | transloco">
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="useStoredSecondWitness()"
+                  [class.on]="useStoredSecondWitness()"
+                  (click)="useStoredSecondWitness.set(true)"
+                >
+                  {{ 'treatments.useStoredSignature' | transloco: { name: stored.name } }}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  [attr.aria-checked]="!useStoredSecondWitness()"
+                  [class.on]="!useStoredSecondWitness()"
+                  (click)="useStoredSecondWitness.set(false)"
+                >
+                  {{ 'treatments.signHere' | transloco }}
+                </button>
+              </div>
+            }
+            @if (useStoredSecondWitness() && storedSecondWitness()) {
+              <p class="stored-note">{{ 'treatments.storedSignatureNote' | transloco }}</p>
+            } @else {
+              <app-signature-pad #secondWitnessPad [disabled]="signing()"></app-signature-pad>
+            }
+          </div>
+        </section>
+
         <div class="signature-actions">
           <button
             mat-flat-button
             color="primary"
-            [disabled]="
-              form.invalid ||
-              signing() ||
-              !patientPad.hasStrokes() ||
-              (!!witnessNameValue() && !witnessPad?.hasStrokes())
-            "
+            [disabled]="form.invalid || signing() || !patientPad.hasStrokes() || !witnessPad.hasStrokes() || !secondWitnessReady()"
             (click)="sign()"
           >
             {{ 'treatments.signAction' | transloco }}
           </button>
+          @if (form.invalid || !witnessPad.hasStrokes() || !secondWitnessReady()) {
+            <span class="missing">{{ 'treatments.witnessesRequired' | transloco }}</span>
+          }
         </div>
       } @else {
         <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
@@ -148,7 +190,64 @@ import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
         color: var(--mat-sys-on-surface-variant);
       }
       h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .signatures {
+        display: grid;
+        gap: 16px;
         margin-top: 24px;
+        max-width: 720px;
+      }
+      /* One plate per signer, each with its own pad: who signs where reads at a glance. */
+      .signer {
+        padding: 16px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+        background: var(--mat-sys-surface);
+      }
+      .signer mat-form-field {
+        margin-bottom: 8px;
+      }
+      .witness-source {
+        display: inline-grid;
+        grid-auto-flow: column;
+        margin-bottom: 12px;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: 22px;
+        overflow: hidden;
+      }
+      .witness-source button {
+        min-height: 40px;
+        padding: 0 16px;
+        border: 0;
+        background: var(--mat-sys-surface);
+        color: var(--mat-sys-on-surface);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .witness-source button + button {
+        border-left: 1px solid var(--plate-line-strong);
+      }
+      .witness-source button.on {
+        background: var(--mat-sys-inverse-surface);
+        color: var(--mat-sys-inverse-on-surface);
+      }
+      .stored-note {
+        margin: 0;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .signature-actions {
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .missing {
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
       }
     `,
   ],
@@ -176,20 +275,32 @@ export class ConsentSignComponent implements OnInit {
   protected readonly form = this.fb.group({
     place: ['', Validators.required],
     patientIdentification: ['', Validators.required],
-    witnessName: [''],
+    // NOM-004-SSA3-2012 10.1.1: two witnesses, both named.
+    witnessName: ['', Validators.required],
+    secondWitnessName: ['', Validators.required],
   });
-
-  private readonly witnessNameRaw = toSignal(this.form.controls.witnessName.valueChanges, {
-    initialValue: this.form.controls.witnessName.value,
-  });
-  protected readonly witnessNameValue = () => (this.witnessNameRaw() ?? '').trim();
 
   @ViewChild('patientPad') private patientPad?: SignaturePadComponent;
-  // Not private: the witness pad only exists inside a conditional template block (rendered only
-  // when a witness name is entered), so the template's own `#witnessPad` local reference is out
-  // of scope by the time the sign button's [disabled] expression reads it further down — that
-  // expression resolves to this class member instead, which must therefore be template-accessible.
-  @ViewChild('witnessPad') protected witnessPad?: SignaturePadComponent;
+  @ViewChild('witnessPad') private witnessPad?: SignaturePadComponent;
+  // Not private: this pad lives inside a conditional block (absent while the clinic's stored
+  // signature is chosen), so the template reads it through this member.
+  @ViewChild('secondWitnessPad') protected secondWitnessPad?: SignaturePadComponent;
+
+  /** The clinic's usual second witness with a stored signature, offered instead of signing here. */
+  protected readonly storedSecondWitness = signal<{ name: string } | null>(null);
+  protected readonly useStoredSecondWitness = signal(false);
+  private readonly secondWitnessNameRaw = toSignal(this.form.controls.secondWitnessName.valueChanges, {
+    initialValue: this.form.controls.secondWitnessName.value,
+  });
+
+  /** The second witness has a signature: the stored one (for its own name), or strokes on the pad. */
+  protected secondWitnessReady(): boolean {
+    const stored = this.storedSecondWitness();
+    if (this.useStoredSecondWitness() && stored) {
+      return (this.secondWitnessNameRaw() ?? '').trim() === stored.name;
+    }
+    return !!this.secondWitnessPad?.hasStrokes();
+  }
 
   private itemId = '';
 
@@ -218,7 +329,12 @@ export class ConsentSignComponent implements OnInit {
       this.form.patchValue({
         place: item.defaultPlace,
         patientIdentification: item.patientDocumentId,
+        secondWitnessName: item.defaultSecondWitness?.name ?? '',
       });
+      if (item.defaultSecondWitness?.hasSignature) {
+        this.storedSecondWitness.set({ name: item.defaultSecondWitness.name });
+        this.useStoredSecondWitness.set(true);
+      }
     } catch (error) {
       console.error('Failed to load treatment item', error);
       this.loadFailed.set(true);
@@ -240,31 +356,34 @@ export class ConsentSignComponent implements OnInit {
     if (consent.witnessSignatureImagePath) {
       urls.witness = `/api/files/${consent.witnessSignatureImagePath}`;
     }
+    if (consent.secondWitnessSignatureImagePath) {
+      urls.secondWitness = `/api/files/${consent.secondWitnessSignatureImagePath}`;
+    }
     return urls;
   };
 
   protected async sign(): Promise<void> {
-    if (!this.patientPad || this.form.invalid) return;
+    if (!this.patientPad || !this.witnessPad || this.form.invalid || !this.secondWitnessReady()) return;
     const item = this.item();
     if (!item) return;
-    const witnessName = this.witnessNameValue();
-    if (witnessName && !this.witnessPad) return;
     this.signing.set(true);
     try {
       const patientSignature = await this.patientPad.toJpegBlob();
-      if (!patientSignature) return;
-      let witnessSignature: Blob | null = null;
-      if (witnessName) {
-        witnessSignature = (await this.witnessPad?.toJpegBlob()) ?? null;
-        if (!witnessSignature) return;
-      }
-      const { place, patientIdentification } = this.form.getRawValue();
+      const witnessSignature = await this.witnessPad.toJpegBlob();
+      if (!patientSignature || !witnessSignature) return;
+      // Stored signature chosen and the name still matches it: let the API copy it.
+      const useStored = this.useStoredSecondWitness() && !!this.storedSecondWitness();
+      const secondWitnessSignature = useStored ? null : ((await this.secondWitnessPad?.toJpegBlob()) ?? null);
+      if (!useStored && !secondWitnessSignature) return;
+      const { place, patientIdentification, witnessName, secondWitnessName } = this.form.getRawValue();
       const result = await this.consentService.sign(this.itemId, {
         place: place ?? '',
         patientIdentification: patientIdentification ?? '',
-        witnessName: witnessName || null,
+        witnessName: (witnessName ?? '').trim(),
         patientSignature,
         witnessSignature,
+        secondWitnessName: (secondWitnessName ?? '').trim(),
+        secondWitnessSignature,
         templateUpdatedAt: item.consentTemplateUpdatedAt,
         settingsUpdatedAt: item.settingsUpdatedAt ?? '',
       });

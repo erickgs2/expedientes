@@ -198,6 +198,8 @@ async function sweepCurrentClinic(): Promise<void> {
     where: {
       reminderSentAt: null,
       status: { not: 'CANCELLED' },
+      // Archiving cancels future appointments; this keeps an archived patient silent regardless.
+      patient: { archivedAt: null },
       startTime: { gt: now, lte: new Date(now.getTime() + REMINDER_WINDOW_MS) },
     },
   });

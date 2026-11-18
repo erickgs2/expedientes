@@ -40,6 +40,7 @@ export async function getPatientPreview(
       phone: true,
       documentId: true,
       createdAt: true,
+      archivedAt: true,
       contactPatientId: true,
       contactPatient: { select: { id: true, fullName: true, phone: true } },
     },

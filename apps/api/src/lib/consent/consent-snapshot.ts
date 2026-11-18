@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import type { ConsentSection } from '@expedientes/shared-types';
 import { interpolate } from './build-consent-document';
+import { CONSENT_CONTINGENCY_CLAUSE } from './consent-labels';
 
 export interface ConsentSnapshotSettings {
   clinicName: string;
@@ -19,6 +20,7 @@ export interface ConsentSnapshotInput {
   /** Calendar date in `YYYY-MM-DD`. */
   signedDate: string;
   witnessName: string | null;
+  secondWitnessName?: string | null;
   sections: ConsentSection[];
 }
 
@@ -50,6 +52,8 @@ export function buildConsentSnapshot(input: ConsentSnapshotInput) {
     // `ConsentSection` is `{ key, body }` — plain JSON, safe to hand to a Json column.
     sections: input.sections as unknown as Prisma.InputJsonValue,
     witnessName: input.witnessName,
+    secondWitnessName: input.secondWitnessName ?? null,
+    contingencyClauseSnapshot: interpolate(CONSENT_CONTINGENCY_CLAUSE, values),
   } satisfies Omit<
     Prisma.ConsentUncheckedCreateInput,
     | 'treatmentItemId'
@@ -57,5 +61,6 @@ export function buildConsentSnapshot(input: ConsentSnapshotInput) {
     | 'scanId'
     | 'patientSignatureImagePath'
     | 'witnessSignatureImagePath'
+    | 'secondWitnessSignatureImagePath'
   >;
 }

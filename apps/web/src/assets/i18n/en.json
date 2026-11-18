@@ -133,7 +133,8 @@
       "empty": {
         "today": "No patients have an appointment today.",
         "recent": "You haven't opened any records yet.",
-        "all": "No patients registered yet."
+        "all": "No patients registered yet.",
+        "archived": "No archived patients."
       },
       "enterHint": "Type to search every record. Enter opens the first result; double-click opens the record.",
       "previewLabel": "Record preview",
@@ -168,7 +169,38 @@
       "export": "Export PDF",
       "openedAt": "Opened {{when}}",
       "todayAt": "Today {{time}}",
-      "createFailed": "Couldn't create the patient. Please try again."
+      "createFailed": "Couldn't create the patient. Please try again.",
+      "tabArchived": "Archived",
+      "archivedOn": "Archived on {{date}}",
+      "searchingArchived": "Searching archived patients",
+      "backToActive": "Back to active",
+      "archivedMatches": "Archived patients that match: {{n}}",
+      "showArchived": "Show archived"
+    },
+    "archive": {
+      "action": "Archive patient",
+      "title": "Archive {{name}}",
+      "kept": "The whole record is kept: clinical history, assessments, photos, treatments and consents.",
+      "lists": "They leave Today, the calendar and searches, and stay under Patients › Archived, read-only.",
+      "appointments": "Their future appointments are cancelled and no reminders go out.",
+      "restore": "They can be restored at any time.",
+      "reason": "Reason",
+      "reasonHint": "For example: moved away, finished treatment, duplicate record",
+      "confirm": "Archive"
+    },
+    "archived": {
+      "title": "Archived record",
+      "when": "· {{date}} · by {{name}}",
+      "reason": "Reason: {{reason}}",
+      "readOnly": "Read-only: it can be viewed and exported. Restore it to record anything new.",
+      "restore": "Restore"
+    },
+    "purge": {
+      "action": "Purge record…",
+      "title": "Purge the record for good",
+      "message": "{{name}}'s record and all its files will be deleted for good. The last care was on {{date}}, more than 5 years ago. This cannot be undone; only the audit log entry remains.",
+      "typeName": "Type the patient's full name",
+      "confirm": "Purge for good"
     }
   },
   "historiaClinica": {
@@ -312,7 +344,13 @@
       "confirmDelete": "Delete this photo? This cannot be undone.",
       "empty": "No photos yet",
       "uploadPhotos": "Upload photos",
-      "tagLabel": "Tag for the next photos"
+      "tagLabel": "Tag for the next photos",
+      "retire": "Remove from gallery",
+      "confirmRetire": "Remove this photo from the gallery? It stays in the record and can be put back.",
+      "retiredCount": "Retired photos: {{n}}",
+      "retiredNote": "Still part of the record; they are left out of the gallery and comparisons.",
+      "retiredOn": "Retired on {{date}} · by {{name}}",
+      "putBack": "Put back in gallery"
     },
     "copyFromHistoria": "Copy from clinical history",
     "copyFromHistoriaHelp": "Replaces both fields with what the clinical history records.",
@@ -525,7 +563,14 @@
       "note": "Updates as you edit. Consents always print in Spanish."
     },
     "unsaved": "Unsaved changes",
-    "allSaved": "All saved"
+    "allSaved": "All saved",
+    "witness": {
+      "title": "Second consent witness",
+      "help": "NOM-004 asks for two witnesses on every consent. If the same staff member usually signs, record them here and they are filled in at signing.",
+      "name": "Second witness name",
+      "signature": "Second witness's signature",
+      "signatureHelp": "Copied onto each consent that uses it; changing it later never alters signed ones."
+    }
   },
   "treatments": {
     "listTitle": "Treatments",
@@ -587,7 +632,17 @@
     "scanTakePhoto": "Take photo",
     "scanChooseImages": "Choose images",
     "scanTooManyPages": "A scan can have at most 20 pages.",
-    "scanImageUnreadable": "One of the images could not be read."
+    "scanImageUnreadable": "One of the images could not be read.",
+    "signatures": "Signatures",
+    "firstWitness": "Witness 1",
+    "secondWitness": "Witness 2",
+    "firstWitnessName": "Witness 1 name",
+    "secondWitnessName": "Witness 2 name",
+    "secondWitnessSource": "Witness 2's signature",
+    "useStoredSignature": "Use {{name}}'s stored signature",
+    "signHere": "Sign here",
+    "storedSignatureNote": "The signature stored in the clinic settings will be used. If you change the name, sign here.",
+    "witnessesRequired": "The patient and two witnesses sign (NOM-004)."
   },
   "appointments": {
     "calendarTitle": "Calendar",
@@ -641,11 +696,16 @@
       "historiaClinica": "Medical History",
       "valoracion": "Assessment",
       "treatments": "Treatments",
-      "consents": "Consents"
+      "consents": "Consents",
+      "retiredPhotos": "Photos retired from the gallery"
     },
     "generate": "Generate PDF",
     "generating": "Generating...",
-    "generateFailed": "Couldn't generate the PDF. Please try again."
+    "generateFailed": "Couldn't generate the PDF. Please try again.",
+    "optional": {
+      "title": "Optional annexes",
+      "retiredPhotosHint": "Added at the end with who retired them and when."
+    }
   },
   "workspace": {
     "tabsLabel": "Patient sections",
@@ -1090,5 +1150,13 @@
     "back": "Back to the previous page",
     "plate": "Plate",
     "illustration": "A blank face map with the mark outside the face"
+  },
+  "apiErrors": {
+    "PATIENT_ARCHIVED": "This patient is archived. Restore them to make changes.",
+    "WITNESSES_REQUIRED": "The consent needs the name and signature of two witnesses.",
+    "RETENTION_PERIOD": "The record must be kept 5 years after the last care.",
+    "OWNER_ONLY": "Only the clinic owner can purge a record.",
+    "NOT_ARCHIVED": "Archive the patient before purging the record.",
+    "CONFIRMATION_MISMATCH": "The name does not match the patient's."
   }
 }

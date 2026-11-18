@@ -35,7 +35,7 @@ export async function getRecentPatients(userId: string, limit: number): Promise<
   );
   if (latest.length === 0) return [];
   const patients = await prisma.patient.findMany({
-    where: { id: { in: latest.map((l) => l.patientId) } },
+    where: { id: { in: latest.map((l) => l.patientId) }, archivedAt: null },
     select: { id: true, fullName: true },
   });
   const names = new Map(patients.map((p) => [p.id, p.fullName]));

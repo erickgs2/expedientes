@@ -9,5 +9,10 @@ import type { PhotoRecord, PhotoTag } from '@expedientes/shared-types';
 export interface PhotoDataSource {
   list(): Promise<PhotoRecord[]>;
   upload(blob: Blob, tag: PhotoTag): Promise<PhotoRecord>;
+  /** Retires the photo from the gallery (NOM-004-SSA3-2012: nothing clinical is deleted). */
   delete(photoId: string): Promise<void>;
+  /** Photos retired from this gallery, with who retired them. */
+  listRetired(): Promise<PhotoRecord[]>;
+  /** Puts a retired photo back in the gallery. */
+  restore(photoId: string): Promise<void>;
 }

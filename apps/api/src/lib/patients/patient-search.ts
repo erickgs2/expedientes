@@ -17,13 +17,22 @@ export function buildPatientSearchWhere(query: string): Prisma.PatientWhereInput
 /** The companion shown beside a patient whose notices go to someone else's phone. */
 const CONTACT_SELECT = { select: { id: true, fullName: true, phone: true } } as const;
 
-export async function searchPatients(query: string) {
+/**
+ * Active patients by default. `archived: true` lists only the archived ones (the "Archivados" filter);
+ * an active search also reports how many archived patients match, so the screen can point to them.
+ */
+export async function searchPatients(query: string, options: { archived?: boolean } = {}) {
   return prisma.patient.findMany({
-    where: buildPatientSearchWhere(query),
+    where: { ...buildPatientSearchWhere(query), archivedAt: options.archived ? { not: null } : null },
     orderBy: { fullName: 'asc' },
     take: 20,
     include: { contactPatient: CONTACT_SELECT },
   });
+}
+
+export async function countArchivedMatches(query: string): Promise<number> {
+  if (!query.trim()) return 0;
+  return prisma.patient.count({ where: { ...buildPatientSearchWhere(query), archivedAt: { not: null } } });
 }
 
 export interface CreatePatientData {
