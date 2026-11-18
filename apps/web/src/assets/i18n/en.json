@@ -16,7 +16,8 @@
       "today": "Today",
       "admin": "Administration",
       "treatmentCatalog": "Treatment catalog",
-      "plan": "Plan"
+      "plan": "Plan",
+      "premium": "Explore Premium"
     }
   },
   "common": {
@@ -972,6 +973,26 @@
       "cardDone": "Payment confirmed. Your clinic now has Premium.",
       "oxxo": "Your OXXO voucher is ready. Pay it at any OXXO within {{days}} days; Premium starts when OXXO confirms the payment, usually the next business day. We will email you.",
       "canceled": "The payment was not completed. You can try again whenever you want."
+    },
+    "unlimitedShort": "Unlimited",
+    "compareDialog": {
+      "title": "Free or Premium",
+      "lead": "What each plan includes. You can move to Premium any time and your data stays the same.",
+      "yours": "Your current plan",
+      "included": "Included",
+      "notIncluded": "Not included",
+      "howToPay": "Pay by card, which renews on its own, or at OXXO per month or per year.",
+      "seePlans": "See plans",
+      "rows": {
+        "users": "Users",
+        "treatmentTypes": "Treatment types",
+        "storage": "Space for photos and documents",
+        "patients": "Patients",
+        "pdf": "Patient record PDF export",
+        "whatsapp": "WhatsApp reminders",
+        "roles": "Custom roles",
+        "unbranded": "PDF without the MedCloud footer"
+      }
     }
   },
   "legal": {
@@ -1057,5 +1078,17 @@
       "ACCOUNT_INACTIVE": "Your account is deactivated.",
       "UNKNOWN": "Something went wrong. Try again."
     }
+  },
+  "notFound": {
+    "title": "This page isn't on the map",
+    "lead": "We couldn't find the address",
+    "hint": "The link may be incomplete, or the page may have moved. Your records are not affected.",
+    "toToday": "Go to Today",
+    "toPatients": "Find a patient",
+    "toLogin": "Sign in",
+    "toPortal": "Go to the portal",
+    "back": "Back to the previous page",
+    "plate": "Plate",
+    "illustration": "A blank face map with the mark outside the face"
   }
 }

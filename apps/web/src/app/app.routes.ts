@@ -238,4 +238,7 @@ export const appRoutes: Routes = [
   legacy('treatments/items/:itemId/products', (p) => ['treatments', 'items', p['itemId'], 'products']),
   legacy('treatments/:id', (p) => ['treatments', p['id']]),
   legacy('export', () => ['export']),
+
+  // Last: any address none of the above knows.
+  { path: '**', loadComponent: () => import('./not-found/not-found.component').then((m) => m.NotFoundComponent) },
 ];

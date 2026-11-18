@@ -141,6 +141,12 @@ Data marks are the one place the plate admits more hues: `--chart-series-1..3` (
 ### Platform portal (`/plataforma`)
 The operator's own surface, Operate mode, same world: a Proof Grey side navigation whose current page carries the rose dot, a page title in Display, summary counts in one hairline-divided plate (not a row of cards), and dense hairline tables with tabular numerals. Loading shows skeleton blocks in the shape of the content. Destructive actions (suspend, revoke) confirm in a dialog that asks for the reason and keeps Cancel focused.
 
+### Not found (404)
+A blank face-map plate (registration crosses, dashed face with its midline and thirds, "Lám. 404" in tabular numerals) whose rose mark sits off the face, joined by a dotted leader to the empty spot where it belongs. The mark settles in once with an ease-out; nothing moves under reduced motion. Copy says what happened and offers the way back that fits the visitor: Today and Patients when signed in, sign-in otherwise, the portal under `/plataforma`.
+
+### Plan comparison dialog
+Opened from "Conoce Premium" in the header (only on Free, only for whoever manages the plan). One hairline table, features as rows and Free/Premium as columns; Premium's column sits on Proof Grey and its differing values are set in 600. Included is an ink check, not included a muted dash, both labelled for screen readers. Prices load as skeletons. It informs and leads to the Plan screen; buying stays there.
+
 ## Do's and Don'ts
 
 ### Do:
