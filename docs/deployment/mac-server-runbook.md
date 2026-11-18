@@ -198,7 +198,7 @@ Usa `nano` u otro editor: si pones el token en un comando, queda en el historial
 Primero en **modo de prueba** (claves `sk_test_`), y en vivo solo cuando todo funcione.
 
 1. En [dashboard.stripe.com](https://dashboard.stripe.com), cuenta de México con la verificación de negocio completa.
-2. **Settings → Payment methods**: activa **OXXO** (tarjeta ya viene activa).
+2. **Settings → Payment methods**: activa **OXXO** (tarjeta ya viene activa). El API crea solo una configuración "MedCloud: solo OXXO" para el botón de OXXO; no la borres.
 3. **Settings → Billing → Customer portal**: actívalo; permite actualizar tarjeta, ver facturas y cancelar al final del periodo.
 4. **Developers → Webhooks → Add endpoint**:
    - URL: `https://medcloud.intech-erp.com/api/stripe/webhook`
