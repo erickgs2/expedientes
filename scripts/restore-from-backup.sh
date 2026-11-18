@@ -99,8 +99,10 @@ fi
 # ---------------------------------------------------------------- 2. preconditions on this server
 [ -f "$COMPOSE_FILE" ] || fail "corre el script desde el checkout del repo (no encuentro $COMPOSE_FILE)"
 [ -r "$ENV_FILE" ] || fail "no puedo leer $ENV_FILE"
-set -a; . "$ENV_FILE"; set +a
-: "${POSTGRES_USER:?POSTGRES_USER falta en $ENV_FILE}"
+# Only the value needed here is read. The file is not sourced: it is written for Docker Compose,
+# where `NAME=Erick Garcia` is valid but a shell would run "Garcia" as a command.
+POSTGRES_USER=$(sed -n 's/^[[:space:]]*POSTGRES_USER[[:space:]]*=[[:space:]]*//p' "$ENV_FILE" | tail -1 | sed "s/^[\"']//; s/[\"'][[:space:]]*$//")
+[ -n "$POSTGRES_USER" ] || fail "POSTGRES_USER falta en $ENV_FILE"
 
 if systemctl is-active --quiet 'actions.runner.*' 2>/dev/null; then
   fail "el runner de GitHub está activo: un deploy a mitad de la restauración la rompería.
