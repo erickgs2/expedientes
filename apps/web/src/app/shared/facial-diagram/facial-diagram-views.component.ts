@@ -182,8 +182,6 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   protected canEdit = false;
   protected readonly fullViews = VIEW_ORDER;
   protected readonly closeUps = CLOSE_UP_VIEWS;
-  /** Views with a rendered preview: the full ones always, close-ups once they hold data. */
-  protected readonly shownViews = signal<DiagramView[]>(VIEW_ORDER);
   /** Annotation count per view, refreshed with the previews. */
   private readonly counts = signal<Partial<Record<DiagramView, number>>>({});
 
@@ -223,11 +221,7 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
     return `${width} / ${height}`;
   }
 
-  private updateShownViews(): void {
-    this.shownViews.set([
-      ...VIEW_ORDER,
-      ...CLOSE_UP_VIEWS.filter((view) => this.dataFor(view) !== null),
-    ]);
+  private updateCounts(): void {
     this.counts.set(
       Object.fromEntries(
         ALL_VIEWS.map((view) => {
@@ -254,8 +248,10 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   }
 
   private async renderAllPreviews(): Promise<void> {
-    this.updateShownViews();
-    await Promise.all(this.shownViews().map((view) => this.renderPreview(view)));
+    this.updateCounts();
+    // Every view gets a preview, close-ups included even while empty: the editor's view picker
+    // shows these as thumbnails, and a blank tile gives no hint of which part of the face it is.
+    await Promise.all(ALL_VIEWS.map((view) => this.renderPreview(view)));
   }
 
   private async renderPreview(view: DiagramView): Promise<void> {
@@ -299,7 +295,7 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
       for (const saved of savedViews) {
         this.currentData[saved] = result.views[saved] ?? null;
       }
-      this.updateShownViews();
+      this.updateCounts();
       // The full face summarizes the close-ups, so it is redrawn after any save.
       for (const view of new Set<DiagramView>([...savedViews, 'FRONT'])) {
         void this.renderPreview(view);
