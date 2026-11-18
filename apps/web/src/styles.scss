@@ -102,6 +102,14 @@ h3 {
   margin: 20px 0 8px;
 }
 
+// Plain links take the mark colour in both themes. Without this they fall back to the browser's
+// own blue and visited purple, which nearly disappear on the dark plate (e.g. the step links of a
+// treatment visit). `:where()` keeps the rule at zero specificity, so any component that styles its
+// links (Material buttons, the banner, cards that inherit their colour) still wins.
+:where(a) {
+  color: var(--mat-sys-primary);
+}
+
 // Visible keyboard focus everywhere (Material handles its own controls; this
 // covers plain links and custom clickable elements).
 :focus-visible {
