@@ -372,6 +372,8 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   @Input() showToolbar = true;
   /** How visible the reference overlay is, 0–1. */
   @Input() referenceOpacity = 0.35;
+  /** Shown but never editable, whatever the user's permissions (the full-face summary). */
+  @Input() readOnly = false;
 
   @ViewChild('canvasEl') private readonly canvasEl!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvasWrapper') private readonly canvasWrapper!: ElementRef<HTMLDivElement>;
@@ -448,7 +450,7 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
   protected canvas!: Canvas;
 
   ngOnInit(): void {
-    this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
+    this.canEdit = !this.readOnly && this.auth.hasPermission(this.permissionModule, 'edit');
   }
 
   ngOnChanges(changes: SimpleChanges): void {
