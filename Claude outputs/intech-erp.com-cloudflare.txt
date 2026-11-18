@@ -1,0 +1,31 @@
+; intech-erp.com, preparado para importar en Cloudflare a partir de la exportación de GoDaddy.
+; Cambios respecto al original:
+;   - Se quitó el registro A de @ con valor "WebsiteBuilder Site" (no es una IP y Cloudflare lo rechaza).
+;     Si tienes un sitio web en intech-erp.com, agrega ese A a mano en Cloudflare con la IP que da:
+;       dig +short intech-erp.com A
+;   - Se quitaron SOA y NS: Cloudflare pone los suyos.
+;   - Se quitó _domainconnect: es propio de GoDaddy y no sirve fuera de su DNS.
+;   - www apunta al nombre completo del dominio en vez de "@".
+
+$ORIGIN intech-erp.com.
+
+; A
+qa	3600	IN	A	54.158.230.34
+
+; CNAME
+www	3600	IN	CNAME	intech-erp.com.
+bounces.cloud.em	600	IN	CNAME	cbounces.cloud.em.secureserver.net.
+bounces.cloud2.em	600	IN	CNAME	cbounces.cloud2.em.secureserver.net.
+sable.cloud._domainkey	600	IN	CNAME	dkim.cloud.em.secureserver.net.
+sable.cloud2._domainkey	600	IN	CNAME	dkim.cloud2.em.secureserver.net.
+rsend	3600	IN	CNAME	rsend.forge.rmta.net.
+send	3600	IN	CNAME	send.forge.rmta.net.
+
+; MX
+@	3600	IN	MX	0	smtp.secureserver.net.
+@	3600	IN	MX	10	mailstore1.secureserver.net.
+
+; TXT
+@	600	IN	TXT	"v=spf1 include:spf.em.secureserver.net ?all"
+resend._domainkey	1800	IN	TXT	"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3U0LX7JDlDz7fKXuFNc5s9/cGo5yDSekSa/PxLXDtEdwBQGeW2bx5T2j0iJ/vzXY+Pl97Pge0P5LSLEQndpGl+ImeUzLzAIou2Rszf0XSG6UACchp/D8VkC2QjPpPtDiHOFlEwQbWBP9zN3z9XWTVI87Q4d7DjFm5bhlgKkCl9wIDAQAB"
+_dmarc	3600	IN	TXT	"v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net;"
