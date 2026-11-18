@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslocoModule } from '@jsverse/transloco';
 import type { Consent, ConsentSignatureRole, TreatmentItemDetail } from '@expedientes/shared-types';
 import { AuthService } from '../auth/auth.service';
@@ -23,6 +24,7 @@ import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatCheckboxModule,
     TranslocoModule,
     RouterLink,
     SignaturePadComponent,
@@ -34,275 +36,452 @@ import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
     } @else if (loadFailed()) {
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
-      <h1>{{ 'treatments.consentTitle' | transloco }} — {{ item()?.treatmentTypeName }}</h1>
-      @if (signedConsent(); as consent) {
-        <app-consent-blocks
-          [blocks]="item()!.consentDocument!"
-          [signatureUrls]="signatureUrls()"
-        ></app-consent-blocks>
-        @if (consent.signatureMethod === 'PAPER') {
-          <h3>{{ 'treatments.scanSignedOnPaper' | transloco }}</h3>
-          <div class="scan-pages">
-            @for (page of consent.scanPages; track page) {
-              <img
-                class="scan-page"
-                [src]="'/api/files/' + page"
-                [alt]="'treatments.scanPageAlt' | transloco"
-              />
-            }
-          </div>
-        }
-        <p class="signed-at">
-          {{ 'treatments.signedAt' | transloco }}
-          {{
-            consent.signatureMethod === 'PAPER'
-              ? consent.signedDateSnapshot
-              : consent.signedAt.substring(0, 10)
-          }}
-        </p>
-      } @else if (item()!.canSign === false) {
-        <p>{{ 'treatments.clinicSettingsIncomplete' | transloco }}</p>
-        <a mat-button routerLink="/admin/clinic">{{
-          'treatments.goToClinicSettings' | transloco
-        }}</a>
-      } @else if (canEdit) {
-        <form [formGroup]="form" class="consent-form">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'treatments.place' | transloco }}</mat-label>
-            <input matInput formControlName="place" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'treatments.patientIdentification' | transloco }}</mat-label>
-            <input matInput formControlName="patientIdentification" />
-          </mat-form-field>
-        </form>
-        <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
-
-        <!-- The patient and the physician always sign; the physician's signature comes from the
-             clinic settings. Witnesses are optional and hidden until the user adds them
-             (NOM-004-SSA3-2012 10.1.1 asks for two; whether to use them is the clinic's call). -->
-        <section class="signatures" [attr.aria-label]="'treatments.signatures' | transloco">
-          <div class="signer">
-            <h3>{{ 'treatments.patientSignature' | transloco }}</h3>
-            <app-signature-pad #patientPad [disabled]="signing()"></app-signature-pad>
-          </div>
-        </section>
-
-        @if (!showWitnesses()) {
-          <div class="witness-toggle">
-            <button mat-stroked-button type="button" [disabled]="signing()" (click)="showWitnesses.set(true)">
-              <mat-icon aria-hidden="true">person_add</mat-icon>{{ 'treatments.addWitnesses' | transloco }}
-            </button>
-            <span class="hint">{{ 'treatments.witnessesOptionalHint' | transloco }}</span>
-          </div>
-        } @else {
-        <section class="signatures witnesses" [attr.aria-label]="'treatments.witnesses' | transloco">
-          <div class="witnesses-head">
-            <h3>{{ 'treatments.witnesses' | transloco }} <span class="optional">{{ 'clinical.optional' | transloco }}</span></h3>
-            <button mat-button type="button" [disabled]="signing()" (click)="hideWitnesses()">
-              {{ 'treatments.removeWitnesses' | transloco }}
-            </button>
-          </div>
-
-          <div class="signer" [formGroup]="form">
-            <h3>{{ 'treatments.firstWitness' | transloco }}</h3>
-            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
-              <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
-              <input matInput formControlName="witnessName" />
-            </mat-form-field>
-            <app-signature-pad #witnessPad [disabled]="signing()"></app-signature-pad>
-          </div>
-
-          <div class="signer" [formGroup]="form">
-            <h3>{{ 'treatments.secondWitness' | transloco }}</h3>
-            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
-              <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
-              <input matInput formControlName="secondWitnessName" />
-            </mat-form-field>
-            @if (storedSecondWitness(); as stored) {
-              <div class="witness-source" role="radiogroup" [attr.aria-label]="'treatments.secondWitnessSource' | transloco">
-                <button
-                  type="button"
-                  role="radio"
-                  [attr.aria-checked]="useStoredSecondWitness()"
-                  [class.on]="useStoredSecondWitness()"
-                  (click)="useStoredSecondWitness.set(true)"
-                >
-                  {{ 'treatments.useStoredSignature' | transloco: { name: stored.name } }}
+      <button type="button" class="back" (click)="back()">‹ {{ 'treatments.consentScreen.backToVisit' | transloco }}</button>
+      <header class="head">
+        <div class="titles">
+          <h1>{{ 'treatments.consentScreen.title' | transloco }}</h1>
+          <p class="sub">{{ item()!.treatmentTypeName }} · {{ item()!.patientName }}</p>
+        </div>
+        <div class="head-side">
+          @if (signedConsent(); as consent) {
+            <span class="state is-signed">
+              <mat-icon aria-hidden="true">verified</mat-icon>
+              {{ 'treatments.consentScreen.signedOn' | transloco: { date: signedDate(consent) } }}
+              · {{ (consent.signatureMethod === 'PAPER' ? 'treatments.consentScreen.onPaper' : 'treatments.consentScreen.onScreen') | transloco }}
+            </span>
+          } @else {
+            <span class="state"><span class="dot" aria-hidden="true"></span>{{ 'treatments.consentScreen.unsigned' | transloco }}</span>
+            @if (canEdit && item()!.canSign !== false) {
+              <div class="method" role="radiogroup" [attr.aria-label]="'treatments.consentScreen.method' | transloco">
+                <button type="button" role="radio" [attr.aria-checked]="method() === 'screen'" [class.on]="method() === 'screen'" (click)="method.set('screen')">
+                  {{ 'treatments.consentScreen.onScreen' | transloco }}
                 </button>
-                <button
-                  type="button"
-                  role="radio"
-                  [attr.aria-checked]="!useStoredSecondWitness()"
-                  [class.on]="!useStoredSecondWitness()"
-                  (click)="useStoredSecondWitness.set(false)"
-                >
-                  {{ 'treatments.signHere' | transloco }}
+                <button type="button" role="radio" [attr.aria-checked]="method() === 'paper'" [class.on]="method() === 'paper'" (click)="method.set('paper')">
+                  {{ 'treatments.consentScreen.onPaper' | transloco }}
                 </button>
               </div>
             }
-            @if (useStoredSecondWitness() && storedSecondWitness()) {
-              <p class="stored-note">{{ 'treatments.storedSignatureNote' | transloco }}</p>
-            } @else {
-              <app-signature-pad #secondWitnessPad [disabled]="signing()"></app-signature-pad>
-            }
-          </div>
-        </section>
-        }
-
-        <div class="signature-actions">
-          <button
-            mat-flat-button
-            color="primary"
-            [disabled]="form.invalid || signing() || !patientPad.hasStrokes() || !witnessesOk()"
-            (click)="sign()"
-          >
-            {{ 'treatments.signAction' | transloco }}
-          </button>
-          @if (!witnessesOk()) {
-            <span class="missing">{{ 'treatments.witnessIncomplete' | transloco }}</span>
           }
         </div>
-      } @else {
-        <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
-        <p>{{ 'treatments.consentNotYetSigned' | transloco }}</p>
-      }
-      @if (!signedConsent() && item()!.canSign !== false) {
-        <button mat-stroked-button [disabled]="printing()" (click)="printBlank()">
-          {{ 'treatments.printBlank' | transloco }}
-        </button>
-        @if (printFailed()) {
-          <p class="print-error" role="alert">{{ 'treatments.printBlankFailed' | transloco }}</p>
+      </header>
+
+      @if (signedConsent(); as consent) {
+        <div class="sheet is-signed">
+          <app-consent-blocks [blocks]="item()!.consentDocument!" [signatureUrls]="signatureUrls()"></app-consent-blocks>
+        </div>
+        @if (consent.signatureMethod === 'PAPER') {
+          <h2 class="scans-title">{{ 'treatments.scanSignedOnPaper' | transloco }}</h2>
+          <div class="scan-pages">
+            @for (page of consent.scanPages; track page) {
+              <img class="scan-page" [src]="'/api/files/' + page" [alt]="'treatments.scanPageAlt' | transloco" />
+            }
+          </div>
         }
+      } @else if (item()!.canSign === false) {
+        <p>{{ 'treatments.clinicSettingsIncomplete' | transloco }}</p>
+        <a mat-button routerLink="/admin/clinic">{{ 'treatments.goToClinicSettings' | transloco }}</a>
+      } @else {
+        <div class="layout">
+          <article class="doc" [attr.aria-label]="'treatments.consentScreen.document' | transloco">
+            <div class="doc-meta">
+              <span>{{ 'treatments.consentScreen.document' | transloco }}</span>
+              <span>{{ 'treatments.consentScreen.read' | transloco: { n: readPercent() } }}</span>
+            </div>
+            <div class="progress" aria-hidden="true"><span [style.width.%]="readPercent()"></span></div>
+            <div #sheet class="sheet" tabindex="0" (scroll)="onSheetScroll()">
+              <app-consent-blocks [blocks]="item()!.consentPreview!"></app-consent-blocks>
+            </div>
+          </article>
+
+          @if (canEdit) {
+            <aside class="rail" [attr.aria-label]="'treatments.consentScreen.signing' | transloco">
+              <div class="rail-head">
+                <h2>{{ 'treatments.consentScreen.signing' | transloco }}</h2>
+                <p>{{ (method() === 'screen' ? 'treatments.consentScreen.railHint' : 'treatments.consentScreen.paperHint') | transloco }}</p>
+              </div>
+
+              @if (method() === 'screen') {
+                <section class="step" [formGroup]="form">
+                  <h3>1 · {{ 'treatments.consentScreen.details' | transloco }} @if (detailsDone()) {<span class="done">✓</span>}</h3>
+                  <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                    <mat-label>{{ 'treatments.place' | transloco }}</mat-label>
+                    <input matInput formControlName="place" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                    <mat-label>{{ 'treatments.patientIdentification' | transloco }}</mat-label>
+                    <input matInput formControlName="patientIdentification" />
+                  </mat-form-field>
+                </section>
+
+                <section class="step">
+                  <h3>2 · {{ 'treatments.consentScreen.reading' | transloco }}</h3>
+                  <mat-checkbox [checked]="readConfirmed()" (change)="readConfirmed.set($event.checked)" [disabled]="signing()">
+                    {{ 'treatments.consentScreen.readConfirm' | transloco }}
+                  </mat-checkbox>
+                </section>
+
+                <section class="step">
+                  <h3>3 · {{ 'treatments.patientSignature' | transloco }}</h3>
+                  <app-signature-pad
+                    #patientPad
+                    [disabled]="signing()"
+                    [caption]="item()!.patientName"
+                    [title]="'treatments.patientSignature' | transloco"
+                  ></app-signature-pad>
+                </section>
+
+                <section class="step witnesses-step" [formGroup]="form">
+                  @if (!showWitnesses()) {
+                    <button mat-button type="button" class="text-action" [disabled]="signing()" (click)="showWitnesses.set(true)">
+                      + {{ 'treatments.addWitnesses' | transloco }}
+                    </button>
+                    <p class="note">{{ 'treatments.witnessesOptionalHint' | transloco }}</p>
+                  } @else {
+                    <div class="witnesses-head">
+                      <h3>{{ 'treatments.witnesses' | transloco }} <span class="optional">{{ 'clinical.optional' | transloco }}</span></h3>
+                      <button mat-button type="button" [disabled]="signing()" (click)="hideWitnesses()">
+                        {{ 'treatments.removeWitnesses' | transloco }}
+                      </button>
+                    </div>
+                    <div class="witness">
+                      <p class="witness-title">{{ 'treatments.firstWitness' | transloco }}</p>
+                      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                        <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
+                        <input matInput formControlName="witnessName" />
+                      </mat-form-field>
+                      <app-signature-pad
+                        #witnessPad
+                        [disabled]="signing()"
+                        [caption]="form.controls.witnessName.value || null"
+                        [title]="'treatments.firstWitness' | transloco"
+                      ></app-signature-pad>
+                    </div>
+                    <div class="witness">
+                      <p class="witness-title">{{ 'treatments.secondWitness' | transloco }}</p>
+                      <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                        <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
+                        <input matInput formControlName="secondWitnessName" />
+                      </mat-form-field>
+                      @if (storedSecondWitness(); as stored) {
+                        <div class="witness-source" role="radiogroup" [attr.aria-label]="'treatments.secondWitnessSource' | transloco">
+                          <button type="button" role="radio" [attr.aria-checked]="useStoredSecondWitness()" [class.on]="useStoredSecondWitness()" (click)="useStoredSecondWitness.set(true)">
+                            {{ 'treatments.useStoredSignature' | transloco: { name: stored.name } }}
+                          </button>
+                          <button type="button" role="radio" [attr.aria-checked]="!useStoredSecondWitness()" [class.on]="!useStoredSecondWitness()" (click)="useStoredSecondWitness.set(false)">
+                            {{ 'treatments.signHere' | transloco }}
+                          </button>
+                        </div>
+                      }
+                      @if (useStoredSecondWitness() && storedSecondWitness()) {
+                        <p class="note">{{ 'treatments.storedSignatureNote' | transloco }}</p>
+                      } @else {
+                        <app-signature-pad
+                          #secondWitnessPad
+                          [disabled]="signing()"
+                          [caption]="form.controls.secondWitnessName.value || null"
+                          [title]="'treatments.secondWitness' | transloco"
+                        ></app-signature-pad>
+                      }
+                    </div>
+                  }
+                </section>
+
+                <p class="doctor">{{ 'treatments.consentScreen.doctorSignature' | transloco }}</p>
+
+                <div class="rail-foot">
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="sign"
+                    [disabled]="form.invalid || signing() || !readConfirmed() || !patientPad.hasStrokes() || !witnessesOk()"
+                    (click)="sign()"
+                  >
+                    {{ 'treatments.signAction' | transloco }}
+                  </button>
+                  @if (missingKey(patientPad.hasStrokes()); as key) {
+                    <p class="missing">{{ key | transloco }}</p>
+                  }
+                  <button mat-button type="button" [disabled]="printing()" (click)="printBlank()">
+                    {{ 'treatments.printBlank' | transloco }}
+                  </button>
+                </div>
+              } @else {
+                <ol class="paper-steps">
+                  <li>{{ 'treatments.consentScreen.paperStep1' | transloco }}</li>
+                  <li>{{ 'treatments.consentScreen.paperStep2' | transloco }}</li>
+                  <li>{{ 'treatments.consentScreen.paperStep3' | transloco }}</li>
+                </ol>
+                <div class="rail-foot">
+                  <button mat-flat-button type="button" class="sign" [disabled]="printing()" (click)="printBlank()">
+                    {{ 'treatments.printBlank' | transloco }}
+                  </button>
+                  <button mat-button type="button" (click)="back()">{{ 'treatments.consentScreen.registerScanAtVisit' | transloco }}</button>
+                </div>
+              }
+              @if (printFailed()) {
+                <p class="print-error" role="alert">{{ 'treatments.printBlankFailed' | transloco }}</p>
+              }
+            </aside>
+          } @else {
+            <p class="not-signed">{{ 'treatments.consentNotYetSigned' | transloco }}</p>
+          }
+        </div>
       }
-      <button mat-button (click)="back()">{{ 'common.back' | transloco }}</button>
     }
   `,
   styles: [
     `
-      .consent-form {
-        max-width: 500px;
+      :host {
+        display: block;
+        max-width: 1240px;
+        font-variant-numeric: tabular-nums;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--mat-sys-primary);
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .head {
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px 24px;
+        margin: 4px 0 20px;
       }
-      .full-width {
-        width: 100%;
+      .head h1 {
+        margin: 0;
       }
-      .signature-actions {
-        margin: 8px 0;
-        display: flex;
-        gap: 8px;
-      }
-      .scan-pages {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        max-width: 700px;
-      }
-      .scan-page {
-        width: 100%;
-        border: 1px solid var(--plate-line);
-      }
-      .print-error {
-        color: var(--mat-sys-error);
-      }
-      .signed-at {
+      .sub {
+        margin: 4px 0 0;
         color: var(--mat-sys-on-surface-variant);
       }
-      h3 {
-        margin: 0 0 8px;
-        font-size: 1rem;
-        font-weight: 600;
+      .head-side {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 16px;
       }
-      .signatures {
-        display: grid;
-        gap: 16px;
-        margin-top: 24px;
-        max-width: 720px;
+      .state {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
       }
-      /* One plate per signer, each with its own pad: who signs where reads at a glance. */
-      .signer {
-        padding: 16px;
+      .state.is-signed mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      /* Unsigned is a pending action: the one rose mark on the page. */
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--plate-mark);
+      }
+      .method,
+      .witness-source {
+        display: inline-grid;
+        grid-auto-flow: column;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: 22px;
+        overflow: hidden;
+      }
+      .method button,
+      .witness-source button {
+        min-height: 40px;
+        padding: 0 16px;
+        border: 0;
+        background: transparent;
+        color: var(--mat-sys-on-surface);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .method button + button,
+      .witness-source button + button {
+        border-left: 1px solid var(--plate-line-strong);
+      }
+      .method button.on,
+      .witness-source button.on {
+        background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+        color: var(--mat-sys-primary);
+      }
+      .layout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 24px;
+      }
+      .doc {
+        flex: 999 1 560px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .doc-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .progress {
+        height: 2px;
+        border-radius: 1px;
+        background: var(--plate-line);
+      }
+      .progress span {
+        display: block;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--mat-sys-on-surface);
+        transition: width 120ms linear;
+      }
+      /* The document is a sheet of paper: ink on white in either theme. */
+      .sheet {
+        padding: 32px 40px;
+        border: 1px solid var(--plate-line);
+        border-radius: var(--plate-radius);
+        background: #fff;
+        color: #1c1c19;
+      }
+      @media (min-width: 1024px) {
+        .doc .sheet {
+          max-height: calc(100dvh - 260px);
+          overflow-y: auto;
+        }
+      }
+      .sheet.is-signed {
+        max-width: 860px;
+      }
+      .rail {
+        flex: 1 1 340px;
+        max-width: 420px;
         border: 1px solid var(--plate-line);
         border-radius: var(--plate-radius);
         background: var(--mat-sys-surface);
       }
-      .signer mat-form-field {
-        margin-bottom: 8px;
+      @media (min-width: 1024px) {
+        .rail {
+          position: sticky;
+          top: 16px;
+        }
       }
-      .witness-toggle {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px 16px;
-        margin: 16px 0;
+      .rail-head,
+      .step,
+      .doctor,
+      .rail-foot,
+      .paper-steps {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--plate-line);
       }
-      .witness-toggle mat-icon {
-        margin-right: 4px;
+      .rail-head h2 {
+        margin: 0;
+        font-size: 1.125rem;
       }
-      .witness-toggle .hint {
+      .rail-head p,
+      .note,
+      .doctor {
+        margin: 2px 0 0;
         font-size: 13px;
         color: var(--mat-sys-on-surface-variant);
-        max-width: 60ch;
       }
-      .witnesses {
-        margin-top: 16px;
-        padding-top: 12px;
-        border-top: 1px solid var(--plate-line);
+      .step {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .step h3 {
+        margin: 0;
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .done {
+        margin-left: 4px;
+        font-weight: 400;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .text-action {
+        align-self: flex-start;
+        margin-left: -12px;
       }
       .witnesses-head {
-        grid-column: 1 / -1;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
-      }
-      .witnesses-head h3 {
-        margin: 0;
       }
       .optional {
         font-weight: 400;
         font-size: 13px;
         color: var(--mat-sys-on-surface-variant);
       }
-      .witness-source {
-        display: inline-grid;
-        grid-auto-flow: column;
-        margin-bottom: 12px;
-        border: 1px solid var(--plate-line-strong);
-        border-radius: 22px;
-        overflow: hidden;
+      .witness {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--plate-line);
       }
-      .witness-source button {
-        min-height: 40px;
-        padding: 0 16px;
-        border: 0;
-        background: var(--mat-sys-surface);
-        color: var(--mat-sys-on-surface);
-        font: inherit;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-      }
-      .witness-source button + button {
-        border-left: 1px solid var(--plate-line-strong);
-      }
-      .witness-source button.on {
-        background: var(--mat-sys-inverse-surface);
-        color: var(--mat-sys-inverse-on-surface);
-      }
-      .stored-note {
+      .witness-title {
         margin: 0;
         font-size: 13px;
-        color: var(--mat-sys-on-surface-variant);
+        font-weight: 600;
       }
-      .signature-actions {
-        align-items: center;
-        flex-wrap: wrap;
+      .rail-foot {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        border-bottom: 0;
+      }
+      .sign {
+        min-height: 48px;
       }
       .missing {
+        margin: 0;
         font-size: 13px;
+        text-align: center;
         color: var(--mat-sys-on-surface-variant);
+      }
+      .paper-steps {
+        margin: 0;
+        padding-left: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .print-error {
+        margin: 0 20px 16px;
+        color: var(--mat-sys-error);
+      }
+      .scans-title {
+        font-size: 1rem;
+      }
+      .scan-pages {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 860px;
+      }
+      .scan-page {
+        width: 100%;
+        border: 1px solid var(--plate-line);
+      }
+      .full-width {
+        width: 100%;
+      }
+      .not-signed {
+        flex: 1 1 300px;
       }
     `,
   ],
@@ -348,6 +527,40 @@ export class ConsentSignComponent implements OnInit {
   private readonly secondWitnessNameRaw = toSignal(this.form.controls.secondWitnessName.valueChanges, {
     initialValue: this.form.controls.secondWitnessName.value,
   });
+
+  /** Signed on the screen, or printed blank to be signed on paper and scanned. */
+  protected readonly method = signal<'screen' | 'paper'>('screen');
+  /** The doctor confirms the patient read the document before she signs. */
+  protected readonly readConfirmed = signal(false);
+  /** How far the document sheet has been scrolled, for the reading bar. */
+  protected readonly readPercent = signal(0);
+  @ViewChild('sheet') private sheetRef?: ElementRef<HTMLElement>;
+  private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+
+  protected detailsDone(): boolean {
+    return this.formStatus() === 'VALID';
+  }
+
+  protected onSheetScroll(): void {
+    const el = this.sheetRef?.nativeElement;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const pct = max <= 0 ? 100 : Math.round((el.scrollTop / max) * 100);
+    if (pct > this.readPercent()) this.readPercent.set(Math.min(100, pct));
+  }
+
+  /** What still keeps "Firmar" disabled, in the order the rail asks for it. */
+  protected missingKey(patientSigned: boolean): string | null {
+    if (this.formStatus() !== 'VALID') return 'treatments.consentScreen.missingDetails';
+    if (!this.readConfirmed()) return 'treatments.consentScreen.missingReading';
+    if (!patientSigned) return 'treatments.consentScreen.missingPatient';
+    if (!this.witnessesOk()) return 'treatments.witnessIncomplete';
+    return null;
+  }
+
+  protected signedDate(consent: Consent): string {
+    return consent.signatureMethod === 'PAPER' ? consent.signedDateSnapshot : consent.signedAt.substring(0, 10);
+  }
 
   /** Witnesses are hidden until the user adds them; hidden, none is sent. */
   protected readonly showWitnesses = signal(false);
@@ -432,6 +645,8 @@ export class ConsentSignComponent implements OnInit {
     } finally {
       if (!mismatched) {
         this.loading.set(false);
+        // A document short enough to fit needs no scrolling: it reads as fully read.
+        setTimeout(() => this.onSheetScroll());
       }
     }
   }
@@ -454,7 +669,7 @@ export class ConsentSignComponent implements OnInit {
   };
 
   protected async sign(): Promise<void> {
-    if (!this.patientPad || this.form.invalid || !this.witnessesOk()) return;
+    if (!this.patientPad || this.form.invalid || !this.readConfirmed() || !this.witnessesOk()) return;
     const item = this.item();
     if (!item) return;
     this.signing.set(true);

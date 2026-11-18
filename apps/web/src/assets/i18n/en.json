@@ -653,7 +653,32 @@
     "witnessesOptionalHint": "Optional. NOM-004 asks for two witnesses on a consent; add them if your clinic uses them.",
     "witnesses": "Witnesses",
     "removeWitnesses": "Remove witnesses",
-    "witnessIncomplete": "Each witness needs a name and a signature, or leave it empty."
+    "witnessIncomplete": "Each witness needs a name and a signature, or leave it empty.",
+    "consentScreen": {
+      "backToVisit": "Back to the visit",
+      "title": "Informed consent",
+      "signedOn": "Signed on {{date}}",
+      "onScreen": "On screen",
+      "onPaper": "On paper",
+      "unsigned": "Not signed",
+      "method": "How it is signed",
+      "document": "Document",
+      "read": "Read {{n}}%",
+      "signing": "Signing",
+      "railHint": "Three steps; witnesses are optional.",
+      "paperHint": "To sign by hand and register the scan.",
+      "details": "Details",
+      "reading": "Reading",
+      "readConfirm": "The patient read the document and her questions were answered",
+      "doctorSignature": "Physician: signature stored in the clinic settings ✓",
+      "missingDetails": "Fill in the place and the identification.",
+      "missingReading": "Confirm the patient read the document.",
+      "missingPatient": "The patient has not signed yet.",
+      "paperStep1": "Print the blank consent.",
+      "paperStep2": "The patient, any witnesses and the physician sign by hand.",
+      "paperStep3": "From the visit, register the scan of the signed pages.",
+      "registerScanAtVisit": "Go to the visit to register the scan"
+    }
   },
   "appointments": {
     "calendarTitle": "Calendar",
@@ -1314,5 +1339,16 @@
       "intralesional": "Intralesional",
       "topica": "Topical"
     }
+  },
+  "signaturePad": {
+    "label": "Signature",
+    "expand": "Enlarge",
+    "expandLabel": "Enlarge the signature box",
+    "touchHint": "Touch the box to sign at full size.",
+    "enlargedLabel": "Enlarged signature box",
+    "signOnLine": "Sign on the line",
+    "landscapeTip": "Easier with the tablet in landscape.",
+    "useSignature": "Use this signature",
+    "closeWithoutSaving": "Close without using the signature"
   }
 }

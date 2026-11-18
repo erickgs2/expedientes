@@ -178,6 +178,14 @@ The historia's signature line adds a text button "Ver historial". The dialog lis
 
 Every field added for the norm is optional and says so in small secondary ink ("opcional"); nothing here blocks a save. The patient banner adds "Exp. 0042 · 38 años · Femenino" in its tabular secondary meta (kept on phones, where the CURP gives way), plus a quiet "faltan edad o sexo" until the historia has both. The historia clínica gains three steps after the interview (antecedentes patológicos and review of systems, exploración física, diagnóstico y plan); an optional step shows its ✓ as soon as anything is noted in it. Vital signs are one wrapping row of compact outlined fields, each with its unit as a suffix, tabular numerals, and the BMI computed live beside height. Fitzpatrick phototype and skin type are the same pill toggles as the interview's closed questions. On a valoración and a treatment visit, "Nota de evolución" is a folded section under a hairline, open by itself when it already holds something. A product's application (amount, unit, route, zone; frequency below) sits on one line in its dialog, and the product card repeats it as "0.5 ml · Intradérmica · Labio superior".
 
+### Signature pad (every signature)
+
+One component for every signature in the app (consent patient and witnesses, the physician's and second witness's stored signatures): a white 3:1 box in either theme, with a baseline, the signer's name under it in secondary ink, an outlined "Ampliar" pill in its corner and a quiet "Borrar" beside the hint "Toca el recuadro para firmar en grande". Touching the box on a touch screen opens it enlarged in a dialog (96vw, up to 1280×860): heading with who signs, the same 3:1 canvas as large as fits, baseline with a faint "×" guide and "Firma sobre la línea", "Borrar" and the landscape tip on the left, "Cancelar" and the primary "Usar esta firma" on the right. The drawing travels both ways between the two sizes; strokes scale so a large signature reads the same once shrunk.
+
+### Consent screen
+
+A back link to the visit, the title with treatment and patient, and on the right the state (rose dot "Sin firmar", or a check with the signing date and method) with an "En pantalla / En papel" segmented control. Below, the document is a white sheet of paper that scrolls on its own on wide screens, with a 2px reading bar ("Leído n%"); beside it a signing rail, sticky on wide screens, in hairline-separated steps: 1 · Datos (place, identification, ✓ when filled), 2 · Lectura (the doctor confirms the patient read it), 3 · Firma de la paciente, then "+ Agregar testigos" (optional), the physician's stored signature noted in one line, and the primary "Firmar consentimiento" with a one-line reason while it stays disabled and "Imprimir en blanco" under it. "En papel" turns the rail into three numbered steps (print, sign by hand, register the scan at the visit). On a phone the rail stacks under the sheet.
+
 ## Do's and Don'ts
 
 ### Do:

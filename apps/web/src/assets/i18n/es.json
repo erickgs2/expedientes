@@ -653,7 +653,32 @@
     "witnessesOptionalHint": "Opcional. La NOM-004 pide dos testigos en el consentimiento; agrégalos si tu clínica los usa.",
     "witnesses": "Testigos",
     "removeWitnesses": "Quitar testigos",
-    "witnessIncomplete": "Cada testigo necesita nombre y firma, o déjalo vacío."
+    "witnessIncomplete": "Cada testigo necesita nombre y firma, o déjalo vacío.",
+    "consentScreen": {
+      "backToVisit": "Volver a la visita",
+      "title": "Consentimiento informado",
+      "signedOn": "Firmado el {{date}}",
+      "onScreen": "En pantalla",
+      "onPaper": "En papel",
+      "unsigned": "Sin firmar",
+      "method": "Cómo se firma",
+      "document": "Documento",
+      "read": "Leído {{n}}%",
+      "signing": "Firma",
+      "railHint": "Tres pasos; los testigos son opcionales.",
+      "paperHint": "Para firmar a mano y registrar el escaneo.",
+      "details": "Datos",
+      "reading": "Lectura",
+      "readConfirm": "La paciente leyó el documento y resolvió sus dudas",
+      "doctorSignature": "Médico: firma registrada en la configuración de la clínica ✓",
+      "missingDetails": "Completa el lugar y la identificación.",
+      "missingReading": "Confirma que la paciente leyó el documento.",
+      "missingPatient": "Falta la firma de la paciente.",
+      "paperStep1": "Imprime el consentimiento en blanco.",
+      "paperStep2": "La paciente, los testigos si los hay y el médico firman a mano.",
+      "paperStep3": "Desde la visita, registra el escaneo de las hojas firmadas.",
+      "registerScanAtVisit": "Ir a la visita para registrar el escaneo"
+    }
   },
   "appointments": {
     "calendarTitle": "Calendario",
@@ -1314,5 +1339,16 @@
       "intralesional": "Intralesional",
       "topica": "Tópica"
     }
+  },
+  "signaturePad": {
+    "label": "Firma",
+    "expand": "Ampliar",
+    "expandLabel": "Ampliar el recuadro de firma",
+    "touchHint": "Toca el recuadro para firmar en grande.",
+    "enlargedLabel": "Recuadro de firma ampliado",
+    "signOnLine": "Firma sobre la línea",
+    "landscapeTip": "Más cómodo con la tablet en horizontal.",
+    "useSignature": "Usar esta firma",
+    "closeWithoutSaving": "Cerrar sin usar la firma"
   }
 }
