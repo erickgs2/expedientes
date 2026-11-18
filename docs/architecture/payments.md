@@ -5,7 +5,7 @@ Premium is sold two ways, both through Stripe Checkout, so card details never re
 | Method | Stripe | Renewal | Notes |
 | --- | --- | --- | --- |
 | Credit or debit card | Checkout in `subscription` mode | Automatic | Monthly or yearly price of the version in force |
-| OXXO | Checkout in `payment` mode, `oxxo` | Manual: one voucher per period | Voucher valid `OXXO_VOUCHER_DAYS` (default 3); confirmed the next business day; no refunds |
+| OXXO | Checkout in `payment` mode, payment method configuration "MedCloud: solo OXXO" | Manual: one voucher per period | Voucher valid `OXXO_VOUCHER_DAYS` (default 3); confirmed the next business day; no refunds |
 
 Only the clinic's owner can buy (`POST /api/billing/checkout`) or open Stripe's customer portal
 (`POST /api/billing/portal`: change card, receipts, cancel). Without `STRIPE_SECRET_KEY` both answer
@@ -28,6 +28,12 @@ Events handled: `checkout.session.completed`, `checkout.session.async_payment_su
 `PaymentEvent`; a redelivered event is skipped. A paid OXXO voucher adds 1 or 12 months to whatever is
 still prepaid (in the clinic's time zone), in the same transaction that records the event, so it can
 never be added twice.
+
+Payment methods: Stripe no longer accepts `payment_method_types` on Checkout Sessions. The card
+checkout passes none (a subscription only offers methods that can renew: card, Link, wallets). The
+OXXO checkout passes a payment method configuration with OXXO on and the rest off, which the API finds
+by name or creates the first time (`ensureOxxoConfiguration`). OXXO must be enabled for the account in
+Dashboard → Settings → Payment methods.
 
 Moving from OXXO to card: the subscription starts with a trial until the prepaid period ends, so the
 first card charge comes when the OXXO time runs out.

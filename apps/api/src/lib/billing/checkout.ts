@@ -13,6 +13,50 @@ export function oxxoVoucherDays(): number {
   return Number.isInteger(days) && days >= 1 && days <= 7 ? days : 3;
 }
 
+/** Name of the Stripe payment method configuration that offers OXXO alone. */
+export const OXXO_CONFIGURATION_NAME = 'MedCloud: solo OXXO';
+
+interface PaymentMethodConfiguration {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+let oxxoConfigurationId: string | null = null;
+
+/**
+ * Stripe no longer takes `payment_method_types` on a Checkout Session: the methods come from the
+ * Dashboard, or from a payment method configuration passed by id. The card checkout needs nothing
+ * (a subscription only offers methods that can renew, so OXXO never appears there). The OXXO checkout
+ * uses a configuration of its own with OXXO on and everything else off, found by name or created
+ * once, so the voucher button never turns into a one-off card payment.
+ */
+export async function ensureOxxoConfiguration(): Promise<string> {
+  if (oxxoConfigurationId) return oxxoConfigurationId;
+  const list = await stripeRequest<{ data: PaymentMethodConfiguration[] }>('GET', '/payment_method_configurations', {
+    limit: 100,
+  });
+  const existing = list.data.find((c) => c.name === OXXO_CONFIGURATION_NAME && c.active);
+  const off = { display_preference: { preference: 'off' } };
+  const configuration =
+    existing ??
+    (await stripeRequest<PaymentMethodConfiguration>(
+      'POST',
+      '/payment_method_configurations',
+      {
+        name: OXXO_CONFIGURATION_NAME,
+        oxxo: { display_preference: { preference: 'on' } },
+        card: off,
+        link: off,
+        apple_pay: off,
+        google_pay: off,
+      },
+      { idempotencyKey: 'medcloud-pmc-oxxo-only-v1' }
+    ));
+  oxxoConfigurationId = configuration.id;
+  return configuration.id;
+}
+
 interface CheckoutSession {
   id: string;
   url: string;
@@ -86,7 +130,6 @@ export async function createCheckout(params: {
     const session = await stripeRequest<CheckoutSession>('POST', '/checkout/sessions', {
       ...common,
       mode: 'subscription',
-      payment_method_types: ['card'],
       line_items: [
         {
           price: params.interval === 'YEAR' ? price.stripeAnnualPriceId : price.stripeMonthlyPriceId,
@@ -101,7 +144,7 @@ export async function createCheckout(params: {
   const session = await stripeRequest<CheckoutSession>('POST', '/checkout/sessions', {
     ...common,
     mode: 'payment',
-    payment_method_types: ['oxxo'],
+    payment_method_configuration: await ensureOxxoConfiguration(),
     line_items: [
       {
         price_data: {
