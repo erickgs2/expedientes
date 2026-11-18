@@ -37,7 +37,7 @@ export const POST = withApiErrors(
     const body = (await request.json().catch(() => ({}))) as { fecha?: string };
     const fecha = body.fecha ? new Date(`${body.fecha}T00:00:00`) : undefined;
 
-    const valoracion = await createValoracion(patientId, fecha);
+    const valoracion = await createValoracion(patientId, fecha, userId);
 
     await writeAuditLogSafe({
       userId,

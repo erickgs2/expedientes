@@ -9,6 +9,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
+import { AuthService } from '../auth/auth.service';
+import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
 import type { HistoriaClinica, ValoracionSummary } from '@expedientes/shared-types';
@@ -31,6 +33,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
     HasPermissionDirective,
     FacialDiagramViewsComponent,
     PhotoGalleryComponent,
+    NoteSignatureComponent,
   ],
   template: `
     @if (loading()) {
@@ -53,6 +56,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
       </div>
 
       <h1>{{ 'valoracion.detailTitle' | transloco }}</h1>
+      <app-note-signature kind="valoracion" [noteId]="valoracionId" [canSign]="canSignNotes" [refresh]="savedTick()" />
 
       <div class="sheet">
         <form class="visit-col" [formGroup]="form" (ngSubmit)="save()">
@@ -354,7 +358,8 @@ export class ValoracionDetailComponent implements OnInit {
   protected readonly lastSavedAt = signal('');
   /** `form.dirty` is not a signal; re-read it whenever the values change or a save lands. */
   private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
-  private readonly savedTick = signal(0);
+  protected readonly savedTick = signal(0);
+  protected readonly canSignNotes = inject(AuthService).hasPermission('valoracion', 'edit');
   protected readonly dirty = computed(() => {
     this.formValue();
     this.savedTick();

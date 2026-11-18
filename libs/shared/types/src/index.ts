@@ -19,3 +19,4 @@ export * from './lib/legal.js';
 export * from './lib/signup.js';
 export * from './lib/legal-markdown.js';
 export * from './lib/platform.js';
+export * from './lib/note-signature.js';

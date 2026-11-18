@@ -19,8 +19,8 @@ export async function listTreatments(patientId: string) {
 // as a safety net. Callers that know the clinic's local calendar day (the route below) always
 // supply it, since `now()` is a UTC instant that can land on the next calendar day — the same
 // convention established for Valoración.
-export async function createTreatment(patientId: string, fecha?: Date) {
-  const treatment = await prisma.treatment.create({ data: { patientId, fecha } });
+export async function createTreatment(patientId: string, fecha?: Date, createdById?: string) {
+  const treatment = await prisma.treatment.create({ data: { patientId, fecha, createdById } });
   return {
     id: treatment.id,
     patientId: treatment.patientId,

@@ -12,6 +12,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertPatientWritable } from '../../../../../lib/patients/patient-archive';
+import { afterNoteEdit, noteSignature } from '../../../../../lib/signature/note-signature';
 
 interface HistoriaClinicaBody {
   ocupacion?: string | null;
@@ -78,7 +79,7 @@ export const GET = withApiErrors(
       patientId,
     });
 
-    return NextResponse.json({ historiaClinica: historia });
+    return NextResponse.json({ historiaClinica: historia, signature: await noteSignature('historiaClinica', historia.id) });
   }
 );
 
@@ -91,7 +92,7 @@ export const POST = withApiErrors(
 
     let historia;
     try {
-      historia = await createHistoriaClinica(patientId, toServiceData(body));
+      historia = await createHistoriaClinica(patientId, toServiceData(body), userId);
     } catch (error) {
       if (error instanceof HistoriaClinicaExistsError) {
         return apiError('CONFLICT', error.message, 409);
@@ -107,7 +108,10 @@ export const POST = withApiErrors(
       patientId,
     });
 
-    return NextResponse.json({ historiaClinica: historia }, { status: 201 });
+    return NextResponse.json(
+      { historiaClinica: historia, signature: await noteSignature('historiaClinica', historia.id) },
+      { status: 201 }
+    );
   }
 );
 
@@ -136,6 +140,7 @@ export const PATCH = withApiErrors(
       patientId,
     });
 
-    return NextResponse.json({ historiaClinica: historia });
+    await afterNoteEdit('historiaClinica', historia.id, userId, patientId);
+    return NextResponse.json({ historiaClinica: historia, signature: await noteSignature('historiaClinica', historia.id) });
   }
 );

@@ -23,9 +23,9 @@ export async function listValoraciones(patientId: string) {
 // `getValoracion`'s, so the shared `Valoracion` type is honest for the POST response too (a fresh
 // Valoración simply gets `diagrams: []`). `listValoraciones` deliberately does *not* include them —
 // it would ship a full diagram JSON blob per row for data nothing reads, hence `ValoracionSummary`.
-export async function createValoracion(patientId: string, fecha?: Date) {
+export async function createValoracion(patientId: string, fecha?: Date, createdById?: string) {
   return prisma.valoracion.create({
-    data: { patientId, fecha },
+    data: { patientId, fecha, createdById },
     include: { diagrams: true },
   });
 }

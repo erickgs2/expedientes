@@ -4,6 +4,7 @@ import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
+import { noteSignature } from '../../../../lib/signature/note-signature';
 
 export const GET = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
@@ -21,6 +22,6 @@ export const GET = withApiErrors(
       patientId: treatment.patientId,
     });
 
-    return NextResponse.json({ treatment });
+    return NextResponse.json({ treatment, signature: await noteSignature('treatment', treatment.id) });
   }
 );

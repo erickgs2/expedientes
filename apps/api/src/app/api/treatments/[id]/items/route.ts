@@ -5,6 +5,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
+import { afterNoteEdit } from '../../../../../lib/signature/note-signature';
 
 interface ItemBody {
   treatmentTypeId?: unknown;
@@ -74,6 +75,7 @@ export const PATCH = withApiErrors(
       patientId: existing.patientId,
     });
 
+    await afterNoteEdit('treatment', id, userId);
     return NextResponse.json({ treatment });
   }
 );

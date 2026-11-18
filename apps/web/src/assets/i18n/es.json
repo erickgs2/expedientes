@@ -18,7 +18,8 @@
       "treatmentCatalog": "Catálogo de tratamientos",
       "plan": "Plan",
       "premium": "Conoce Premium"
-    }
+    },
+    "profile": "Mi perfil"
   },
   "common": {
     "save": "Guardar",
@@ -792,7 +793,13 @@
         "noShows": "No asistieron esta semana",
         "whatsappOff": "Los mensajes de WhatsApp a pacientes están apagados en Configuración de la clínica.",
         "recent": "Abiertos recientemente",
-        "recentEmpty": "Aún no has abierto expedientes."
+        "recentEmpty": "Aún no has abierto expedientes.",
+        "toSign": "Notas por firmar: {{n}}",
+        "noteKinds": {
+          "valoracion": "Valoración",
+          "treatment": "Tratamiento",
+          "historiaClinica": "Historia clínica"
+        }
       },
       "retry": "Reintentar",
       "result": {
@@ -1157,6 +1164,56 @@
     "RETENTION_PERIOD": "El expediente debe conservarse 5 años desde la última atención.",
     "OWNER_ONLY": "Solo el dueño de la clínica puede depurar un expediente.",
     "NOT_ARCHIVED": "Archiva al paciente antes de depurar el expediente.",
-    "CONFIRMATION_MISMATCH": "El nombre no coincide con el del paciente."
+    "CONFIRMATION_MISMATCH": "El nombre no coincide con el del paciente.",
+    "NOTE_SIGNED": "Esta nota está firmada."
+  },
+  "noteSignature": {
+    "recordedBy": "Registró {{name}} · {{when}}",
+    "signedBy": "Firmada por {{name}} · {{when}}",
+    "license": "Céd. {{license}}",
+    "unsigned": "Sin firmar",
+    "sign": "Firmar",
+    "legacy": "Registro anterior a la firma electrónica",
+    "dialog": {
+      "title": "Firmar nota",
+      "lead": "Al firmar confirmas que eres el autor de esta nota. Si alguien la modifica después, la firma se anula y habrá que volver a firmarla.",
+      "pin": "PIN de firma (6 dígitos)",
+      "sign": "Firmar",
+      "goToProfile": "Ir a mi perfil"
+    },
+    "errors": {
+      "NO_SIGNING_PIN": "Aún no tienes PIN de firma. Créalo en tu perfil.",
+      "LICENSE_REQUIRED": "Agrega tu cédula profesional en tu perfil para poder firmar.",
+      "WRONG_PIN": "PIN incorrecto.",
+      "TOO_MANY_ATTEMPTS": "Demasiados intentos. Espera unos minutos.",
+      "ALREADY_SIGNED": "Esta nota ya está firmada.",
+      "UNKNOWN": "No se pudo firmar. Inténtalo de nuevo."
+    },
+    "recordedAt": "Registrada · {{when}} · autor no registrado"
+  },
+  "profile": {
+    "title": "Mi perfil",
+    "signsAs": "Cómo firmas",
+    "signsAsHelp": "Tu título y cédula profesional aparecen en cada nota que firmas. Las notas ya firmadas conservan los datos con que se firmaron.",
+    "professionalTitle": "Título",
+    "professionalLicense": "Cédula profesional",
+    "preview": "Así se verá:",
+    "saved": "Perfil guardado",
+    "pinTitle": "PIN de firma",
+    "pinSet": "PIN creado",
+    "pinMissing": "Aún no tienes PIN",
+    "pinHelp": "Con este PIN de 6 dígitos firmas tus notas (NOM-004). Para crearlo o cambiarlo se pide tu contraseña.",
+    "newPin": "Nuevo PIN",
+    "confirmPin": "Repite el PIN",
+    "currentPassword": "Contraseña de tu cuenta",
+    "setPin": "Crear PIN",
+    "changePin": "Cambiar PIN",
+    "pinSaved": "PIN de firma guardado",
+    "errors": {
+      "mismatch": "Los PIN no coinciden.",
+      "WRONG_PASSWORD": "La contraseña no es correcta.",
+      "TOO_MANY_ATTEMPTS": "Demasiados intentos. Espera unos minutos.",
+      "UNKNOWN": "No se pudo guardar. Inténtalo de nuevo."
+    }
   }
 }

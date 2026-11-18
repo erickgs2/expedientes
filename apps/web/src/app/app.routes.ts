@@ -217,6 +217,12 @@ export const appRoutes: Routes = [
       import('./admin/clinic-settings.component').then((m) => m.ClinicSettingsComponent),
   },
   {
+    // The user's own profile: signing identity and PIN (NOM-004-SSA3-2012 5.10).
+    path: 'perfil',
+    canActivate: [authGuard],
+    loadComponent: () => import('./profile/profile.component').then((m) => m.ProfileComponent),
+  },
+  {
     path: 'calendar',
     canActivate: [authGuard, permissionGuard('appointments', 'view')],
     loadComponent: () =>

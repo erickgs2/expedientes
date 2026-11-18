@@ -156,6 +156,14 @@ Retiring a photo is not destructive, so its button on the tile is neutral (no er
 ### Consent signers
 One plate per signer (patient, Testigo 1, Testigo 2), each with its own pad. When the clinic stores a second witness, Testigo 2 offers a two-way segmented choice (stored signature / sign here) in the same inverse-surface style as the patient list tabs.
 
+### Note signature line
+
+The authorship line under a valoración, treatment visit and historia clínica: a hairline band, top and bottom, with "Registró <name> · <date, time>" in secondary ink on the left and the signature state on the right. Unsigned shows the single rose dot, "Sin firmar" and an outlined rose "Firmar" button (only for users who can edit the note). Signed shows a check, the signer's title and name, the timestamp and the licence in secondary ink. Records from before signatures existed read "Registro anterior a la firma electrónica" in secondary ink and offer no button. Tabular numerals for every time.
+
+### Sign-note dialog and profile
+
+The PIN dialog is a plain Material dialog: one lead sentence explaining that editing voids the signature, one 6-digit PIN field, Cancel and Firmar. When the user has no PIN or licence yet, the error line links to /perfil instead of failing silently. /perfil is a single plate with two sections, "Cómo firmas" (title, cédula, a live preview of the signer line) and "PIN de firma" (new PIN, repeat, account password). On Today, "Notas por firmar: n" leads the side column with the rose dot only when the count is above zero.
+
 ## Do's and Don'ts
 
 ### Do:

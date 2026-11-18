@@ -37,7 +37,7 @@ export const POST = withApiErrors(
     const body = (await request.json().catch(() => ({}))) as { fecha?: string };
     const fecha = body.fecha ? new Date(`${body.fecha}T00:00:00`) : undefined;
 
-    const treatment = await createTreatment(patientId, fecha);
+    const treatment = await createTreatment(patientId, fecha, userId);
 
     await writeAuditLogSafe({
       userId,

@@ -5,6 +5,7 @@ import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../lib/patients/patient-archive';
+import { afterNoteEdit, noteSignature } from '../../../../lib/signature/note-signature';
 
 interface ValoracionBody {
   fecha?: string;
@@ -29,7 +30,7 @@ export const GET = withApiErrors(
       patientId: valoracion.patientId,
     });
 
-    return NextResponse.json({ valoracion });
+    return NextResponse.json({ valoracion, signature: await noteSignature('valoracion', valoracion.id) });
   }
 );
 
@@ -60,6 +61,7 @@ export const PATCH = withApiErrors(
       patientId: valoracion.patientId,
     });
 
-    return NextResponse.json({ valoracion });
+    await afterNoteEdit('valoracion', valoracion.id, userId, valoracion.patientId);
+    return NextResponse.json({ valoracion, signature: await noteSignature('valoracion', valoracion.id) });
   }
 );
