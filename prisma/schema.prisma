@@ -269,6 +269,12 @@ model Patient {
   archivedAt      DateTime?
   archivedById    String?
   archiveReason   String?
+  /// Short record number per clinic ("número de expediente", NOM-004-SSA3-2012 5.9), assigned in
+  /// order of registration. Null only for a row created before numbering existed and not yet backfilled.
+  recordNumber Int?
+  /// Copied from the historia clínica on every save so every note can print age and sex (5.9).
+  birthDate    DateTime?
+  sex          String?
 
   @@index([fullName])
   @@index([clinicId, fullName])
@@ -276,6 +282,7 @@ model Patient {
   @@index([documentId])
   @@index([contactPatientId])
   @@index([clinicId, archivedAt])
+  @@unique([clinicId, recordNumber])
 }
 
 model AuditLog {
@@ -353,6 +360,35 @@ model HistoriaClinica {
   signerTitle   String?
   signerLicense String?
   legacyRecord  Boolean   @default(false)
+  /// NOM-004-SSA3-2012 6.1, all optional: aesthetic practices often have nothing to record here.
+  antecedentesPersonalesPatologicos String?
+  padecimientoActual                String?
+  /// Interrogatorio por aparatos y sistemas, the systems relevant to aesthetic procedures.
+  interrogatorioPiel                String?
+  interrogatorioCardiovascular      String?
+  interrogatorioEndocrino           String?
+  interrogatorioNeurologico         String?
+  interrogatorioOtros               String?
+  /// Vital signs (NOM-004-SSA3-2012 6.1.2 / 6.2): all optional. Blood pressure in mmHg, heart and
+  /// respiratory rate per minute, temperature in °C, weight in kg.
+  presionSistolica       Int?
+  presionDiastolica      Int?
+  frecuenciaCardiaca     Int?
+  frecuenciaRespiratoria Int?
+  temperatura            Float?
+  peso                   Float?
+  /// Height in cm; the BMI is computed from weight and height, never stored.
+  talla                  Float?
+  /// Fitzpatrick phototype I–VI.
+  fototipoFitzpatrick    String?
+  /// normal | seca | grasa | mixta | sensible
+  tipoPiel               String?
+  exploracionFacial      String?
+  lesionesCutaneas       String?
+  resultadosEstudios     String?
+  diagnostico            String?
+  pronostico             String?
+  indicacionTerapeutica  String?
 
   @@index([clinicId])
   revisions HistoriaClinicaRevision[]
@@ -414,6 +450,20 @@ model Valoracion {
   signerTitle   String?
   signerLicense String?
   legacyRecord  Boolean   @default(false)
+  /// Nota de evolución (NOM-004-SSA3-2012 6.2), all optional.
+  evolucion              String?
+  /// Vital signs (NOM-004-SSA3-2012 6.1.2 / 6.2): all optional. Blood pressure in mmHg, heart and
+  /// respiratory rate per minute, temperature in °C, weight in kg.
+  presionSistolica       Int?
+  presionDiastolica      Int?
+  frecuenciaCardiaca     Int?
+  frecuenciaRespiratoria Int?
+  temperatura            Float?
+  peso                   Float?
+  resultadosEstudios     String?
+  diagnostico            String?
+  pronostico             String?
+  indicaciones           String?
 
   @@index([patientId])
   @@index([clinicId])
@@ -525,6 +575,20 @@ model Treatment {
   signerTitle   String?
   signerLicense String?
   legacyRecord  Boolean   @default(false)
+  /// Nota de evolución (NOM-004-SSA3-2012 6.2), all optional.
+  evolucion              String?
+  /// Vital signs (NOM-004-SSA3-2012 6.1.2 / 6.2): all optional. Blood pressure in mmHg, heart and
+  /// respiratory rate per minute, temperature in °C, weight in kg.
+  presionSistolica       Int?
+  presionDiastolica      Int?
+  frecuenciaCardiaca     Int?
+  frecuenciaRespiratoria Int?
+  temperatura            Float?
+  peso                   Float?
+  resultadosEstudios     String?
+  diagnostico            String?
+  pronostico             String?
+  indicaciones           String?
 
   @@index([patientId])
   @@index([clinicId])
@@ -686,6 +750,13 @@ model TreatmentItemProduct {
   photoPath       String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  /// What was applied (NOM-004-SSA3-2012 6.2.6), all optional: amount and unit (U, ml, mg, g),
+  /// route, the zone treated and, for a course of treatment, how often.
+  quantity  Float?
+  unit      String?
+  route     String?
+  zone      String?
+  frequency String?
 
   @@index([treatmentItemId])
   @@index([lotNumber])

@@ -3,6 +3,7 @@ import { prisma, prismaUnscoped } from '../prisma/client';
 import { currentClinicId } from '../tenancy/context';
 import { noteSignature, type NoteSignatureView } from '../signature/note-signature';
 import { listAddenda, type AddendumKind } from '../signature/addenda';
+import { EVOLUTION_FIELDS, HISTORIA_CLINICAL_FIELDS, PRODUCT_DOSE_FIELDS, filledFields } from '../clinical/clinical-fields';
 import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
@@ -48,6 +49,8 @@ export interface ExportDiagramRef {
 export interface ExportHistoriaClinica {
   /** Author and signature (NOM-004-SSA3-2012 5.10). */
   signature: NoteSignatureView | null;
+  /** The 6.1 fields added in phase D that hold a value. */
+  clinical: ExportClinicalFields;
   ocupacion: string | null;
   fechaNacimiento: string | null;
   sexo: string | null;
@@ -75,8 +78,12 @@ export interface ExportAddendum {
   diagrams: ExportDiagramRef[];
 }
 
+/** NOM-004-SSA3-2012 6.1/6.2 fields that hold a value, by field name (see clinical-fields.ts). */
+export type ExportClinicalFields = Record<string, unknown>;
+
 export interface ExportValoracion {
   signature: NoteSignatureView | null;
+  evolution: ExportClinicalFields;
   addenda: ExportAddendum[];
   fecha: string;
   queQuiereElPaciente: string | null;
@@ -90,7 +97,13 @@ export interface ExportTreatmentItem {
   treatmentTypeName: string;
   notes: string | null;
   diagrams: ExportDiagramRef[];
-  products: Array<{ brand: string; lotNumber: string; expiryDate: string | null }>;
+  products: Array<{
+    brand: string;
+    lotNumber: string;
+    expiryDate: string | null;
+    /** Amount, unit, route, zone and frequency, only those recorded (6.2.6). */
+    dose: Record<string, unknown>;
+  }>;
   consent: {
     blocks: ConsentBlock[];
     /**
@@ -122,12 +135,21 @@ export interface ExportConsent {
 export interface ExportTreatment {
   fecha: string;
   signature: NoteSignatureView | null;
+  evolution: ExportClinicalFields;
   addenda: ExportAddendum[];
   items: ExportTreatmentItem[];
 }
 
 export interface ExportData {
-  patient: { fullName: string; phone: string; documentId: string | null };
+  patient: {
+    fullName: string;
+    phone: string;
+    documentId: string | null;
+    /** NOM-004-SSA3-2012 5.9: record number, birth date (age is computed at print) and sex. */
+    recordNumber: number | null;
+    birthDate: string | null;
+    sex: string | null;
+  };
   generatedAt: Date;
   historiaClinica: ExportHistoriaClinica | null;
   valoraciones: ExportValoracion[] | null;
@@ -146,6 +168,7 @@ async function gatherHistoriaClinica(patientId: string): Promise<ExportHistoriaC
   if (!historia) return null;
   return {
     signature: await noteSignature('historiaClinica', historia.id),
+    clinical: filledFields(historia, HISTORIA_CLINICAL_FIELDS),
     ocupacion: historia.ocupacion,
     fechaNacimiento: historia.fechaNacimiento ? historia.fechaNacimiento.toISOString() : null,
     sexo: historia.sexo,
@@ -181,6 +204,7 @@ async function gatherValoraciones(patientId: string): Promise<ExportValoracion[]
       queQuiereElPaciente: v.queQuiereElPaciente,
       queNecesitaElPaciente: v.queNecesitaElPaciente,
       notas: v.notas,
+      evolution: filledFields(v, EVOLUTION_FIELDS),
       diagrams: v.diagrams.map((d) => ({
         view: d.view,
         imageKey: `diagram_valoracion_${v.id}_${d.view}`,
@@ -223,6 +247,7 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
               brand: p.brand,
               lotNumber: p.lotNumber,
               expiryDate: p.expiryDate ? p.expiryDate.toISOString() : null,
+              dose: filledFields(p, PRODUCT_DOSE_FIELDS),
             })),
             consent,
           };
@@ -230,6 +255,7 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
       );
       return {
         fecha: t.fecha.toISOString(),
+        evolution: filledFields(t, EVOLUTION_FIELDS),
         signature: await noteSignature('treatment', t.id),
         addenda: await gatherAddenda('treatment', t.id),
         items,
@@ -324,6 +350,9 @@ export async function gatherExportData(
       fullName: patient.fullName,
       phone: patient.phone,
       documentId: patient.documentId,
+      recordNumber: patient.recordNumber,
+      birthDate: patient.birthDate ? patient.birthDate.toISOString() : null,
+      sex: patient.sex,
     },
     generatedAt: new Date(),
     historiaClinica,

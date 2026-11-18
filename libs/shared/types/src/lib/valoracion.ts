@@ -1,3 +1,4 @@
+import type { EvolutionNote } from './clinical-fields.js';
 /** `EYES`, `NOSE` and `LIPS` are close-ups of the front view, annotated separately from it. */
 export type DiagramView = 'FRONT' | 'LEFT_PROFILE' | 'RIGHT_PROFILE' | 'EYES' | 'NOSE' | 'LIPS';
 
@@ -24,7 +25,7 @@ export interface ValoracionSummary {
 }
 
 /** A Valoración with its diagrams — returned by the get, create, update and diagram endpoints. */
-export interface Valoracion extends ValoracionSummary {
+export interface Valoracion extends ValoracionSummary, Partial<EvolutionNote> {
   diagrams: ValoracionDiagram[];
 }
 
@@ -34,6 +35,9 @@ export interface ValoracionUpdateInput {
   queNecesitaElPaciente?: string | null;
   notas?: string | null;
 }
+
+/** A valoración update may carry its nota de evolución (NOM-004-SSA3-2012 6.2). */
+export type ValoracionUpdateWithEvolution = ValoracionUpdateInput & Partial<EvolutionNote>;
 
 export interface ValoracionDiagramsUpdateInput {
   views: {

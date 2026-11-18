@@ -49,6 +49,9 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
                 @if (product.expiryDate) {
                   <p>{{ 'treatments.productExpiry' | transloco }}: {{ product.expiryDate.substring(0, 7) }}</p>
                 }
+                @if (doseLine(product); as dose) {
+                  <p class="dose">{{ dose }}</p>
+                }
                 @if (isExpired(product)) {
                   <p class="expired-warning">{{ 'treatments.productExpired' | transloco }}</p>
                 }
@@ -77,6 +80,9 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
   `,
   styles: [
     `
+      .dose {
+        font-variant-numeric: tabular-nums;
+      }
       .locked-note {
         margin: 0 0 16px;
         font-size: 13px;
@@ -133,7 +139,6 @@ export class TreatmentProductsComponent implements OnInit {
   private readonly treatmentsService = inject(TreatmentsService);
   private readonly activePatient = inject(ActivePatientStore);
   private readonly auth = inject(AuthService);
-  private readonly transloco = inject(TranslocoService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -149,6 +154,17 @@ export class TreatmentProductsComponent implements OnInit {
 
   private itemId = '';
   private treatmentFecha = '';
+  private readonly transloco = inject(TranslocoService);
+
+  /** "0.5 ml · intradérmica · labio superior · cada 4 meses" from what was recorded. */
+  protected doseLine(p: TreatmentProductRecord): string | null {
+    const parts: string[] = [];
+    if (p.quantity != null) parts.push(`${p.quantity}${p.unit ? ` ${p.unit}` : ''}`);
+    if (p.route) parts.push(this.transloco.translate(`clinical.routes.${p.route}`));
+    if (p.zone) parts.push(p.zone);
+    if (p.frequency) parts.push(p.frequency);
+    return parts.length ? parts.join(' · ') : null;
+  }
   private readonly noteSignatures = inject(NoteSignatureService);
   protected readonly locked = signal(false);
 

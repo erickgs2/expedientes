@@ -174,6 +174,10 @@ The addendum dialog follows the PIN dialog: one lead sentence saying the signed 
 
 The historia's signature line adds a text button "Ver historial". The dialog lists versions newest first: "Versión n" in semibold, "vigente" in small secondary ink on the newest, author and timestamp right-aligned, the signature state in secondary ink, then each changed answer as a two-column row: the label in secondary ink, the old value struck in secondary ink, an arrow, the new value in body ink weight 500. Hairline between versions; on phones the rows stack.
 
+### Clinical content (NOM-004 phase D)
+
+Every field added for the norm is optional and says so in small secondary ink ("opcional"); nothing here blocks a save. The patient banner adds "Exp. 0042 · 38 años · Femenino" in its tabular secondary meta (kept on phones, where the CURP gives way), plus a quiet "faltan edad o sexo" until the historia has both. The historia clínica gains three steps after the interview (antecedentes patológicos and review of systems, exploración física, diagnóstico y plan); an optional step shows its ✓ as soon as anything is noted in it. Vital signs are one wrapping row of compact outlined fields, each with its unit as a suffix, tabular numerals, and the BMI computed live beside height. Fitzpatrick phototype and skin type are the same pill toggles as the interview's closed questions. On a valoración and a treatment visit, "Nota de evolución" is a folded section under a hairline, open by itself when it already holds something. A product's application (amount, unit, route, zone; frequency below) sits on one line in its dialog, and the product card repeats it as "0.5 ml · Intradérmica · Labio superior".
+
 ## Do's and Don'ts
 
 ### Do:

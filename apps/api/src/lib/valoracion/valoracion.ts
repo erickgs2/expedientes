@@ -1,13 +1,15 @@
+import { EVOLUTION_FIELDS, type ParsedFields } from '../clinical/clinical-fields';
 import type { DiagramView, Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { assertInClinic } from '../tenancy/assert';
 
-export interface ValoracionUpdateData {
+/** Plus the nota de evolución fields (NOM-004-SSA3-2012 6.2), all optional. */
+export type ValoracionUpdateData = {
   fecha?: Date;
   queQuiereElPaciente?: string | null;
   queNecesitaElPaciente?: string | null;
   notas?: string | null;
-}
+} & ParsedFields<typeof EVOLUTION_FIELDS>;
 
 export async function listValoraciones(patientId: string) {
   return prisma.valoracion.findMany({

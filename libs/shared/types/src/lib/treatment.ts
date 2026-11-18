@@ -1,3 +1,5 @@
+import type { EvolutionNote } from './clinical-fields.js';
+
 export interface TreatmentType {
   id: string;
   name: string;
@@ -62,7 +64,8 @@ export interface TreatmentItemProgress {
 }
 
 /** A treatment visit with its full item detail — returned by the get and item-update endpoints. */
-export interface Treatment {
+/** The visit carries its nota de evolución (NOM-004-SSA3-2012 6.2). */
+export interface Treatment extends Partial<EvolutionNote> {
   id: string;
   patientId: string;
   fecha: string;

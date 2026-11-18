@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type {
+  EvolutionNote,
   Treatment,
   TreatmentSummary,
   TreatmentItemsUpdateInput,
@@ -47,5 +48,12 @@ export class TreatmentsService {
     return firstValueFrom(
       this.http.patch<{ treatment: Treatment }>(`/api/treatments/${id}/items`, input)
     ).then((r) => r.treatment);
+  }
+
+  /** The visit's nota de evolución (NOM-004-SSA3-2012 6.2). */
+  updateEvolution(id: string, evolution: Partial<EvolutionNote>): Promise<Treatment> {
+    return firstValueFrom(this.http.patch<{ treatment: Treatment }>(`/api/treatments/${id}`, evolution)).then(
+      (r) => r.treatment
+    );
   }
 }

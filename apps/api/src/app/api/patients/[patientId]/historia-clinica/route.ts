@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { HISTORIA_CLINICAL_FIELDS, parseClinicalFields } from '../../../../../lib/clinical/clinical-fields';
 import { prisma } from '../../../../../lib/prisma/client';
 import {
   getHistoriaClinica,
@@ -36,8 +37,12 @@ interface HistoriaClinicaBody {
   allergyNames?: string[];
 }
 
-function toServiceData(body: HistoriaClinicaBody): HistoriaClinicaData {
+/** The body as service data, or the message for the first clinical field that does not fit. */
+function toServiceData(body: HistoriaClinicaBody): HistoriaClinicaData | string {
+  const clinical = parseClinicalFields(body as Record<string, unknown>, HISTORIA_CLINICAL_FIELDS);
+  if (!clinical.ok) return clinical.error;
   return {
+    ...clinical.data,
     ocupacion: body.ocupacion,
     fechaNacimiento:
       body.fechaNacimiento === null
@@ -90,10 +95,12 @@ export const POST = withApiErrors(
     const { patientId } = await params;
     await assertPatientWritable(patientId);
     const body = (await request.json()) as HistoriaClinicaBody;
+    const data = toServiceData(body);
+    if (typeof data === 'string') return apiError('INVALID_INPUT', data, 400);
 
     let historia;
     try {
-      historia = await createHistoriaClinica(patientId, toServiceData(body), userId);
+      historia = await createHistoriaClinica(patientId, data, userId);
     } catch (error) {
       if (error instanceof HistoriaClinicaExistsError) {
         return apiError('CONFLICT', error.message, 409);
@@ -124,10 +131,12 @@ export const PATCH = withApiErrors(
     const current = await prisma.historiaClinica.findUnique({ where: { patientId }, select: { id: true } });
     const noteEdit = await beginNoteEdit('historiaClinica', current?.id);
     const body = (await request.json()) as HistoriaClinicaBody;
+    const data = toServiceData(body);
+    if (typeof data === 'string') return apiError('INVALID_INPUT', data, 400);
 
     let historia;
     try {
-      historia = await updateHistoriaClinica(patientId, toServiceData(body));
+      historia = await updateHistoriaClinica(patientId, data);
     } catch (error) {
       if (error instanceof HistoriaClinicaNotFoundError) {
         return apiError('NOT_FOUND', error.message, 404);

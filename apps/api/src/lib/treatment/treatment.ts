@@ -1,3 +1,6 @@
+import { EVOLUTION_FIELDS, type ParsedFields } from '../clinical/clinical-fields';
+
+type EvolutionNote = { [K in keyof typeof EVOLUTION_FIELDS]: ParsedFields<typeof EVOLUTION_FIELDS>[K] | null };
 import { prisma } from '../prisma/client';
 import { assertInClinic } from '../tenancy/assert';
 
@@ -48,6 +51,10 @@ export async function getTreatment(id: string) {
     id: treatment.id,
     patientId: treatment.patientId,
     fecha: treatment.fecha,
+    // The visit's nota de evolución (NOM-004-SSA3-2012 6.2), null where nothing was recorded.
+    ...(Object.fromEntries(
+      Object.keys(EVOLUTION_FIELDS).map((k) => [k, (treatment as Record<string, unknown>)[k] ?? null])
+    ) as EvolutionNote),
     items: treatment.items.map((i) => ({
       id: i.id,
       treatmentTypeId: i.treatmentTypeId,

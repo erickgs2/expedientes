@@ -69,6 +69,11 @@ export class TreatmentProductService {
     formData.append('brand', input.brand);
     formData.append('lotNumber', input.lotNumber);
     formData.append('expiryDate', input.expiryDate);
+    // Dose fields are always sent, blank when not recorded, so an edit can also clear them.
+    for (const key of ['quantity', 'unit', 'route', 'zone', 'frequency'] as const) {
+      const value = input.dose?.[key];
+      formData.append(key, value === null || value === undefined ? '' : String(value));
+    }
     if (photo) {
       formData.append('photo', photo, 'product.jpg');
     }

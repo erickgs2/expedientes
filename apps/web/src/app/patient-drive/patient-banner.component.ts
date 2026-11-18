@@ -1,8 +1,9 @@
 import { Component, inject } from '@angular/core';
+import type { PatientSummary } from '@expedientes/shared-types';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { ActivePatientStore } from './active-patient.store';
 
@@ -27,6 +28,10 @@ import { ActivePatientStore } from './active-patient.store';
         >
           <mat-icon class="banner-icon" aria-hidden="true">person</mat-icon>
           <span class="banner-name">{{ patient.fullName }}</span>
+          <!-- NOM-004-SSA3-2012 5.9: record number, age and sex identify the patient on every note. -->
+          @if (identity(patient); as id) {
+            <span class="banner-meta banner-identity">{{ id }}</span>
+          }
           @if (patient.documentId) {
             <span class="banner-meta">{{ patient.documentId }}</span>
           }
@@ -83,7 +88,7 @@ import { ActivePatientStore } from './active-patient.store';
       }
       /* On a phone the CURP gives way: the name is what identifies the patient at a glance. */
       @media (max-width: 599px) {
-        .banner-meta {
+        .banner-meta:not(.banner-identity) {
           display: none;
         }
       }
@@ -100,5 +105,32 @@ import { ActivePatientStore } from './active-patient.store';
   ],
 })
 export class PatientBannerComponent {
+  private readonly transloco = inject(TranslocoService);
+
+  /** "Exp. 0042 · 38 años · Femenino", with whichever of the three is known. */
+  protected identity(patient: PatientSummary): string | null {
+    const parts: string[] = [];
+    if (patient.recordNumber) {
+      parts.push(this.transloco.translate('clinical.identity.record', { n: String(patient.recordNumber).padStart(4, '0') }));
+    }
+    const age = ageFrom(patient.birthDate ?? null);
+    if (age !== null) parts.push(this.transloco.translate('clinical.identity.age', { n: age }));
+    if (patient.sex) parts.push(this.transloco.translate(`historiaClinica.sexoOptions.${patient.sex}`));
+    // A gentle nudge, never a block: the historia clínica is where these get filled in.
+    if (age === null || !patient.sex) parts.push(this.transloco.translate('clinical.identity.missing'));
+    return parts.length ? parts.join(' · ') : null;
+  }
+
   protected readonly activePatient = inject(ActivePatientStore);
+}
+
+/** Completed years from an ISO birth date (stored as a calendar date at UTC midnight). */
+export function ageFrom(birthIso: string | null): number | null {
+  if (!birthIso) return null;
+  const [y, m, d] = birthIso.substring(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age -= 1;
+  return age;
 }

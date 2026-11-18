@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   Valoracion,
   ValoracionSummary,
-  ValoracionUpdateInput,
+  ValoracionUpdateWithEvolution,
   ValoracionDiagramsUpdateInput,
   Photo,
   PhotoTag,
@@ -48,7 +48,7 @@ export class ValoracionService {
     ).then((r) => r.valoracion);
   }
 
-  update(id: string, input: ValoracionUpdateInput): Promise<Valoracion> {
+  update(id: string, input: ValoracionUpdateWithEvolution): Promise<Valoracion> {
     return firstValueFrom(
       this.http.patch<{ valoracion: Valoracion }>(`/api/valoracion/${id}`, input)
     ).then((r) => r.valoracion);

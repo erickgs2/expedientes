@@ -17,6 +17,7 @@ import type {
   ExportValoracion,
 } from './gather-export-data';
 import { PDF_LABELS, type PdfLabels } from './pdf-labels';
+import { bodyMassIndex } from '../clinical/clinical-fields';
 
 const styles = StyleSheet.create({
   // `paddingTop` leaves room for the fixed letterhead below, which sits outside the flow.
@@ -57,8 +58,10 @@ const styles = StyleSheet.create({
   diagramImage: { marginRight: 8, marginBottom: 8 },
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
+  productDose: { flex: 2 },
   noteSignature: { fontSize: 8, color: '#444444', marginTop: 6 },
   addendum: { marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: '#bbbbbb' },
+  addendumText: { marginBottom: 2 },
   addendumTitle: { fontSize: 9, fontWeight: 'bold', marginBottom: 2 },
   retiredGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
   retiredCell: { width: '48%', marginRight: '2%', marginBottom: 14 },
@@ -129,7 +132,7 @@ function Addenda({
           <Text style={styles.addendumTitle}>
             {l.addendum} {i + 1} · {stamp(a.signed.at, timeZone, language)}
           </Text>
-          {a.text ? <Text style={styles.fieldValue}>{a.text}</Text> : null}
+          {a.text ? <Text style={styles.addendumText}>{a.text}</Text> : null}
           <DiagramImages diagrams={a.diagrams} diagramImages={diagramImages} />
           <Text style={styles.noteSignature}>
             {l.signedBy} {[a.signed.title, a.signed.name].filter(Boolean).join(' ')}
@@ -141,6 +144,91 @@ function Addenda({
     </>
   );
 }
+
+/** Completed years between a birth date and `at`; null without a birth date. */
+export function ageOn(birthIso: string | null, at: Date): number | null {
+  if (!birthIso) return null;
+  const birth = new Date(birthIso);
+  let age = at.getUTCFullYear() - birth.getUTCFullYear();
+  const hadBirthday =
+    at.getUTCMonth() > birth.getUTCMonth() ||
+    (at.getUTCMonth() === birth.getUTCMonth() && at.getUTCDate() >= birth.getUTCDate());
+  if (!hadBirthday) age -= 1;
+  return age;
+}
+
+const num = (v: unknown) => (typeof v === 'number' ? v : null);
+
+/** "TA 120/80 mmHg · FC 72 lpm · …" from whichever vital signs were recorded; null when none. */
+export function vitalsLine(values: Record<string, unknown>, labels: PdfLabels): string | null {
+  const f = labels.clinical.fields;
+  const parts: string[] = [];
+  const sys = num(values['presionSistolica']);
+  const dia = num(values['presionDiastolica']);
+  if (sys !== null || dia !== null) parts.push(`${f['presionSistolica']} ${sys ?? '—'}/${dia ?? '—'} mmHg`);
+  const fc = num(values['frecuenciaCardiaca']);
+  if (fc !== null) parts.push(`${f['frecuenciaCardiaca']} ${fc} lpm`);
+  const fr = num(values['frecuenciaRespiratoria']);
+  if (fr !== null) parts.push(`${f['frecuenciaRespiratoria']} ${fr} rpm`);
+  const t = num(values['temperatura']);
+  if (t !== null) parts.push(`${f['temperatura']} ${t} °C`);
+  const peso = num(values['peso']);
+  if (peso !== null) parts.push(`${f['peso']} ${peso} kg`);
+  const talla = num(values['talla']);
+  if (talla !== null) parts.push(`${f['talla']} ${talla} cm`);
+  const bmi = bodyMassIndex(peso, talla);
+  if (bmi !== null) parts.push(`${labels.clinical.bmi} ${bmi.toFixed(1)}`);
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** "0.5 ml · intradérmica · labio superior · cada 4 meses" from what was recorded. */
+export function doseLine(dose: Record<string, unknown>, labels: PdfLabels): string | null {
+  const c = labels.clinical;
+  const parts: string[] = [];
+  const q = num(dose['quantity']);
+  const unit = typeof dose['unit'] === 'string' ? c.units[dose['unit']] ?? dose['unit'] : '';
+  if (q !== null) parts.push(`${q}${unit ? ` ${unit}` : ''}`);
+  if (typeof dose['route'] === 'string') parts.push(c.routes[dose['route']] ?? dose['route']);
+  if (typeof dose['zone'] === 'string') parts.push(dose['zone']);
+  if (typeof dose['frequency'] === 'string') parts.push(dose['frequency']);
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** One subsection of NOM-004 fields, printed only when at least one of them was filled. */
+function ClinicalGroup({
+  title,
+  names,
+  values,
+  labels,
+  vitals = false,
+}: {
+  title: string;
+  names: string[];
+  values: Record<string, unknown>;
+  labels: PdfLabels;
+  vitals?: boolean;
+}) {
+  const c = labels.clinical;
+  const line = vitals ? vitalsLine(values, labels) : null;
+  const shown = names.filter((n) => values[n] !== undefined && values[n] !== null);
+  if (!line && shown.length === 0) return null;
+  const display = (name: string): string => {
+    const v = values[name];
+    if (name === 'tipoPiel' && typeof v === 'string') return c.skinTypes[v] ?? v;
+    return String(v);
+  };
+  return (
+    <View>
+      <Text style={styles.subsectionTitle}>{title}</Text>
+      {line ? <Field label={c.vitals} value={line} /> : null}
+      {shown.map((n) => (
+        <Field key={n} label={c.fields[n] ?? n} value={display(n)} />
+      ))}
+    </View>
+  );
+}
+
+const EVOLUTION_TEXT = ['evolucion', 'resultadosEstudios', 'diagnostico', 'pronostico', 'indicaciones'];
 
 function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
@@ -245,6 +333,32 @@ function HistoriaClinicaSection({
         label={l.fields.antecedentesHeredofamiliares}
         value={historia.antecedentesHeredofamiliares}
       />
+      {/* NOM-004-SSA3-2012 6.1, in the norm's order; empty groups are left out. */}
+      <ClinicalGroup
+        title={labels.clinical.pathological}
+        names={['antecedentesPersonalesPatologicos', 'padecimientoActual']}
+        values={historia.clinical}
+        labels={labels}
+      />
+      <ClinicalGroup
+        title={labels.clinical.systems}
+        names={['interrogatorioPiel', 'interrogatorioCardiovascular', 'interrogatorioEndocrino', 'interrogatorioNeurologico', 'interrogatorioOtros']}
+        values={historia.clinical}
+        labels={labels}
+      />
+      <ClinicalGroup
+        title={labels.clinical.physicalExam}
+        names={['fototipoFitzpatrick', 'tipoPiel', 'exploracionFacial', 'lesionesCutaneas']}
+        values={historia.clinical}
+        labels={labels}
+        vitals
+      />
+      <ClinicalGroup
+        title={labels.clinical.assessment}
+        names={['resultadosEstudios', 'diagnostico', 'pronostico', 'indicacionTerapeutica']}
+        values={historia.clinical}
+        labels={labels}
+      />
     </View>
   );
 }
@@ -276,6 +390,7 @@ function ValoracionSection({
               null
             }
           />
+          <ClinicalGroup title={labels.clinical.evolution} names={EVOLUTION_TEXT} values={v.evolution} labels={labels} vitals />
           <DiagramImages diagrams={v.diagrams} diagramImages={diagramImages} />
           <NoteSignatureLine signature={v.signature} labels={labels} {...meta} />
           <Addenda addenda={v.addenda} labels={labels} diagramImages={diagramImages} {...meta} />
@@ -309,6 +424,7 @@ function TreatmentItemBlock({
             <Text style={[styles.productCell, styles.itemTitle]}>{l.productBrand}</Text>
             <Text style={[styles.productCell, styles.itemTitle]}>{l.productLot}</Text>
             <Text style={[styles.productCell, styles.itemTitle]}>{l.productExpiry}</Text>
+            <Text style={[styles.productDose, styles.itemTitle]}>{labels.clinical.dose}</Text>
           </View>
           {item.products.map((p, i) => (
             <View key={i} style={styles.productRow}>
@@ -317,6 +433,7 @@ function TreatmentItemBlock({
               <Text style={styles.productCell}>
                 {p.expiryDate ? p.expiryDate.substring(0, 7) : '—'}
               </Text>
+              <Text style={styles.productDose}>{doseLine(p.dose, labels) ?? '—'}</Text>
             </View>
           ))}
         </View>
@@ -369,6 +486,7 @@ function TreatmentsSection({
               annexIncluded={annexIncluded}
             />
           ))}
+          <ClinicalGroup title={labels.clinical.evolution} names={EVOLUTION_TEXT} values={t.evolution} labels={labels} vitals />
           <NoteSignatureLine signature={t.signature} labels={labels} {...meta} />
           <Addenda addenda={t.addenda} labels={labels} diagramImages={diagramImages} {...meta} />
         </View>
@@ -575,8 +693,28 @@ export async function buildExportPdf(
           {labels.generatedOn} {data.generatedAt.toISOString().substring(0, 10)}
         </Text>
         <View style={styles.patientInfo}>
+          <Field
+            label={labels.patientInfo.recordNumber}
+            value={data.patient.recordNumber ? String(data.patient.recordNumber).padStart(4, '0') : null}
+          />
           <Field label={labels.patientInfo.phone} value={data.patient.phone} />
           <Field label={labels.patientInfo.documentId} value={data.patient.documentId} />
+          <Field
+            label={labels.patientInfo.age}
+            value={(() => {
+              const age = ageOn(data.patient.birthDate, data.generatedAt);
+              return age === null ? null : `${age} ${labels.patientInfo.years}`;
+            })()}
+          />
+          <Field
+            label={labels.patientInfo.sex}
+            value={
+              data.patient.sex
+                ? (labels.historiaClinica.sexoOptions[data.patient.sex as keyof PdfLabels['historiaClinica']['sexoOptions']] ??
+                  data.patient.sex)
+                : null
+            }
+          />
         </View>
         {data.historiaClinica && (
           <View>
