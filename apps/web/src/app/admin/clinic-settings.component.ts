@@ -170,7 +170,12 @@ const PLACEHOLDERS = [
                     }
                   }
                   <div [hidden]="!!currentSignaturePath() && !drawingSignature()">
-                    <app-signature-pad #signaturePad [disabled]="saving() || !canEdit"></app-signature-pad>
+                    <app-signature-pad
+                      #signaturePad
+                      [disabled]="saving() || !canEdit"
+                      [title]="'clinicSettings.doctorSignature' | transloco"
+                      [caption]="value().doctorName || null"
+                    ></app-signature-pad>
                     @if (currentSignaturePath() && drawingSignature()) {
                       <button mat-button type="button" (click)="cancelSignature()">
                         {{ 'clinicSettings.keepSignature' | transloco }}
@@ -206,7 +211,12 @@ const PLACEHOLDERS = [
                     }
                   }
                   <div [hidden]="!!currentWitnessSignaturePath() && !drawingWitnessSignature()">
-                    <app-signature-pad #witnessSignaturePad [disabled]="saving() || !canEdit"></app-signature-pad>
+                    <app-signature-pad
+                      #witnessSignaturePad
+                      [disabled]="saving() || !canEdit"
+                      [title]="'clinicSettings.witness.signature' | transloco"
+                      [caption]="value().secondWitnessName || null"
+                    ></app-signature-pad>
                     @if (currentWitnessSignaturePath() && drawingWitnessSignature()) {
                       <button mat-button type="button" (click)="cancelWitnessSignature()">
                         {{ 'clinicSettings.keepSignature' | transloco }}
