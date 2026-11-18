@@ -16,7 +16,8 @@
       "today": "Hoy",
       "admin": "Administración",
       "treatmentCatalog": "Catálogo de tratamientos",
-      "plan": "Plan"
+      "plan": "Plan",
+      "premium": "Conoce Premium"
     }
   },
   "common": {
@@ -972,6 +973,26 @@
       "cardDone": "Pago confirmado. Tu clínica ya tiene Premium.",
       "oxxo": "Tu ficha OXXO está lista. Págala en cualquier OXXO en los próximos {{days}} días; tu Premium se activa cuando OXXO confirme el pago, normalmente el siguiente día hábil. Te avisaremos por correo.",
       "canceled": "No se completó el pago. Puedes intentarlo de nuevo cuando quieras."
+    },
+    "unlimitedShort": "Ilimitados",
+    "compareDialog": {
+      "title": "Gratis o Premium",
+      "lead": "Lo que incluye cada plan. Puedes cambiar a Premium cuando quieras y tus datos se quedan igual.",
+      "yours": "Tu plan actual",
+      "included": "Incluido",
+      "notIncluded": "No incluido",
+      "howToPay": "Pagas con tarjeta, que se renueva sola, o en OXXO por mes o por año.",
+      "seePlans": "Ver planes",
+      "rows": {
+        "users": "Usuarios",
+        "treatmentTypes": "Tipos de tratamiento",
+        "storage": "Espacio para fotos y documentos",
+        "patients": "Pacientes",
+        "pdf": "Export PDF del expediente",
+        "whatsapp": "Recordatorios por WhatsApp",
+        "roles": "Roles personalizados",
+        "unbranded": "PDF sin pie de MedCloud"
+      }
     }
   },
   "legal": {
@@ -1057,5 +1078,17 @@
       "ACCOUNT_INACTIVE": "Tu cuenta está desactivada.",
       "UNKNOWN": "Algo salió mal. Inténtalo de nuevo."
     }
+  },
+  "notFound": {
+    "title": "Esta página no está en el mapa",
+    "lead": "No encontramos la dirección",
+    "hint": "Puede que el enlace esté incompleto o que la página haya cambiado de lugar. Tus expedientes no se ven afectados.",
+    "toToday": "Ir a Hoy",
+    "toPatients": "Buscar un paciente",
+    "toLogin": "Iniciar sesión",
+    "toPortal": "Ir al portal",
+    "back": "Volver a la página anterior",
+    "plate": "Lám.",
+    "illustration": "Un mapa facial en blanco con la marca fuera del rostro"
   }
 }

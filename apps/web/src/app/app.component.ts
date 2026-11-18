@@ -16,6 +16,7 @@ import {
 import { HasPermissionDirective } from './auth/has-permission.directive';
 import { ThemeService } from './shell/theme.service';
 import { PatientBannerComponent } from './patient-drive/patient-banner.component';
+import { PlanCompareDialogComponent } from './plan/plan-compare-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -98,6 +99,11 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
               <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
             </button>
           }
+          @if (showPremium()) {
+            <button mat-stroked-button type="button" class="premium-cta" (click)="openPlanCompare()">
+              <mat-icon>workspace_premium</mat-icon>{{ 'shell.nav.premium' | transloco }}
+            </button>
+          }
         </nav>
       }
       <span class="spacer"></span>
@@ -124,6 +130,11 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
             <a mat-menu-item [matMenuTriggerFor]="adminMenu">
               <mat-icon>settings</mat-icon>{{ 'shell.nav.admin' | transloco }}
             </a>
+          }
+          @if (showPremium()) {
+            <button mat-menu-item type="button" (click)="openPlanCompare()">
+              <mat-icon>workspace_premium</mat-icon>{{ 'shell.nav.premium' | transloco }}
+            </button>
           }
         </mat-menu>
 
@@ -242,6 +253,17 @@ import { PatientBannerComponent } from './patient-drive/patient-banner.component
         border-radius: 50%;
         background: var(--plate-mark);
       }
+      /* Set apart from the page links: it opens the plan comparison, it is not a place. */
+      .desktop-nav .premium-cta {
+        margin-left: 12px;
+        height: 36px;
+        letter-spacing: 0;
+      }
+      .desktop-nav .premium-cta mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
       .mobile-nav-trigger {
         display: none;
       }
@@ -324,6 +346,15 @@ export class AppComponent {
       this.auth.hasPermission('treatments', 'view') ||
       this.auth.hasPermission('clinic-settings', 'view')
     );
+  }
+
+  /** The way to Premium in the header: for whoever manages the plan, while the clinic is on Free. */
+  protected showPremium(): boolean {
+    return this.auth.plan()?.tier === 'FREE' && this.auth.hasPermission('clinic-settings', 'view');
+  }
+
+  protected openPlanCompare(): void {
+    this.dialog.open(PlanCompareDialogComponent, { width: '600px', maxWidth: 'calc(100vw - 32px)', autoFocus: false });
   }
 
   protected adminActive(): boolean {
