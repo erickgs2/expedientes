@@ -6,10 +6,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService, translate } from '@jsverse/transloco';
 import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { AuthService } from '../auth/auth.service';
+import type { AddendumDiagramReferences } from '../shared/note-signature/addendum-dialog.component';
 import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
@@ -56,7 +57,14 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
       </div>
 
       <h1>{{ 'valoracion.detailTitle' | transloco }}</h1>
-      <app-note-signature kind="valoracion" [noteId]="valoracionId" [canSign]="canSignNotes" [refresh]="savedTick()" />
+      <app-note-signature
+        kind="valoracion"
+        [noteId]="valoracionId"
+        [canSign]="canSignNotes"
+        [refresh]="savedTick()"
+        [diagramReferences]="addendumReferences"
+        (signedChange)="setLocked($event)"
+      />
 
       <div class="sheet">
         <form class="visit-col" [formGroup]="form" (ngSubmit)="save()">
@@ -74,6 +82,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
               <mat-label>{{ 'valoracion.fields.queNecesitaElPaciente' | transloco }}</mat-label>
               <textarea matInput formControlName="queNecesitaElPaciente" rows="3"></textarea>
             </mat-form-field>
+            @if (!locked()) {
             <div *appHasPermission="'valoracion:edit'" class="copy-row">
               <button
                 mat-stroked-button
@@ -93,6 +102,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
                 }}
               </span>
             </div>
+            }
           </section>
 
           <section class="card">
@@ -113,12 +123,14 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
             </button>
           }
 
+          @if (!locked()) {
           <div *appHasPermission="'valoracion:edit'" class="save-bar" [class.has-changes]="dirty()">
             <span>{{ (dirty() ? 'visitSheet.unsaved' : 'visitSheet.allSaved') | transloco }}</span>
             <button mat-flat-button color="primary" type="submit" [disabled]="saving() || !dirty()">
               {{ (saving() ? 'valoracion.saving' : 'common.save') | transloco }}
             </button>
           </div>
+          }
         </form>
 
         <div class="media-col">
@@ -131,6 +143,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
               [dataSource]="diagramDataSource"
               permissionModule="valoracion"
               [diagrams]="diagrams"
+              [readonly]="locked()"
             />
           </section>
 
@@ -359,6 +372,12 @@ export class ValoracionDetailComponent implements OnInit {
   /** `form.dirty` is not a signal; re-read it whenever the values change or a save lands. */
   private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
   protected readonly savedTick = signal(0);
+  /** A signed valoración is read-only; corrections go in an addendum (NOM-004-SSA3-2012 5.10). */
+  protected readonly locked = signal(false);
+  protected readonly addendumReferences: AddendumDiagramReferences = {
+    options: () => [{ id: 'this', label: translate('noteSignature.addendum.originalNote') }],
+    get: async () => (await this.valoracionService.get(this.valoracionId)).diagrams,
+  };
   protected readonly canSignNotes = inject(AuthService).hasPermission('valoracion', 'edit');
   protected readonly dirty = computed(() => {
     this.formValue();
@@ -496,7 +515,14 @@ export class ValoracionDetailComponent implements OnInit {
     this.form.markAsDirty();
   }
 
+  protected setLocked(signed: boolean): void {
+    this.locked.set(signed);
+    if (signed) this.form.disable({ emitEvent: false });
+    else this.form.enable({ emitEvent: false });
+  }
+
   async save(): Promise<void> {
+    if (this.locked()) return;
     this.saving.set(true);
     try {
       const raw = this.form.value;

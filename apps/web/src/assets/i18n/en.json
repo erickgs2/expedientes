@@ -1165,7 +1165,8 @@
     "OWNER_ONLY": "Only the clinic owner can purge a record.",
     "NOT_ARCHIVED": "Archive the patient before purging the record.",
     "CONFIRMATION_MISMATCH": "The name does not match the patient's.",
-    "NOTE_SIGNED": "This note is signed."
+    "NOTE_SIGNED": "This note is signed; add an addendum to correct it.",
+    "NOTE_NOT_SIGNED": "Only a signed note takes addenda; edit the draft instead."
   },
   "noteSignature": {
     "recordedBy": "Recorded by {{name}} · {{when}}",
@@ -1189,7 +1190,29 @@
       "ALREADY_SIGNED": "This note is already signed.",
       "UNKNOWN": "Could not sign. Try again."
     },
-    "recordedAt": "Recorded · {{when}} · author not recorded"
+    "recordedAt": "Recorded · {{when}} · author not recorded",
+    "lockedNote": "Signed note: it can no longer be changed. Add an addendum to correct or complete it.",
+    "addendum": {
+      "add": "Add addendum",
+      "title": "Add addendum",
+      "lead": "The signed note stays as it is. The addendum appears below it with your signature and the time, and cannot be edited or deleted afterwards.",
+      "text": "Addendum text",
+      "diagram": "Addendum diagram",
+      "addDiagram": "Add diagram",
+      "sign": "Sign addendum",
+      "heading": "Addendum {{n}} · {{when}}",
+      "listLabel": "Addenda to this note",
+      "originalNote": "Original note"
+    },
+    "history": {
+      "open": "View history",
+      "title": "Clinical history versions",
+      "version": "Version {{n}}",
+      "current": "current",
+      "unknownAuthor": "Author not recorded",
+      "first": "First saved version.",
+      "failed": "Could not load the history."
+    }
   },
   "profile": {
     "title": "My profile",

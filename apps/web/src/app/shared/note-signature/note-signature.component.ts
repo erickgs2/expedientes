@@ -1,10 +1,24 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import type { NoteKind, NoteSignature } from '@expedientes/shared-types';
+import type {
+  AddendumKind,
+  ClinicalAddendum,
+  DiagramViewRecord,
+  NoteKind,
+  NoteSignature,
+  PermissionModule,
+} from '@expedientes/shared-types';
+import { FacialDiagramViewsComponent } from '../facial-diagram/facial-diagram-views.component';
+import type { DiagramDataSource } from '../facial-diagram/diagram-data-source';
+import { AddendumDialogComponent, type AddendumDialogData, type AddendumDiagramReferences } from './addendum-dialog.component';
+import {
+  HistoriaRevisionsDialogComponent,
+  type HistoriaRevisionsDialogData,
+} from './historia-revisions-dialog.component';
 import { NoteSignatureService } from './note-signature.service';
 import { SignNoteDialogComponent, type SignNoteDialogData } from './sign-note-dialog.component';
 
@@ -12,12 +26,17 @@ import { SignNoteDialogComponent, type SignNoteDialogData } from './sign-note-di
  * The authorship line of a note (NOM-004-SSA3-2012 5.10): who recorded it and when, and its
  * signature — signed (with name, title, licence and time), unsigned with a "Firmar" button for whoever
  * may edit it, or "recorded before electronic signatures" for older notes. `refresh` is bumped by the
- * page after each save, because an edit voids a signature that no longer matches.
+ * page after each save, because an edit can void the historia's signature.
+ *
+ * Phase C: a signed valoración or treatment visit is locked. This line reports `signedChange` so
+ * the page can make its form read-only, lists the note's signed addenda under it, and offers
+ * "Agregar adenda" instead of editing. The historia clínica is never locked; it offers "Ver
+ * historial" with every saved version.
  */
 @Component({
   selector: 'app-note-signature',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, TranslocoModule],
+  imports: [MatButtonModule, MatIconModule, TranslocoModule, FacialDiagramViewsComponent],
   template: `
     @if (signature(); as s) {
       <div class="note-signature" [class.is-signed]="!!s.signed">
@@ -51,7 +70,50 @@ import { SignNoteDialogComponent, type SignNoteDialogData } from './sign-note-di
             }
           </p>
         }
+        @if (s.signed && addendumKind() && canSign()) {
+          <button mat-stroked-button type="button" class="line-action" (click)="openAddendum()">
+            <mat-icon>post_add</mat-icon>{{ 'noteSignature.addendum.add' | transloco }}
+          </button>
+        }
+        @if (kind() === 'historiaClinica' && patientId()) {
+          <button mat-button type="button" class="line-action" (click)="openHistory()">
+            <mat-icon>history</mat-icon>{{ 'noteSignature.history.open' | transloco }}
+          </button>
+        }
       </div>
+      @if (s.signed && addendumKind()) {
+        <p class="locked-note">{{ 'noteSignature.lockedNote' | transloco }}</p>
+      }
+    }
+
+    @if (addenda().length > 0) {
+      <ol class="addenda" [attr.aria-label]="'noteSignature.addendum.listLabel' | transloco">
+        @for (a of addenda(); track a.id; let i = $index) {
+          <li class="addendum">
+            <h3>{{ 'noteSignature.addendum.heading' | transloco: { n: i + 1, when: stamp(a.signed.at) } }}</h3>
+            @if (a.text) {
+              <p class="text">{{ a.text }}</p>
+            }
+            @if (a.diagrams.length > 0) {
+              <app-facial-diagram-views
+                [dataSource]="readonlySource"
+                [permissionModule]="permissionModule()"
+                [diagrams]="asRecords(a)"
+                [readonly]="true"
+              />
+            }
+            <p class="state signed">
+              <mat-icon aria-hidden="true">verified</mat-icon>
+              <span>
+                {{ 'noteSignature.signedBy' | transloco: { name: signerName(a.signed), when: stamp(a.signed.at) } }}
+                @if (a.signed.license) {
+                  <span class="license">· {{ 'noteSignature.license' | transloco: { license: a.signed.license } }}</span>
+                }
+              </span>
+            </p>
+          </li>
+        }
+      </ol>
     }
   `,
   styles: [
@@ -98,6 +160,40 @@ import { SignNoteDialogComponent, type SignNoteDialogData } from './sign-note-di
       .muted {
         color: var(--mat-sys-on-surface-variant);
       }
+      .line-action mat-icon {
+        margin-right: 4px;
+      }
+      .locked-note {
+        margin: -8px 0 16px;
+        padding: 0 12px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .addenda {
+        list-style: none;
+        margin: 0 0 16px;
+        padding: 0;
+      }
+      .addendum {
+        padding: 12px;
+        border-bottom: 1px solid var(--plate-line);
+      }
+      .addendum h3 {
+        margin: 0 0 4px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .addendum .text {
+        margin: 0 0 8px;
+        white-space: pre-wrap;
+        max-width: 72ch;
+      }
+      .addendum .state {
+        min-height: 32px;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
       /* An unsigned note is a pending action: the one rose mark on the line. */
       .dot {
         width: 6px;
@@ -114,11 +210,25 @@ export class NoteSignatureComponent {
   readonly canSign = input(false);
   /** Bump after each save so a voided signature shows at once. */
   readonly refresh = input(0);
+  /** Needed for the historia's "Ver historial". */
+  readonly patientId = input('');
+  /** The note's own diagrams, offered as a reference when an addendum is drawn. */
+  readonly diagramReferences = input<AddendumDiagramReferences | undefined>(undefined);
+  /** Emits whether the note is signed each time the line loads, so the page can lock its form. */
+  readonly signedChange = output<boolean>();
 
   private readonly service = inject(NoteSignatureService);
   private readonly dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
   protected readonly signature = signal<NoteSignature | null>(null);
+  protected readonly addenda = signal<ClinicalAddendum[]>([]);
+
+  /** Addenda are only ever read here. */
+  protected readonly readonlySource: DiagramDataSource = {
+    listReferenceOptions: async () => [],
+    getReferenceViews: async () => [],
+    save: async () => [],
+  };
 
   constructor() {
     effect(() => {
@@ -129,10 +239,33 @@ export class NoteSignatureComponent {
       this.service
         .get(kind, id)
         .then((s) => {
-          if (this.noteId() === id) this.signature.set(s);
+          if (this.noteId() !== id) return;
+          this.signature.set(s);
+          this.signedChange.emit(!!s.signed);
+        })
+        .catch(() => undefined);
+      const addendumKind = kind === 'historiaClinica' ? null : kind;
+      if (!addendumKind) return;
+      this.service
+        .addenda(addendumKind, id)
+        .then((list) => {
+          if (this.noteId() === id) this.addenda.set(list);
         })
         .catch(() => undefined);
     });
+  }
+
+  protected addendumKind(): AddendumKind | null {
+    const kind = this.kind();
+    return kind === 'historiaClinica' ? null : kind;
+  }
+
+  protected permissionModule(): PermissionModule {
+    return this.kind() === 'valoracion' ? 'valoracion' : this.kind() === 'treatment' ? 'treatments' : 'historia-clinica';
+  }
+
+  protected asRecords(a: ClinicalAddendum): DiagramViewRecord[] {
+    return a.diagrams.map((d) => ({ view: d.view, data: d.data, updatedAt: a.signed.at }));
   }
 
   protected stamp(iso: string): string {
@@ -145,7 +278,7 @@ export class NoteSignatureComponent {
     });
   }
 
-  protected signerName(sig: NonNullable<NoteSignature['signed']>): string {
+  protected signerName(sig: { title: string | null; name: string }): string {
     return [sig.title, sig.name].filter(Boolean).join(' ');
   }
 
@@ -159,6 +292,33 @@ export class NoteSignatureComponent {
         })
         .afterClosed()
     );
-    if (signed) this.signature.set(signed);
+    if (signed) {
+      this.signature.set(signed);
+      this.signedChange.emit(!!signed.signed);
+    }
+  }
+
+  protected async openAddendum(): Promise<void> {
+    const kind = this.addendumKind();
+    if (!kind) return;
+    const added = await firstValueFrom(
+      this.dialog
+        .open<AddendumDialogComponent, AddendumDialogData, ClinicalAddendum | null>(AddendumDialogComponent, {
+          data: { kind, id: this.noteId(), permissionModule: this.permissionModule(), references: this.diagramReferences() },
+          width: '720px',
+          maxWidth: '95vw',
+          autoFocus: false,
+        })
+        .afterClosed()
+    );
+    if (added) this.addenda.update((list) => [...list, added]);
+  }
+
+  protected openHistory(): void {
+    this.dialog.open<HistoriaRevisionsDialogComponent, HistoriaRevisionsDialogData>(HistoriaRevisionsDialogComponent, {
+      data: { patientId: this.patientId() },
+      width: '720px',
+      maxWidth: '95vw',
+    });
   }
 }

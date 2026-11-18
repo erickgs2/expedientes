@@ -175,6 +175,8 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   @Input({ required: true }) dataSource!: DiagramDataSource;
   @Input({ required: true }) permissionModule!: PermissionModule;
   @Input() diagrams: DiagramViewRecord[] = [];
+  /** Shows the views without editing, whatever the user's permissions: a signed note, an addendum. */
+  @Input() readonly = false;
 
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
@@ -196,12 +198,15 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
   private currentData: Partial<Record<DiagramView, Record<string, unknown> | null>> = {};
 
   async ngOnInit(): Promise<void> {
-    this.canEdit = this.auth.hasPermission(this.permissionModule, 'edit');
+    this.canEdit = !this.readonly && this.auth.hasPermission(this.permissionModule, 'edit');
     void this.renderAllPreviews();
     this.pastOptions.set(await this.dataSource.listReferenceOptions());
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['readonly'] && !changes['readonly'].firstChange) {
+      this.canEdit = !this.readonly && this.auth.hasPermission(this.permissionModule, 'edit');
+    }
     if (!changes['diagrams'] || changes['diagrams'].firstChange) return;
     // A new diagrams input replaces any in-session state (e.g. the parent reloaded the record).
     this.currentData = {};

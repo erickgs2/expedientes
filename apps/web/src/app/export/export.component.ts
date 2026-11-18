@@ -12,7 +12,8 @@ import { TreatmentsService } from '../treatments/treatments.service';
 import { TreatmentDiagramService } from '../treatments/treatment-diagram.service';
 import { renderDiagramToBlob } from '../shared/facial-diagram/diagram-render.util';
 import { composeFrontDiagram } from '../shared/facial-diagram/diagram-geometry';
-import type { DiagramView } from '@expedientes/shared-types';
+import type { AddendumKind, DiagramView } from '@expedientes/shared-types';
+import { NoteSignatureService } from '../shared/note-signature/note-signature.service';
 import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
 import { ExportService, type ExportDiagramImage } from './export.service';
 
@@ -119,6 +120,7 @@ export class ExportComponent {
   private readonly treatmentsService = inject(TreatmentsService);
   private readonly treatmentDiagramService = inject(TreatmentDiagramService);
   private readonly exportService = inject(ExportService);
+  private readonly noteSignatures = inject(NoteSignatureService);
 
   protected readonly patient = this.activePatient.patient;
 
@@ -186,6 +188,7 @@ export class ExportComponent {
           }
           images.push({ key: `diagram_valoracion_${valoracion.id}_${diagram.view}`, blob });
         }
+        await this.collectAddendumImages('valoracion', valoracion.id, images);
       }
     }
 
@@ -205,10 +208,26 @@ export class ExportComponent {
             images.push({ key: `diagram_treatmentItem_${item.id}_${diagram.view}`, blob });
           }
         }
+        await this.collectAddendumImages('treatment', treatment.id, images);
       }
     }
 
     return images;
+  }
+
+  /** The drawings of a note's signed addenda, printed under the note with each addendum. */
+  private async collectAddendumImages(
+    kind: AddendumKind,
+    noteId: string,
+    images: ExportDiagramImage[]
+  ): Promise<void> {
+    for (const addendum of await this.noteSignatures.addenda(kind, noteId)) {
+      for (const diagram of addendum.diagrams) {
+        const blob = await renderDiagramToBlob(diagram.view, frontAsSummary(diagram, addendum.diagrams));
+        if (!blob) throw new Error(`Failed to render diagram for addendum ${addendum.id} (${diagram.view})`);
+        images.push({ key: `diagram_addendum_${addendum.id}_${diagram.view}`, blob });
+      }
+    }
   }
 }
 

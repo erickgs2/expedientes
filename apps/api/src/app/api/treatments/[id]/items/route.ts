@@ -5,7 +5,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
-import { afterNoteEdit } from '../../../../../lib/signature/note-signature';
+import { afterNoteEdit, beginNoteEdit } from '../../../../../lib/signature/note-signature';
 
 interface ItemBody {
   treatmentTypeId?: unknown;
@@ -17,6 +17,7 @@ export const PATCH = withApiErrors(
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
     await assertRecordWritable('treatment', id);
+    const noteEdit = await beginNoteEdit('treatment', id);
 
     // Unlike a plain `update`, `deleteMany`/`upsert` don't throw on a nonexistent parent id —
     // without this explicit check a PATCH to a made-up id would silently succeed having done
@@ -75,7 +76,7 @@ export const PATCH = withApiErrors(
       patientId: existing.patientId,
     });
 
-    await afterNoteEdit('treatment', id, userId);
+    await afterNoteEdit('treatment', id, userId, existing.patientId, noteEdit);
     return NextResponse.json({ treatment });
   }
 );

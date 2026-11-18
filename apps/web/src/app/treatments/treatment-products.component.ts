@@ -1,3 +1,4 @@
+import { NoteSignatureService } from '../shared/note-signature/note-signature.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +23,9 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
       <h1>{{ 'treatments.productsTitle' | transloco }} — {{ item()?.treatmentTypeName }}</h1>
+      @if (locked()) {
+        <p class="locked-note">{{ 'noteSignature.lockedNote' | transloco }}</p>
+      }
 
       @if (canEdit) {
         <button mat-flat-button color="primary" (click)="openCreate()">
@@ -73,6 +77,11 @@ import { TreatmentProductFormDialogComponent } from './treatment-product-form-di
   `,
   styles: [
     `
+      .locked-note {
+        margin: 0 0 16px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .product-list {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -140,6 +149,8 @@ export class TreatmentProductsComponent implements OnInit {
 
   private itemId = '';
   private treatmentFecha = '';
+  private readonly noteSignatures = inject(NoteSignatureService);
+  protected readonly locked = signal(false);
 
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission('treatments', 'edit');
@@ -171,6 +182,12 @@ export class TreatmentProductsComponent implements OnInit {
       ]);
       this.products.set(products);
       this.treatmentFecha = treatment.fecha;
+      // A signed visit's products are part of what was signed: read-only, corrected by addendum.
+      const signature = await this.noteSignatures.get('treatment', item.treatmentId).catch(() => null);
+      if (signature?.signed) {
+        this.canEdit = false;
+        this.locked.set(true);
+      }
     } catch (error) {
       console.error('Failed to load treatment item products', error);
       this.loadFailed.set(true);

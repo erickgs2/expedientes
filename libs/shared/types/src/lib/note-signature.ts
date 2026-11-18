@@ -1,3 +1,5 @@
+import type { DiagramView } from './diagram.js';
+
 /** The notes that carry an author and an electronic signature (NOM-004-SSA3-2012 5.10). */
 export type NoteKind = 'valoracion' | 'treatment' | 'historiaClinica';
 
@@ -27,4 +29,27 @@ export interface UserProfile {
   professionalTitle: string | null;
   professionalLicense: string | null;
   hasSigningPin: boolean;
+}
+
+/** The kinds of note that are locked once signed and corrected with addenda. */
+export type AddendumKind = 'valoracion' | 'treatment';
+
+/** A signed addendum to a signed note (NOM-004-SSA3-2012 5.10). Never edited or deleted. */
+export interface ClinicalAddendum {
+  id: string;
+  text: string;
+  diagrams: { view: DiagramView; data: Record<string, unknown> }[];
+  createdAt: string;
+  signed: { at: string; name: string; title: string | null; license: string | null };
+}
+
+/** One version of a patient's historia clínica, as the history list shows it. */
+export interface HistoriaRevision {
+  revision: number;
+  changedAt: string;
+  changedByName: string | null;
+  legacy: boolean;
+  signed: { at: string; name: string; title: string | null; license: string | null } | null;
+  /** Fields that differ from the previous version; empty for the first. */
+  changes: { field: string; before: unknown; after: unknown }[];
 }

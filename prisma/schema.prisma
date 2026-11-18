@@ -55,6 +55,8 @@ model Clinic {
   treatmentItemPhotos   TreatmentItemPhoto[]
   treatmentItemProducts TreatmentItemProduct[]
   appointments          Appointment[]
+  clinicalAddenda       ClinicalAddendum[]
+  historiaRevisions     HistoriaClinicaRevision[]
 }
 
 enum ClinicStatus {
@@ -258,6 +260,7 @@ model Patient {
   valoraciones    Valoracion[]
   treatments      Treatment[]
   appointments    Appointment[]
+  addenda         ClinicalAddendum[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   /// Archived instead of deleted (NOM-004-SSA3-2012 5.4: a record is kept at least five years
@@ -352,6 +355,7 @@ model HistoriaClinica {
   legacyRecord  Boolean   @default(false)
 
   @@index([clinicId])
+  revisions HistoriaClinicaRevision[]
 }
 
 model Allergy {
@@ -943,4 +947,64 @@ model PaymentEvent {
   receivedAt  DateTime @default(now())
 
   @@index([clinicId, receivedAt])
+}
+
+/// NOM-004-SSA3-2012 5.10: a signed valoración or treatment visit is never edited; a correction or
+/// later finding is added as an addendum, written and signed in one step and itself never edited or
+/// deleted. `entity` is the note kind ('valoracion' | 'treatment'); `diagrams` holds the addendum's
+/// own diagram views ([{view, data}]) when the correction is drawn.
+model ClinicalAddendum {
+  id            String   @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId      String   @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic        Clinic   @relation(fields: [clinicId], references: [id])
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  entity        String
+  entityId      String
+  text          String
+  diagrams      Json?
+  createdById   String
+  createdAt     DateTime @default(now())
+  signedById    String
+  signedAt      DateTime
+  contentHash   String
+  signerName    String
+  signerTitle   String?
+  signerLicense String
+
+  @@index([entity, entityId])
+  @@index([patientId])
+}
+
+/// NOM-004-SSA3-2012 5.10 for the historia clínica, which is updated over time instead of locked:
+/// every save keeps the full content as a numbered revision, and signing signs the latest one.
+/// Revisions are never edited. Revision 1 of a historia that existed before this table is
+/// `legacyRecord` (author unknown, never signed).
+model HistoriaClinicaRevision {
+  id                String          @id @default(uuid())
+  /// The clinic this row belongs to. Every query on this model is scoped to the current clinic
+  /// (see apps/api/src/lib/tenancy). The database default reads the session's app.clinic_id and
+  /// fails when it is unset, so an insert that bypasses the scoped client cannot create a row that
+  /// belongs to no clinic.
+  clinicId          String          @default(dbgenerated("current_setting('app.clinic_id'::text)"))
+  clinic            Clinic          @relation(fields: [clinicId], references: [id])
+  historiaClinicaId String
+  historiaClinica   HistoriaClinica @relation(fields: [historiaClinicaId], references: [id])
+  revision          Int
+  content           Json
+  contentHash       String
+  changedById       String?
+  changedAt         DateTime        @default(now())
+  legacyRecord      Boolean         @default(false)
+  signedById        String?
+  signedAt          DateTime?
+  signerName        String?
+  signerTitle       String?
+  signerLicense     String?
+
+  @@unique([historiaClinicaId, revision])
 }

@@ -164,6 +164,16 @@ The authorship line under a valoración, treatment visit and historia clínica: 
 
 The PIN dialog is a plain Material dialog: one lead sentence explaining that editing voids the signature, one 6-digit PIN field, Cancel and Firmar. When the user has no PIN or licence yet, the error line links to /perfil instead of failing silently. /perfil is a single plate with two sections, "Cómo firmas" (title, cédula, a live preview of the signer line) and "PIN de firma" (new PIN, repeat, account password). On Today, "Notas por firmar: n" leads the side column with the rose dot only when the count is above zero.
 
+### Signed notes and addenda
+
+A signed valoración or treatment visit is read-only: its fields show disabled, the save bar and "copiar de la historia" disappear, and diagrams open in view mode. One secondary-ink sentence under the signature line says so ("Nota firmada: ya no se modifica…"). The line itself trades "Firmar" for an outlined "Agregar adenda". Addenda list under the line, in order: a bold tabular heading "Adenda n · fecha, hora", the text in body ink (pre-wrap, 72ch), its diagram thumbnails read-only, and its own signed line in the same style as the note's. Hairline between addenda; no cards, no colored rules. Photos and consents stay open on a signed visit.
+
+The addendum dialog follows the PIN dialog: one lead sentence saying the signed note stays as it is and the addendum cannot be changed, a textarea, a quiet "+ Agregar diagrama" text button that opens the same diagram views inline, the PIN field, Cancel and "Firmar adenda".
+
+### Historia clínica history
+
+The historia's signature line adds a text button "Ver historial". The dialog lists versions newest first: "Versión n" in semibold, "vigente" in small secondary ink on the newest, author and timestamp right-aligned, the signature state in secondary ink, then each changed answer as a two-column row: the label in secondary ink, the old value struck in secondary ink, an arrow, the new value in body ink weight 500. Hairline between versions; on phones the rows stack.
+
 ## Do's and Don'ts
 
 ### Do:

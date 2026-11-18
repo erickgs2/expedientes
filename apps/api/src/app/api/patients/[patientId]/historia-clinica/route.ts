@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '../../../../../lib/prisma/client';
 import {
   getHistoriaClinica,
   createHistoriaClinica,
@@ -12,7 +13,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertPatientWritable } from '../../../../../lib/patients/patient-archive';
-import { afterNoteEdit, noteSignature } from '../../../../../lib/signature/note-signature';
+import { afterNoteEdit, beginNoteEdit, noteSignature } from '../../../../../lib/signature/note-signature';
 
 interface HistoriaClinicaBody {
   ocupacion?: string | null;
@@ -109,7 +110,7 @@ export const POST = withApiErrors(
     });
 
     return NextResponse.json(
-      { historiaClinica: historia, signature: await noteSignature('historiaClinica', historia.id) },
+      { historiaClinica: historia, signature: await noteSignatureAfterCreate(historia.id, userId, patientId) },
       { status: 201 }
     );
   }
@@ -120,6 +121,8 @@ export const PATCH = withApiErrors(
     const userId = await requireAuth(request, 'historia-clinica', 'edit');
     const { patientId } = await params;
     await assertPatientWritable(patientId);
+    const current = await prisma.historiaClinica.findUnique({ where: { patientId }, select: { id: true } });
+    const noteEdit = await beginNoteEdit('historiaClinica', current?.id);
     const body = (await request.json()) as HistoriaClinicaBody;
 
     let historia;
@@ -140,7 +143,13 @@ export const PATCH = withApiErrors(
       patientId,
     });
 
-    await afterNoteEdit('historiaClinica', historia.id, userId, patientId);
+    await afterNoteEdit('historiaClinica', historia.id, userId, patientId, noteEdit);
     return NextResponse.json({ historiaClinica: historia, signature: await noteSignature('historiaClinica', historia.id) });
   }
 );
+
+/** A new historia keeps its first version as revision 1 straight away. */
+async function noteSignatureAfterCreate(historiaId: string, userId: string, patientId: string) {
+  await afterNoteEdit('historiaClinica', historiaId, userId, patientId);
+  return noteSignature('historiaClinica', historiaId);
+}

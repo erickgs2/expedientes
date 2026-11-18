@@ -1165,7 +1165,8 @@
     "OWNER_ONLY": "Solo el dueño de la clínica puede depurar un expediente.",
     "NOT_ARCHIVED": "Archiva al paciente antes de depurar el expediente.",
     "CONFIRMATION_MISMATCH": "El nombre no coincide con el del paciente.",
-    "NOTE_SIGNED": "Esta nota está firmada."
+    "NOTE_SIGNED": "Esta nota está firmada; agrega una adenda para corregirla.",
+    "NOTE_NOT_SIGNED": "Solo una nota firmada lleva adendas; edita el borrador."
   },
   "noteSignature": {
     "recordedBy": "Registró {{name}} · {{when}}",
@@ -1189,7 +1190,29 @@
       "ALREADY_SIGNED": "Esta nota ya está firmada.",
       "UNKNOWN": "No se pudo firmar. Inténtalo de nuevo."
     },
-    "recordedAt": "Registrada · {{when}} · autor no registrado"
+    "recordedAt": "Registrada · {{when}} · autor no registrado",
+    "lockedNote": "Nota firmada: ya no se modifica. Para corregirla o completarla agrega una adenda.",
+    "addendum": {
+      "add": "Agregar adenda",
+      "title": "Agregar adenda",
+      "lead": "La nota firmada se queda como está. La adenda aparece debajo, con tu firma y la hora, y después no se puede editar ni borrar.",
+      "text": "Texto de la adenda",
+      "diagram": "Diagrama de la adenda",
+      "addDiagram": "Agregar diagrama",
+      "sign": "Firmar adenda",
+      "heading": "Adenda {{n}} · {{when}}",
+      "listLabel": "Adendas de la nota",
+      "originalNote": "Nota original"
+    },
+    "history": {
+      "open": "Ver historial",
+      "title": "Historial de la historia clínica",
+      "version": "Versión {{n}}",
+      "current": "vigente",
+      "unknownAuthor": "Autor no registrado",
+      "first": "Primera versión guardada.",
+      "failed": "No se pudo cargar el historial."
+    }
   },
   "profile": {
     "title": "Mi perfil",
