@@ -319,12 +319,15 @@ mkdir -p ~/backups && set -a && . /opt/expedientes/.env && set +a
 
 DB=$(docker ps -q --filter "label=com.docker.compose.service=db")
 
-docker exec -t "$DB" pg_dump -U "$POSTGRES_USER" expedientes \
+docker exec "$DB" pg_dump -U "$POSTGRES_USER" expedientes \
   | gzip > ~/backups/db-$(date +%F).sql.gz
 
 docker run --rm -v expedientes_storage_data:/data -v ~/backups:/out alpine \
   tar czf /out/storage-$(date +%F).tar.gz -C /data .
 ```
+
+No `-t` on `docker exec`: a terminal would turn every line ending of the dump into CRLF. (Older
+backups taken with `-t` still restore: `scripts/restore-from-backup.sh` fixes them.)
 
 Confirm the volume's real name with `docker volume ls` — Compose prefixes it with the project name,
 which is the directory the stack was started from.

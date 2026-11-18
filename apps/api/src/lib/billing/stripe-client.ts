@@ -74,7 +74,13 @@ export async function stripeRequest<T>(
     error?: { code?: string; message?: string };
   };
   if (!response.ok) {
-    throw new StripeError(response.status, json.error?.code, json.error?.message ?? `Stripe answered ${response.status}`);
+    // The call is part of the message so the server log says which step failed (product, price,
+    // customer or checkout session), not only Stripe's reason.
+    throw new StripeError(
+      response.status,
+      json.error?.code,
+      `${method} ${path}: ${json.error?.message ?? `Stripe answered ${response.status}`}`
+    );
   }
   return json as T;
 }
