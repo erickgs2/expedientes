@@ -14,7 +14,7 @@ import { FacialDiagramCanvasComponent, type AnnotationKind } from './facial-diag
 import { ActivePatientStore } from '../../patient-drive/active-patient.store';
 import type { DiagramDataSource, DiagramReferenceOption } from './diagram-data-source';
 import { DiagramUnsavedChangesDialogComponent } from './diagram-unsaved-changes-dialog.component';
-import { CLOSE_UP_VIEWS } from './diagram-geometry';
+import { CLOSE_UP_VIEWS, composeFrontDiagram, type DiagramDataByView } from './diagram-geometry';
 
 export interface FacialDiagramEditDialogData {
   /** The view the editor opens on. */
@@ -164,7 +164,7 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
       </header>
 
       <div class="body">
-        @if (data.canEdit && active(); as c) {
+        @if (canEditActive() && active(); as c) {
           <nav class="rail" [attr.aria-label]="'diagramEditor.tools' | transloco">
             @for (tool of c.toolDefs; track tool.id) {
               <button
@@ -214,7 +214,21 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
         <main class="stage">
           <div class="canvases">
             @for (view of views; track view) {
-              @if (openedViews().includes(view)) {
+              @if (view === 'FRONT') {
+                <!-- The full face is a summary of the close-ups, rebuilt each time it is opened so it
+                     shows what is on them right now, saved or not. -->
+                @if (activeView() === 'FRONT') {
+                  @for (key of [frontRevision()]; track key) {
+                    <app-facial-diagram-canvas
+                      [view]="'FRONT'"
+                      [permissionModule]="data.permissionModule"
+                      [initialDiagramData]="frontSummary()"
+                      [readOnly]="true"
+                      [showToolbar]="false"
+                    />
+                  }
+                }
+              } @else if (openedViews().includes(view)) {
                 <app-facial-diagram-canvas
                   [class.inactive]="view !== activeView()"
                   [view]="view"
@@ -268,6 +282,9 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
             </div>
           </section>
 
+          @if (activeView() === 'FRONT') {
+            <p class="summary-note">{{ 'diagramEditor.frontSummary' | transloco }}</p>
+          }
           @if (active(); as c) {
             <section>
               <h3>{{ 'diagramEditor.annotations' | transloco: { n: c.annotations().length } }}</h3>
@@ -277,7 +294,7 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
                 <ul class="annotations">
                   @for (a of c.annotations(); track a.index) {
                     <li [class.is-selected]="c.selectedIndex() === a.index">
-                      <button type="button" class="annotation" (click)="c.selectAnnotation(a.index)" [disabled]="!data.canEdit">
+                      <button type="button" class="annotation" (click)="c.selectAnnotation(a.index)" [disabled]="!canEditActive()">
                         <span class="marker" [style.background]="a.color" aria-hidden="true"></span>
                         <span class="annotation-label">
                           {{ kindKey(a.kind) | transloco }}
@@ -286,7 +303,7 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
                           }
                         </span>
                       </button>
-                      @if (data.canEdit) {
+                      @if (canEditActive()) {
                         <button
                           mat-icon-button
                           type="button"
@@ -300,7 +317,7 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
                     </li>
                   }
                 </ul>
-                @if (data.canEdit) {
+                @if (canEditActive()) {
                   <button mat-button type="button" class="danger" (click)="c.clearAll()">
                     <mat-icon>delete_sweep</mat-icon>{{ 'diagramEditor.clearView' | transloco }}
                   </button>
@@ -344,6 +361,14 @@ const ANNOTATION_KIND_KEYS: Record<AnnotationKind, string> = {
   `,
   styles: [
     `
+      .summary-note {
+        margin: 0 0 16px;
+        padding: 10px 12px;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: var(--plate-radius);
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       :host {
         display: block;
         height: 100%;
@@ -739,6 +764,15 @@ export class FacialDiagramEditDialogComponent {
   /** Views with changes not yet saved. */
   protected readonly dirtyCount = computed(() => this.canvases().filter((c) => c.dirty()).length);
 
+  /** Tools and edits apply to the view on screen, except the full face, which is a summary. */
+  protected readonly canEditActive = computed(() => this.data.canEdit && this.activeView() !== 'FRONT');
+  /** Bumped each time the full face is opened, so its canvas is rebuilt from the current close-ups. */
+  protected readonly frontRevision = signal(0);
+  private readonly frontData = signal<Record<string, unknown> | null>(
+    composeFrontDiagram(this.data.initialData as DiagramDataByView)
+  );
+  protected readonly frontSummary = computed(() => this.frontData());
+
   protected readonly saving = signal(false);
   protected readonly referenceEnabled = signal(false);
   protected readonly selectedReferenceId = signal<string | null>(null);
@@ -778,14 +812,34 @@ export class FacialDiagramEditDialogComponent {
   }
 
   protected selectView(view: DiagramView): void {
+    if (view === 'FRONT') this.refreshFrontSummary();
     this.activeView.set(view);
     this.openedViews.update((opened) => (opened.includes(view) ? opened : [...opened, view]));
   }
 
+  /** The full face from what each close-up holds now: its open canvas, or what was stored. */
+  private refreshFrontSummary(): void {
+    const current: DiagramDataByView = { FRONT: this.data.initialData.FRONT ?? null };
+    for (const view of CLOSE_UP_VIEWS) {
+      const canvas = this.canvases().find((c) => c.view === view);
+      current[view] = canvas?.loaded() ? canvas.getSerializedData() : this.data.initialData[view] ?? null;
+    }
+    this.frontData.set(composeFrontDiagram(current));
+    this.frontRevision.update((n) => n + 1);
+  }
+
   /** Annotation count per view: live for opened views, from the stored data otherwise. */
   protected countFor(view: DiagramView): number {
+    if (view === 'FRONT') {
+      return CLOSE_UP_VIEWS.reduce((sum, v) => sum + this.countFor(v), 0) + this.storedCount('FRONT');
+    }
     const canvas = this.canvases().find((c) => c.view === view);
     if (canvas?.loaded()) return canvas.annotations().length;
+    const objects = this.data.initialData[view]?.['objects'];
+    return Array.isArray(objects) ? objects.length : 0;
+  }
+
+  private storedCount(view: DiagramView): number {
     const objects = this.data.initialData[view]?.['objects'];
     return Array.isArray(objects) ? objects.length : 0;
   }
@@ -836,7 +890,8 @@ export class FacialDiagramEditDialogComponent {
       const views: FacialDiagramEditDialogResult['views'] = {};
       const payload: Record<string, Record<string, unknown> | null> = {};
       for (const canvas of this.canvases()) {
-        if (!canvas.loaded()) continue;
+        // The full face is a summary built from the close-ups; it is never stored.
+        if (!canvas.loaded() || canvas.view === 'FRONT') continue;
         const serialized = canvas.getSerializedData();
         views[canvas.view] = serialized;
         payload[VIEW_SERVER_KEYS[canvas.view]] = serialized;

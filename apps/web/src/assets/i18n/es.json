@@ -882,7 +882,8 @@
     },
     "marks": "{{n}} marca(s)",
     "noMarks": "Sin marcas",
-    "noMarksEdit": "Toca para anotar"
+    "noMarksEdit": "Toca para anotar",
+    "frontSummary": "Rostro completo es un resumen: reúne lo marcado en los acercamientos de ojos, nariz y labios, cada marca en su lugar. Para agregar o cambiar marcas, abre el acercamiento."
   },
   "plan": {
     "title": "Plan",

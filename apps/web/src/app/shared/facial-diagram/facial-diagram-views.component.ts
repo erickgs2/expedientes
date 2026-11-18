@@ -7,7 +7,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import type { DiagramView, DiagramViewRecord, PermissionModule } from '@expedientes/shared-types';
 import { AuthService } from '../../auth/auth.service';
 import { renderDiagramToBlob } from './diagram-render.util';
-import { CLOSE_UP_VIEWS, DIAGRAM_CANVAS_SIZES } from './diagram-geometry';
+import { CLOSE_UP_VIEWS, DIAGRAM_CANVAS_SIZES, composeFrontDiagram } from './diagram-geometry';
 import {
   FacialDiagramEditDialogComponent,
   type FacialDiagramEditDialogData,
@@ -33,8 +33,9 @@ const VIEW_LABEL_KEYS: Record<DiagramView, string> = {
  * inline — on phones the fixed-coordinate canvas needs the dialog's full width, and previews keep
  * the page scrollable without touch/draw conflicts.
  *
- * The three full views are always shown; close-ups (eyes, nose, lips — created from the front
- * view's editor) only appear once they have annotations, so an unused close-up adds no clutter.
+ * The three full views are always shown; close-ups (eyes, nose, lips) only appear once they have
+ * annotations, so an unused close-up adds no clutter. The full face is not drawn on: it gathers
+ * what was marked on the close-ups, each mark in its place on the face (see composeFrontDiagram).
  */
 @Component({
   selector: 'app-facial-diagram-views',
@@ -230,7 +231,7 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
     this.counts.set(
       Object.fromEntries(
         ALL_VIEWS.map((view) => {
-          const objects = this.dataFor(view)?.['objects'];
+          const objects = this.shownDataFor(view)?.['objects'];
           return [view, Array.isArray(objects) ? objects.length : 0];
         })
       )
@@ -246,13 +247,19 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
     return this.diagrams.find((d) => d.view === view)?.data ?? null;
   }
 
+  /** What a card shows: the full face is the summary of the close-ups, the rest their own data. */
+  private shownDataFor(view: DiagramView): Record<string, unknown> | null {
+    if (view !== 'FRONT') return this.dataFor(view);
+    return composeFrontDiagram(Object.fromEntries(ALL_VIEWS.map((v) => [v, this.dataFor(v)])));
+  }
+
   private async renderAllPreviews(): Promise<void> {
     this.updateShownViews();
     await Promise.all(this.shownViews().map((view) => this.renderPreview(view)));
   }
 
   private async renderPreview(view: DiagramView): Promise<void> {
-    const blob = await renderDiagramToBlob(view, this.dataFor(view) ?? {});
+    const blob = await renderDiagramToBlob(view, this.shownDataFor(view) ?? {});
     if (!blob) return; // keep whatever preview (or spinner) is currently shown
     const url = URL.createObjectURL(blob);
     const previous = this.previewUrls()[view];
@@ -293,8 +300,9 @@ export class FacialDiagramViewsComponent implements OnInit, OnChanges, OnDestroy
         this.currentData[saved] = result.views[saved] ?? null;
       }
       this.updateShownViews();
-      for (const saved of savedViews) {
-        void this.renderPreview(saved);
+      // The full face summarizes the close-ups, so it is redrawn after any save.
+      for (const view of new Set<DiagramView>([...savedViews, 'FRONT'])) {
+        void this.renderPreview(view);
       }
     });
   }

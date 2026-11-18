@@ -882,7 +882,8 @@
     },
     "marks": "{{n}} mark(s)",
     "noMarks": "No marks",
-    "noMarksEdit": "Tap to annotate"
+    "noMarksEdit": "Tap to annotate",
+    "frontSummary": "The full face is a summary: it gathers what is marked on the eyes, nose and lips close-ups, each mark in its place. To add or change marks, open the close-up."
   },
   "plan": {
     "title": "Plan",

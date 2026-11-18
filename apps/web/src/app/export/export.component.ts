@@ -11,6 +11,8 @@ import { ValoracionService } from '../valoracion/valoracion.service';
 import { TreatmentsService } from '../treatments/treatments.service';
 import { TreatmentDiagramService } from '../treatments/treatment-diagram.service';
 import { renderDiagramToBlob } from '../shared/facial-diagram/diagram-render.util';
+import { composeFrontDiagram } from '../shared/facial-diagram/diagram-geometry';
+import type { DiagramView } from '@expedientes/shared-types';
 import { deliverPdf } from '../shared/pdf/deliver-pdf.util';
 import { ExportService, type ExportDiagramImage } from './export.service';
 
@@ -149,7 +151,7 @@ export class ExportComponent {
       const fullOnes = await Promise.all(summaries.map((v) => this.valoracionService.get(v.id)));
       for (const valoracion of fullOnes) {
         for (const diagram of valoracion.diagrams) {
-          const blob = await renderDiagramToBlob(diagram.view, diagram.data);
+          const blob = await renderDiagramToBlob(diagram.view, frontAsSummary(diagram, valoracion.diagrams));
           if (!blob) {
             throw new Error(
               `Failed to render diagram for Valoración ${valoracion.id} (${diagram.view})`
@@ -167,7 +169,7 @@ export class ExportComponent {
         for (const item of treatment.items) {
           const detail = await this.treatmentDiagramService.getItem(item.id);
           for (const diagram of detail.diagrams) {
-            const blob = await renderDiagramToBlob(diagram.view, diagram.data);
+            const blob = await renderDiagramToBlob(diagram.view, frontAsSummary(diagram, detail.diagrams));
             if (!blob) {
               throw new Error(
                 `Failed to render diagram for Treatment item ${item.id} (${diagram.view})`
@@ -181,4 +183,13 @@ export class ExportComponent {
 
     return images;
   }
+}
+
+/** The full face is printed as the summary of the close-ups, the same way it is shown on screen. */
+function frontAsSummary(
+  diagram: { view: DiagramView; data: Record<string, unknown> },
+  all: { view: DiagramView; data: Record<string, unknown> }[]
+): Record<string, unknown> {
+  if (diagram.view !== 'FRONT') return diagram.data;
+  return composeFrontDiagram(Object.fromEntries(all.map((d) => [d.view, d.data]))) ?? diagram.data;
 }
