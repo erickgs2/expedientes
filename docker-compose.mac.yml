@@ -93,6 +93,11 @@ services:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       # Key that encrypts platform admins' TOTP secrets; JWT_SECRET is used when unset.
       PLATFORM_SECRET_KEY: ${PLATFORM_SECRET_KEY:-}
+      # Payments with Stripe (card subscriptions, OXXO vouchers). Unset: buying Premium online is off and
+      # Premium is given by hand from the platform portal.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      OXXO_VOUCHER_DAYS: ${OXXO_VOUCHER_DAYS:-3}
       STORAGE_ROOT: /data/storage
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-}

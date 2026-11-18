@@ -943,6 +943,34 @@
         "customRoles": "Custom roles are part of Premium.",
         "unbrandedPdf": "PDFs without the MedCloud footer are part of Premium."
       }
+    },
+    "buy": {
+      "ownerOnly": "Only the clinic's owner can buy or change the plan.",
+      "manage": "Manage payment",
+      "interval": "Period",
+      "yearly": "Yearly",
+      "monthly": "Monthly",
+      "card": "Pay by card",
+      "oxxo": "Pay at OXXO",
+      "switchToCard": "Switch to card",
+      "renewOxxo": "Pay another period at OXXO",
+      "cardNote": "By credit or debit card it renews on its own and you can cancel any time.",
+      "oxxoNote": "At OXXO you pay one period with a voucher valid {{days}} days; Premium starts when OXXO confirms the payment, usually the next business day.",
+      "state": {
+        "renews": "You pay by card. It renews on {{date}}.",
+        "canceling": "You cancelled the renewal. Premium continues until {{date}}.",
+        "pastDue": "We could not charge your card. Premium continues until {{until}} while we retry; update your card."
+      },
+      "errors": {
+        "ALREADY_SUBSCRIBED": "Your clinic already pays by card. Use Manage payment to change it.",
+        "UNKNOWN": "We could not open the payment. Try again in a few minutes."
+      }
+    },
+    "return": {
+      "cardProcessing": "We are confirming your card payment. This takes a few seconds.",
+      "cardDone": "Payment confirmed. Your clinic now has Premium.",
+      "oxxo": "Your OXXO voucher is ready. Pay it at any OXXO within {{days}} days; Premium starts when OXXO confirms the payment, usually the next business day. We will email you.",
+      "canceled": "The payment was not completed. You can try again whenever you want."
     }
   },
   "legal": {

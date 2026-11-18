@@ -943,6 +943,34 @@
         "customRoles": "Los roles personalizados son parte de Premium.",
         "unbrandedPdf": "El PDF sin pie de MedCloud es parte de Premium."
       }
+    },
+    "buy": {
+      "ownerOnly": "Solo el propietario de la clínica puede contratar o cambiar el plan.",
+      "manage": "Administrar pago",
+      "interval": "Periodo",
+      "yearly": "Anual",
+      "monthly": "Mensual",
+      "card": "Pagar con tarjeta",
+      "oxxo": "Pagar en OXXO",
+      "switchToCard": "Cambiar a tarjeta",
+      "renewOxxo": "Pagar otro periodo en OXXO",
+      "cardNote": "Con tarjeta de crédito o débito se renueva sola y la cancelas cuando quieras.",
+      "oxxoNote": "En OXXO pagas un periodo con una ficha válida {{days}} días; tu Premium se activa cuando OXXO confirma el pago, normalmente el siguiente día hábil.",
+      "state": {
+        "renews": "Pagas con tarjeta. Se renueva el {{date}}.",
+        "canceling": "Cancelaste la renovación. Tu Premium sigue hasta el {{date}}.",
+        "pastDue": "No pudimos cobrar tu tarjeta. Tu Premium sigue hasta el {{until}} mientras reintentamos; actualiza tu tarjeta."
+      },
+      "errors": {
+        "ALREADY_SUBSCRIBED": "Tu clínica ya paga con tarjeta. Usa Administrar pago para cambiarla.",
+        "UNKNOWN": "No pudimos abrir el pago. Inténtalo de nuevo en unos minutos."
+      }
+    },
+    "return": {
+      "cardProcessing": "Estamos confirmando tu pago con tarjeta. Esto tarda unos segundos.",
+      "cardDone": "Pago confirmado. Tu clínica ya tiene Premium.",
+      "oxxo": "Tu ficha OXXO está lista. Págala en cualquier OXXO en los próximos {{days}} días; tu Premium se activa cuando OXXO confirme el pago, normalmente el siguiente día hábil. Te avisaremos por correo.",
+      "canceled": "No se completó el pago. Puedes intentarlo de nuevo cuando quieras."
     }
   },
   "legal": {

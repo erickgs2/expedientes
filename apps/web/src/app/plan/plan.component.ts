@@ -1,7 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { AuthService } from '../auth/auth.service';
 import { PLAN_LIMITS, type ClinicPlanDetails } from '@expedientes/shared-types';
 import { PlanService } from './plan.service';
 import { formatBytes, formatMxn, usagePercent } from './plan-format';
@@ -38,6 +40,10 @@ const ENDING_SOON_DAYS = 30;
         <h1>{{ 'plan.title' | transloco }}</h1>
         <p>{{ 'plan.subtitle' | transloco }}</p>
       </header>
+
+      @if (returnNotice(); as notice) {
+        <p class="notice" role="status">{{ 'plan.return.' + notice | transloco: { days: plan.billing.oxxoVoucherDays } }}</p>
+      }
 
       <section class="current card" [class.is-premium]="plan.tier === 'PREMIUM'">
         <div class="current-main">
@@ -131,9 +137,43 @@ const ENDING_SOON_DAYS = 30;
           </ul>
           @if (plan.tier === 'PREMIUM') {
             <p class="current-tag">{{ 'plan.compare.current' | transloco }}</p>
+          }
+          @if (!plan.billing.enabled) {
+            @if (plan.tier !== 'PREMIUM') {
+              <button mat-flat-button disabled>{{ 'plan.compare.buy' | transloco }}</button>
+              <p class="soon">{{ 'plan.compare.paymentsSoon' | transloco }}</p>
+            }
+          } @else if (!plan.billing.isOwner) {
+            <p class="soon">{{ 'plan.buy.ownerOnly' | transloco }}</p>
+          } @else if (paysByCard()) {
+            <p class="billing-state">{{ cardStateLine() }}</p>
+            <button mat-stroked-button [disabled]="redirecting()" (click)="openPortal()">
+              {{ 'plan.buy.manage' | transloco }}
+            </button>
           } @else {
-            <button mat-flat-button disabled>{{ 'plan.compare.buy' | transloco }}</button>
-            <p class="soon">{{ 'plan.compare.paymentsSoon' | transloco }}</p>
+            <div class="interval" role="radiogroup" [attr.aria-label]="'plan.buy.interval' | transloco">
+              <button type="button" role="radio" [attr.aria-checked]="interval() === 'YEAR'" [class.on]="interval() === 'YEAR'" (click)="interval.set('YEAR')">
+                {{ 'plan.buy.yearly' | transloco }}
+              </button>
+              <button type="button" role="radio" [attr.aria-checked]="interval() === 'MONTH'" [class.on]="interval() === 'MONTH'" (click)="interval.set('MONTH')">
+                {{ 'plan.buy.monthly' | transloco }}
+              </button>
+            </div>
+            <div class="pay">
+              <button mat-flat-button [disabled]="redirecting()" (click)="buy('CARD')">
+                {{ (paysByOxxo() ? 'plan.buy.switchToCard' : 'plan.buy.card') | transloco }}
+              </button>
+              <button mat-stroked-button [disabled]="redirecting()" (click)="buy('OXXO')">
+                {{ (paysByOxxo() ? 'plan.buy.renewOxxo' : 'plan.buy.oxxo') | transloco }}
+              </button>
+            </div>
+            <p class="soon">
+              {{ 'plan.buy.cardNote' | transloco }}
+              {{ 'plan.buy.oxxoNote' | transloco: { days: plan.billing.oxxoVoucherDays } }}
+            </p>
+          }
+          @if (buyError()) {
+            <p class="buy-error" role="alert">{{ buyError() }}</p>
           }
         </div>
       </section>
@@ -315,6 +355,51 @@ const ENDING_SOON_DAYS = 30;
         flex: none;
         color: var(--mat-sys-on-surface-variant);
       }
+      .notice {
+        padding: 12px 16px;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: var(--plate-radius);
+        background: var(--mat-sys-surface-container-low);
+        margin: 0 0 20px;
+      }
+      .interval {
+        display: inline-flex;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: 999px;
+        padding: 2px;
+        margin: 0 0 12px;
+      }
+      .interval button {
+        border: 0;
+        background: none;
+        color: var(--mat-sys-on-surface-variant);
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        min-height: 32px;
+      }
+      .interval button.on {
+        background: var(--mat-sys-surface-container-high);
+        color: var(--mat-sys-on-surface);
+        font-weight: 600;
+      }
+      .pay {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .billing-state {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      .buy-error {
+        margin: 8px 0 0;
+        color: var(--mat-sys-error);
+        font-size: 13px;
+      }
       .current-tag {
         margin: 0;
         font-weight: 600;
@@ -379,6 +464,34 @@ export class PlanComponent implements OnInit {
   protected readonly freeRows = computed(() => this.rows('FREE'));
   protected readonly premiumRows = computed(() => this.rows('PREMIUM'));
 
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  protected readonly interval = signal<'MONTH' | 'YEAR'>('YEAR');
+  protected readonly redirecting = signal(false);
+  protected readonly buyError = signal<string | null>(null);
+  /** What to say after coming back from Stripe Checkout. */
+  protected readonly returnNotice = signal<'cardProcessing' | 'cardDone' | 'oxxo' | 'canceled' | null>(null);
+
+  protected readonly paysByCard = computed(() => {
+    const sub = this.details()?.subscription;
+    return !!sub && sub.method === 'CARD' && this.details()?.source === 'SUBSCRIPTION';
+  });
+
+  protected readonly paysByOxxo = computed(() => {
+    const sub = this.details()?.subscription;
+    return !!sub && sub.method === 'OXXO' && this.details()?.source === 'SUBSCRIPTION';
+  });
+
+  protected readonly cardStateLine = computed(() => {
+    const sub = this.details()?.subscription;
+    if (!sub) return '';
+    const date = this.date(sub.currentPeriodEnd);
+    const key = sub.status === 'PAST_DUE' ? 'pastDue' : sub.status === 'CANCELED' ? 'canceling' : 'renews';
+    return this.transloco.translate(`plan.buy.state.${key}`, { date, until: this.date(this.details()?.premiumUntil ?? null) });
+  });
+
   async ngOnInit(): Promise<void> {
     try {
       this.details.set(await this.planService.get());
@@ -386,6 +499,60 @@ export class PlanComponent implements OnInit {
       this.details.set(null);
     } finally {
       this.loading.set(false);
+    }
+    await this.handleReturn();
+  }
+
+  /**
+   * Back from Stripe: an OXXO voucher only becomes Premium when the store confirms the payment; a
+   * card is usually confirmed within seconds by the webhook, so the plan is re-read a few times.
+   */
+  private async handleReturn(): Promise<void> {
+    const params = this.route.snapshot.queryParamMap;
+    const result = params.get('pago');
+    if (!result) return;
+    void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    if (result === 'cancelado') {
+      this.returnNotice.set('canceled');
+      return;
+    }
+    if (params.get('metodo') === 'oxxo') {
+      this.returnNotice.set('oxxo');
+      return;
+    }
+    this.returnNotice.set('cardProcessing');
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const fresh = await this.planService.get().catch(() => null);
+      if (fresh?.source === 'SUBSCRIPTION' && fresh.subscription?.method === 'CARD') {
+        this.details.set(fresh);
+        this.returnNotice.set('cardDone');
+        // The session's plan (features shown across the app) is refreshed too.
+        await this.auth.restoreSession();
+        return;
+      }
+    }
+  }
+
+  protected async buy(method: 'CARD' | 'OXXO'): Promise<void> {
+    this.redirecting.set(true);
+    this.buyError.set(null);
+    try {
+      window.location.href = await this.planService.checkout(this.interval(), method);
+    } catch (error) {
+      const code = (error as { error?: { error?: { code?: string } } }).error?.error?.code;
+      this.buyError.set(this.transloco.translate(`plan.buy.errors.${code === 'ALREADY_SUBSCRIBED' ? code : 'UNKNOWN'}`));
+      this.redirecting.set(false);
+    }
+  }
+
+  protected async openPortal(): Promise<void> {
+    this.redirecting.set(true);
+    try {
+      window.location.href = await this.planService.portal();
+    } catch {
+      this.buyError.set(this.transloco.translate('plan.buy.errors.UNKNOWN'));
+      this.redirecting.set(false);
     }
   }
 

@@ -193,6 +193,32 @@ códigos incluidos. Sirve para probar, pero en producción la clave debe estar p
 
 Usa `nano` u otro editor: si pones el token en un comando, queda en el historial de bash.
 
+## 8b. Stripe (pagos en línea)
+
+Primero en **modo de prueba** (claves `sk_test_`), y en vivo solo cuando todo funcione.
+
+1. En [dashboard.stripe.com](https://dashboard.stripe.com), cuenta de México con la verificación de negocio completa.
+2. **Settings → Payment methods**: activa **OXXO** (tarjeta ya viene activa).
+3. **Settings → Billing → Customer portal**: actívalo; permite actualizar tarjeta, ver facturas y cancelar al final del periodo.
+4. **Developers → Webhooks → Add endpoint**:
+   - URL: `https://medcloud.intech-erp.com/api/stripe/webhook`
+   - Eventos: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+     `checkout.session.async_payment_failed`, `invoice.paid`, `invoice.payment_failed`,
+     `customer.subscription.updated`, `customer.subscription.deleted`
+   - Copia el **Signing secret** (`whsec_…`).
+5. **Developers → API keys**: copia la **Secret key**. Mejor aún, crea una *restricted key* con escritura en
+   Customers, Checkout Sessions, Prices, Products, Billing portal y lectura en Subscriptions.
+6. En `/opt/expedientes/.env`:
+   ```
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   OXXO_VOUCHER_DAYS=3
+   ```
+7. Reinicia el API (o espera el siguiente deploy). Prueba con la tarjeta `4242 4242 4242 4242` y, para OXXO,
+   con el correo de prueba que indica la documentación de Stripe para simular el pago.
+
+Las claves viven solo en el `.env` del servidor: nunca en el repositorio, en GitHub ni en la base de datos.
+
 ## 9. Runner de GitHub
 
 Sáltalo si el inventario ya muestra `~/actions-runner` y un servicio `actions.runner` con la etiqueta

@@ -11,6 +11,7 @@ import { PlanLimitError } from '../plan/limits';
 import { ApiProblem } from './api-problem';
 import { LegalDocumentsMissingError } from '../legal/legal-documents';
 import { EmailDeliveryError } from '../email/send-email';
+import { StripeError } from '../billing/stripe-client';
 
 function conflictTarget(error: Prisma.PrismaClientKnownRequestError): string {
   const target = error.meta?.['target'];
@@ -34,6 +35,10 @@ export function toApiErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof ApiProblem) {
     return apiError(error.code, error.message, error.status, error.details);
+  }
+  if (error instanceof StripeError) {
+    console.error('Stripe request failed', error.status, error.code, error.message);
+    return apiError('PAYMENTS_ERROR', 'The payment provider did not respond as expected. Try again in a few minutes.', 502);
   }
   if (error instanceof EmailDeliveryError) {
     console.error('Email delivery failed', error);

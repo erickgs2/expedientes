@@ -48,11 +48,62 @@ export async function sendGrantEndingNotices(now = new Date()): Promise<void> {
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
-/** Checks hourly. */
+/** Checks hourly: grants ending soon and prepaid OXXO periods ending soon. */
 export function startGrantNotices(): void {
   if (timer) return;
-  const run = () => void sendGrantEndingNotices().catch((error) => console.error('Grant notices failed', error));
+  const run = () => {
+    void sendGrantEndingNotices().catch((error) => console.error('Grant notices failed', error));
+    void sendPrepaidRenewalNotices().catch((error) => console.error('OXXO renewal notices failed', error));
+  };
   setTimeout(run, 60_000).unref?.();
   timer = setInterval(run, 3_600_000);
   timer.unref?.();
+}
+
+/**
+ * OXXO periods do not renew by themselves: the owner is reminded 7 days and 1 day before the paid
+ * period ends, once each, unless something else (a card subscription, a grant) extends Premium.
+ */
+export async function sendPrepaidRenewalNotices(now = new Date()): Promise<void> {
+  const { prepaidEndingEmail } = await import('../email/templates');
+  const in7 = new Date(now.getTime() + 7 * 86_400_000);
+  const rows = await prismaUnscoped.subscription.findMany({
+    where: { method: 'OXXO', currentPeriodEnd: { gt: now, lte: in7 } },
+    include: {
+      clinic: {
+        select: {
+          name: true,
+          timeZone: true,
+          status: true,
+          memberships: { where: { isOwner: true }, select: { user: { select: { email: true } } } },
+        },
+      },
+    },
+  });
+  for (const row of rows) {
+    const daysLeft = (row.currentPeriodEnd.getTime() - now.getTime()) / 86_400_000;
+    const due = daysLeft <= 1 ? (row.renewalNotice1SentAt ? null : 1) : row.renewalNotice7SentAt ? null : 7;
+    if (!due) continue;
+    try {
+      const plan = await loadClinicPlan(row.clinicId, now);
+      const extended = plan.premiumUntil && new Date(plan.premiumUntil).getTime() > row.currentPeriodEnd.getTime() + 60_000;
+      const owner = row.clinic.memberships[0]?.user.email;
+      if (!extended && owner && row.clinic.status === 'ACTIVE') {
+        await sendEmail(
+          prepaidEndingEmail(owner, {
+            clinicName: row.clinic.name,
+            endsAt: row.currentPeriodEnd,
+            timeZone: row.clinic.timeZone,
+            days: Math.max(1, Math.ceil(daysLeft)),
+          })
+        );
+      }
+      await prismaUnscoped.subscription.update({
+        where: { id: row.id },
+        data: due === 1 ? { renewalNotice1SentAt: now, renewalNotice7SentAt: row.renewalNotice7SentAt ?? now } : { renewalNotice7SentAt: now },
+      });
+    } catch (error) {
+      console.error(`Could not send the OXXO renewal notice for clinic ${row.clinicId}`, error);
+    }
+  }
 }

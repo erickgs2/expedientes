@@ -62,6 +62,7 @@ export const GLOBAL_MODELS: ReadonlySet<string> = new Set([
   'PlatformAdmin',
   'PlatformAuditLog',
   'ServerMetricSample',
+  'PaymentEvent',
 ]);
 
 /**
