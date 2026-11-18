@@ -5,6 +5,7 @@ import { requireAuth } from '../../../lib/http/require-auth';
 import { apiError } from '../../../lib/http/api-error';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
 import { sendConfirmation } from '../../../lib/notifications/appointment-notifications';
+import { assertPatientWritable } from '../../../lib/patients/patient-archive';
 
 export const GET = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'appointments', 'view');
@@ -56,6 +57,8 @@ export const POST = withApiErrors(async (request: NextRequest) => {
   if (body.durationMinutes <= 0) {
     return apiError('INVALID_INPUT', 'durationMinutes must be positive', 400);
   }
+  // No new appointments for an archived patient: restore the record first.
+  await assertPatientWritable(body.patientId);
 
   const appointment = await createAppointment({
     patientId: body.patientId,

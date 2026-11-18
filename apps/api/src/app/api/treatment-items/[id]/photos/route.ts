@@ -8,6 +8,8 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
+import { withArchiverNames } from '../../../../../lib/photo/photo';
 
 const VALID_TAGS = ['BEFORE', 'AFTER'] as const;
 
@@ -24,7 +26,9 @@ export const GET = withApiErrors(
     const item = await getTreatmentItemDetail(id);
     if (!item) return apiError('NOT_FOUND', 'Treatment item not found', 404);
 
-    const photos = await listTreatmentItemPhotos(id);
+    // `?archived=1` lists the photos retired from the gallery, with who retired them.
+    const archived = request.nextUrl.searchParams.get('archived') === '1';
+    const photos = archived ? await withArchiverNames(await listTreatmentItemPhotos(id, { archived })) : await listTreatmentItemPhotos(id);
 
     await writeAuditLogSafe({
       userId,
@@ -42,6 +46,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('treatmentItem', id);
 
     // Cheap early-out so an obviously-oversized request is never buffered — not authoritative,
     // the real check runs against the actually-read buffer below.

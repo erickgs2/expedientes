@@ -61,8 +61,12 @@ export interface ConsentScanDialogData {
           <input matInput formControlName="patientIdentification" />
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>{{ 'treatments.witnessName' | transloco }}</mat-label>
+          <mat-label>{{ 'treatments.firstWitnessName' | transloco }}</mat-label>
           <input matInput formControlName="witnessName" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'treatments.secondWitnessName' | transloco }}</mat-label>
+          <input matInput formControlName="secondWitnessName" />
         </mat-form-field>
       </form>
 
@@ -192,6 +196,7 @@ export class ConsentScanDialogComponent {
     place: [this.data.defaultPlace, Validators.required],
     patientIdentification: [this.data.patientDocumentId, Validators.required],
     witnessName: [''],
+    secondWitnessName: [''],
   });
 
   protected readonly selectedIds = signal(new Set(this.data.pending.map((p) => p.itemId)));
@@ -257,7 +262,7 @@ export class ConsentScanDialogComponent {
     if (!this.canSubmit()) return;
     this.saving.set(true);
     this.errorMessage.set(null);
-    const { signedDate, place, patientIdentification, witnessName } = this.form.getRawValue();
+    const { signedDate, place, patientIdentification, witnessName, secondWitnessName } = this.form.getRawValue();
     const itemIds = this.data.pending.map((p) => p.itemId).filter((id) => this.selectedIds().has(id));
     try {
       await this.consentService.registerScan(this.data.treatmentId, {
@@ -266,6 +271,7 @@ export class ConsentScanDialogComponent {
         place: place ?? '',
         patientIdentification: patientIdentification ?? '',
         witnessName: (witnessName ?? '').trim() || null,
+        secondWitnessName: (secondWitnessName ?? '').trim() || null,
         pages: this.files(),
       });
       this.dialogRef.close(itemIds);

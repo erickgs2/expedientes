@@ -450,6 +450,8 @@ export class ValoracionDetailComponent implements OnInit {
         list: () => this.valoracionService.listPhotos(this.valoracionId),
         upload: (blob, tag) => this.valoracionService.uploadPhoto(this.valoracionId, blob, tag),
         delete: (photoId) => this.valoracionService.deletePhoto(this.valoracionId, photoId),
+        listRetired: () => this.valoracionService.listRetiredPhotos(this.valoracionId),
+        restore: (photoId) => this.valoracionService.restorePhoto(this.valoracionId, photoId),
       };
     } catch (error) {
       // A thrown fetch (network blip, 500) leaves the identity check *unperformed*, not passed —

@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CreatePatientRequest,
   PatientPreview,
+  PatientPurgeStatus,
   PatientSummary,
   PatientSummaryStats,
   PatientTimeline,
@@ -15,9 +16,19 @@ export class PatientsService {
   private readonly http = inject(HttpClient);
 
   search(query: string): Promise<PatientSummary[]> {
+    return this.searchList(query).then((r) => r.patients);
+  }
+
+  /**
+   * Active patients, or with `archived` the archived ones only. An active search also says how many
+   * archived patients match, so the screen can point to them.
+   */
+  searchList(query: string, options: { archived?: boolean } = {}): Promise<{ patients: PatientSummary[]; archivedMatches: number }> {
+    const params: Record<string, string> = { q: query };
+    if (options.archived) params['archived'] = '1';
     return firstValueFrom(
-      this.http.get<{ patients: PatientSummary[] }>('/api/patients', { params: { q: query } })
-    ).then((r) => r.patients);
+      this.http.get<{ patients: PatientSummary[]; archivedMatches?: number }>('/api/patients', { params })
+    ).then((r) => ({ patients: r.patients, archivedMatches: r.archivedMatches ?? 0 }));
   }
 
   getById(patientId: string): Promise<PatientSummary> {
@@ -73,8 +84,26 @@ export class PatientsService {
     ).then((r) => r.patient);
   }
 
-  /** Permanently deletes the patient and every record and file stored under them. */
-  delete(patientId: string): Promise<void> {
-    return firstValueFrom(this.http.delete<void>(`/api/patients/${patientId}`));
+  /**
+   * Archives the patient (NOM-004-SSA3-2012 5.4: nothing is deleted). The record leaves the work
+   * lists, reads read-only and can be restored; future appointments are cancelled.
+   */
+  archive(patientId: string, reason: string): Promise<{ cancelledAppointments: number }> {
+    return firstValueFrom(
+      this.http.delete<{ cancelledAppointments: number }>(`/api/patients/${patientId}`, { body: { reason } })
+    );
+  }
+
+  restore(patientId: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`/api/patients/${patientId}/restore`, {}));
+  }
+
+  purgeStatus(patientId: string): Promise<PatientPurgeStatus> {
+    return firstValueFrom(this.http.get<PatientPurgeStatus>(`/api/patients/${patientId}/purge`));
+  }
+
+  /** Owner only, five years after the last care; `confirmName` must repeat the full name. */
+  purge(patientId: string, confirmName: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`/api/patients/${patientId}/purge`, { confirmName }));
   }
 }

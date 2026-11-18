@@ -254,12 +254,19 @@ model Patient {
   appointments    Appointment[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  /// Archived instead of deleted (NOM-004-SSA3-2012 5.4: a record is kept at least five years
+  /// after the last care). An archived patient leaves every work list, reads read-only, and can be
+  /// restored; only the clinic owner can purge it for good, and only five years after the last care.
+  archivedAt      DateTime?
+  archivedById    String?
+  archiveReason   String?
 
   @@index([fullName])
   @@index([clinicId, fullName])
   @@index([phone])
   @@index([documentId])
   @@index([contactPatientId])
+  @@index([clinicId, archivedAt])
 }
 
 model AuditLog {
@@ -425,6 +432,9 @@ model Photo {
   tag          PhotoTag
   filePath     String
   createdAt    DateTime   @default(now())
+  /// Retired from the gallery instead of deleted: the file stays and the photo can be put back.
+  archivedAt   DateTime?
+  archivedById String?
 
   @@index([patientId])
   @@index([valoracionId])
@@ -527,6 +537,13 @@ model Consent {
   patientSignatureImagePath String?
   witnessName               String?
   witnessSignatureImagePath String?
+  /// NOM-004-SSA3-2012 10.1.1 asks for two witnesses. Null on consents signed before both were
+  /// required, which keep the one witness they were signed with.
+  secondWitnessName               String?
+  secondWitnessSignatureImagePath String?
+  /// The contingencies clause (10.1.1: authorization to attend contingencies and emergencies that
+  /// arise from the act), frozen as printed. Null on consents signed before it was added.
+  contingencyClauseSnapshot       String?
   signedAt                  DateTime               @default(now())
 
   @@index([scanId])
@@ -595,6 +612,9 @@ model TreatmentItemPhoto {
   tag             PhotoTag
   filePath        String
   createdAt       DateTime      @default(now())
+  /// Retired from the gallery instead of deleted: the file stays and the photo can be put back.
+  archivedAt   DateTime?
+  archivedById String?
 
   @@index([treatmentItemId])
   @@index([patientId])
@@ -686,6 +706,11 @@ model ClinicSettings {
   doctorLicense       String
   doctorSignaturePath String?
   clinicLogoPath      String?
+  /// Who usually signs as the second witness of a consent (a clinic staff member), offered
+  /// pre-filled at signing. The signature image is copied onto each consent when it is used, so a
+  /// later change here never alters a signed one.
+  secondWitnessName          String?
+  secondWitnessSignaturePath String?
   declarationBefore   String
   declarationAfter    String
 

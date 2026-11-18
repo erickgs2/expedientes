@@ -147,6 +147,15 @@ A blank face-map plate (registration crosses, dashed face with its midline and t
 ### Plan comparison dialog
 Opened from "Conoce Premium" in the header (only on Free, only for whoever manages the plan). One hairline table, features as rows and Free/Premium as columns; Premium's column sits on Proof Grey and its differing values are set in 600. Included is an ink check, not included a muted dash, both labelled for screen readers. Prices load as skeletons. It informs and leads to the Plan screen; buying stays there.
 
+### Archived record band
+On every screen of an archived patient: a Proof Grey plate behind a strong hairline, the archive icon in quiet ink, "Expediente archivado" in 600 with date and who archived it (tabular), the reason in ink, a one-line read-only note, and Restaurar as a stroked button. No rose in the band itself; only its actions carry the mark. The owner's purge appears beside it as a warn text button only once the five-year retention has passed, behind a dialog that asks for the patient's full name.
+
+### Retired photos
+Retiring a photo is not destructive, so its button on the tile is neutral (no error hover). Retired photos fold under the gallery behind "Fotos retiradas: N": a dashed-hairline list of 56px thumbnails with the tag, who retired it and when, and "Devolver a la galería".
+
+### Consent signers
+One plate per signer (patient, Testigo 1, Testigo 2), each with its own pad. When the clinic stores a second witness, Testigo 2 offers a two-way segmented choice (stored signature / sign here) in the same inverse-surface style as the patient list tabs.
+
 ## Do's and Don'ts
 
 ### Do:

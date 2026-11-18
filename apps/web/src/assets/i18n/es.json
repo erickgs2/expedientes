@@ -133,7 +133,8 @@
       "empty": {
         "today": "No hay pacientes con cita hoy.",
         "recent": "Aún no has abierto expedientes.",
-        "all": "Todavía no hay pacientes registrados."
+        "all": "Todavía no hay pacientes registrados.",
+        "archived": "No hay pacientes archivados."
       },
       "enterHint": "Escribe para buscar en todos los expedientes. Enter abre el primer resultado; doble clic abre el expediente.",
       "previewLabel": "Vista previa del expediente",
@@ -168,7 +169,38 @@
       "export": "Exportar PDF",
       "openedAt": "Abierto {{when}}",
       "todayAt": "Hoy {{time}}",
-      "createFailed": "No se pudo crear el paciente. Inténtalo de nuevo."
+      "createFailed": "No se pudo crear el paciente. Inténtalo de nuevo.",
+      "tabArchived": "Archivados",
+      "archivedOn": "Archivado el {{date}}",
+      "searchingArchived": "Buscando entre los pacientes archivados",
+      "backToActive": "Volver a activos",
+      "archivedMatches": "Pacientes archivados que coinciden: {{n}}",
+      "showArchived": "Ver archivados"
+    },
+    "archive": {
+      "action": "Archivar paciente",
+      "title": "Archivar a {{name}}",
+      "kept": "El expediente completo se conserva: historia clínica, valoraciones, fotos, tratamientos y consentimientos.",
+      "lists": "Sale de Hoy, del calendario y de las búsquedas; queda en Pacientes › Archivados, en solo lectura.",
+      "appointments": "Sus citas futuras se cancelan y no recibe recordatorios.",
+      "restore": "Se puede restaurar en cualquier momento.",
+      "reason": "Motivo",
+      "reasonHint": "Por ejemplo: se mudó de ciudad, terminó su tratamiento, registro duplicado",
+      "confirm": "Archivar"
+    },
+    "archived": {
+      "title": "Expediente archivado",
+      "when": "· {{date}} · por {{name}}",
+      "reason": "Motivo: {{reason}}",
+      "readOnly": "Solo lectura: se puede consultar y exportar. Para registrar algo nuevo, restáuralo.",
+      "restore": "Restaurar"
+    },
+    "purge": {
+      "action": "Depurar expediente…",
+      "title": "Depurar el expediente de forma definitiva",
+      "message": "Se borrará para siempre el expediente de {{name}} con todos sus archivos. La última atención fue el {{date}}, hace más de 5 años. Esto no se puede deshacer; solo queda el registro en la bitácora.",
+      "typeName": "Escribe el nombre completo del paciente",
+      "confirm": "Depurar definitivamente"
     }
   },
   "historiaClinica": {
@@ -312,7 +344,13 @@
       "confirmDelete": "¿Eliminar esta foto? Esta acción no se puede deshacer.",
       "empty": "No hay fotos",
       "uploadPhotos": "Subir fotos",
-      "tagLabel": "Etiqueta para las siguientes fotos"
+      "tagLabel": "Etiqueta para las siguientes fotos",
+      "retire": "Quitar de la galería",
+      "confirmRetire": "¿Quitar esta foto de la galería? Se conserva en el expediente y se puede devolver.",
+      "retiredCount": "Fotos retiradas: {{n}}",
+      "retiredNote": "Siguen siendo parte del expediente; no salen en la galería ni en las comparaciones.",
+      "retiredOn": "Retirada el {{date}} · por {{name}}",
+      "putBack": "Devolver a la galería"
     },
     "copyFromHistoria": "Copiar de historia clínica",
     "copyFromHistoriaHelp": "Reemplaza los dos campos con lo registrado en la historia clínica.",
@@ -525,7 +563,14 @@
       "note": "Cambia mientras editas. Los consentimientos siempre se imprimen en español."
     },
     "unsaved": "Hay cambios sin guardar",
-    "allSaved": "Todo guardado"
+    "allSaved": "Todo guardado",
+    "witness": {
+      "title": "Segundo testigo del consentimiento",
+      "help": "La NOM-004 pide dos testigos en cada consentimiento. Si suele firmar la misma persona del equipo, regístrala aquí y aparecerá ya llenada al firmar.",
+      "name": "Nombre del segundo testigo",
+      "signature": "Firma del segundo testigo",
+      "signatureHelp": "Se copia en cada consentimiento que la use; cambiarla después no altera los ya firmados."
+    }
   },
   "treatments": {
     "listTitle": "Tratamientos",
@@ -587,7 +632,17 @@
     "scanTakePhoto": "Tomar foto",
     "scanChooseImages": "Elegir imágenes",
     "scanTooManyPages": "Un escaneo admite hasta 20 páginas.",
-    "scanImageUnreadable": "No se pudo leer una de las imágenes."
+    "scanImageUnreadable": "No se pudo leer una de las imágenes.",
+    "signatures": "Firmas",
+    "firstWitness": "Testigo 1",
+    "secondWitness": "Testigo 2",
+    "firstWitnessName": "Nombre del testigo 1",
+    "secondWitnessName": "Nombre del testigo 2",
+    "secondWitnessSource": "Firma del testigo 2",
+    "useStoredSignature": "Usar la firma registrada de {{name}}",
+    "signHere": "Firmar aquí",
+    "storedSignatureNote": "Se usará la firma registrada en la configuración de la clínica. Si cambias el nombre, firma aquí.",
+    "witnessesRequired": "Firman el paciente y dos testigos (NOM-004)."
   },
   "appointments": {
     "calendarTitle": "Calendario",
@@ -641,11 +696,16 @@
       "historiaClinica": "Historia clínica",
       "valoracion": "Valoración",
       "treatments": "Tratamientos",
-      "consents": "Consentimientos"
+      "consents": "Consentimientos",
+      "retiredPhotos": "Fotos retiradas de la galería"
     },
     "generate": "Generar PDF",
     "generating": "Generando...",
-    "generateFailed": "No se pudo generar el PDF. Inténtelo de nuevo."
+    "generateFailed": "No se pudo generar el PDF. Inténtelo de nuevo.",
+    "optional": {
+      "title": "Anexos opcionales",
+      "retiredPhotosHint": "Se agregan al final con quién las retiró y cuándo."
+    }
   },
   "workspace": {
     "tabsLabel": "Secciones del paciente",
@@ -1090,5 +1150,13 @@
     "back": "Volver a la página anterior",
     "plate": "Lám.",
     "illustration": "Un mapa facial en blanco con la marca fuera del rostro"
+  },
+  "apiErrors": {
+    "PATIENT_ARCHIVED": "Este paciente está archivado. Restáuralo para hacer cambios.",
+    "WITNESSES_REQUIRED": "El consentimiento necesita el nombre y la firma de dos testigos.",
+    "RETENTION_PERIOD": "El expediente debe conservarse 5 años desde la última atención.",
+    "OWNER_ONLY": "Solo el dueño de la clínica puede depurar un expediente.",
+    "NOT_ARCHIVED": "Archiva al paciente antes de depurar el expediente.",
+    "CONFIRMATION_MISMATCH": "El nombre no coincide con el del paciente."
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchPatients, createPatient } from '../../../lib/patients/patient-search';
+import { searchPatients, createPatient, countArchivedMatches } from '../../../lib/patients/patient-search';
 import { checkContactLink, CONTACT_LINK_MESSAGES } from '../../../lib/patients/notification-contact';
 import { writeAuditLogSafe } from '../../../lib/audit/audit-log';
 import { requireAuth } from '../../../lib/http/require-auth';
@@ -10,7 +10,11 @@ export const GET = withApiErrors(async (request: NextRequest) => {
   const userId = await requireAuth(request, 'patients', 'view');
 
   const query = request.nextUrl.searchParams.get('q') ?? '';
-  const patients = await searchPatients(query);
+  const archived = request.nextUrl.searchParams.get('archived') === '1';
+  const [patients, archivedMatches] = await Promise.all([
+    searchPatients(query, { archived }),
+    archived ? Promise.resolve(0) : countArchivedMatches(query),
+  ]);
 
   // A search returns up to 20 full patient records, so it is audited just like reading one.
   await writeAuditLogSafe({
@@ -18,9 +22,10 @@ export const GET = withApiErrors(async (request: NextRequest) => {
     action: 'view',
     entity: 'PatientSearch',
     entityId: query || '(all)',
+    metadata: archived ? { archived: true } : undefined,
   });
 
-  return NextResponse.json({ patients });
+  return NextResponse.json({ patients, archivedMatches });
 });
 
 export const POST = withApiErrors(async (request: NextRequest) => {

@@ -11,11 +11,11 @@ async function clinicStoredPaths(clinicId: string): Promise<string[]> {
     prismaUnscoped.consentScanPage.findMany({ where: { scan: where }, select: { filePath: true } }),
     prismaUnscoped.consent.findMany({
       where,
-      select: { patientSignatureImagePath: true, witnessSignatureImagePath: true },
+      select: { patientSignatureImagePath: true, witnessSignatureImagePath: true, secondWitnessSignatureImagePath: true },
     }),
     prismaUnscoped.clinicSettings.findUnique({
       where,
-      select: { doctorSignaturePath: true, clinicLogoPath: true },
+      select: { doctorSignaturePath: true, clinicLogoPath: true, secondWitnessSignaturePath: true },
     }),
   ]);
   const paths = [
@@ -23,8 +23,9 @@ async function clinicStoredPaths(clinicId: string): Promise<string[]> {
     ...itemPhotos.map((row) => row.filePath),
     ...products.map((row) => row.photoPath),
     ...scanPages.map((row) => row.filePath),
-    ...consents.flatMap((row) => [row.patientSignatureImagePath, row.witnessSignatureImagePath]),
+    ...consents.flatMap((row) => [row.patientSignatureImagePath, row.witnessSignatureImagePath, row.secondWitnessSignatureImagePath]),
     settings?.doctorSignaturePath,
+    settings?.secondWitnessSignaturePath,
     settings?.clinicLogoPath,
   ];
   return [...new Set(paths.filter((path): path is string => Boolean(path)))];

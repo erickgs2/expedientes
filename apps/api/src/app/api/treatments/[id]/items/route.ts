@@ -4,6 +4,7 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 interface ItemBody {
   treatmentTypeId?: unknown;
@@ -14,6 +15,7 @@ export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('treatment', id);
 
     // Unlike a plain `update`, `deleteMany`/`upsert` don't throw on a nonexistent parent id —
     // without this explicit check a PATCH to a made-up id would silently succeed having done

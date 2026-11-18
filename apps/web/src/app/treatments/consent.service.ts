@@ -18,21 +18,28 @@ export class ConsentService {
     input: {
       place: string;
       patientIdentification: string;
-      witnessName: string | null;
+      witnessName: string;
       patientSignature: Blob;
-      witnessSignature: Blob | null;
+      witnessSignature: Blob;
+      secondWitnessName: string;
+      /** Null to use the clinic's stored second-witness signature. */
+      secondWitnessSignature: Blob | null;
       templateUpdatedAt: string;
       settingsUpdatedAt: string;
     }
   ): Promise<{ consent: Consent; consentDocument: ConsentBlock[] }> {
     const formData = new FormData();
     formData.append('patientSignature', input.patientSignature, 'signature.jpg');
-    if (input.witnessSignature) {
-      formData.append('witnessSignature', input.witnessSignature, 'witness.jpg');
+    formData.append('witnessSignature', input.witnessSignature, 'witness.jpg');
+    if (input.secondWitnessSignature) {
+      formData.append('secondWitnessSignature', input.secondWitnessSignature, 'witness-2.jpg');
+    } else {
+      formData.append('useClinicSecondWitnessSignature', 'true');
     }
     formData.append('place', input.place);
     formData.append('patientIdentification', input.patientIdentification);
-    if (input.witnessName) formData.append('witnessName', input.witnessName);
+    formData.append('witnessName', input.witnessName);
+    formData.append('secondWitnessName', input.secondWitnessName);
     formData.append('templateUpdatedAt', input.templateUpdatedAt);
     formData.append('settingsUpdatedAt', input.settingsUpdatedAt);
     return firstValueFrom(
@@ -59,6 +66,7 @@ export class ConsentService {
       place: string;
       patientIdentification: string;
       witnessName: string | null;
+      secondWitnessName?: string | null;
       pages: File[];
     }
   ): Promise<{ scanId: string; consentIds: string[] }> {
@@ -68,6 +76,7 @@ export class ConsentService {
     formData.append('place', input.place);
     formData.append('patientIdentification', input.patientIdentification);
     if (input.witnessName) formData.append('witnessName', input.witnessName);
+    if (input.secondWitnessName) formData.append('secondWitnessName', input.secondWitnessName);
     for (const page of input.pages) formData.append('pages', page, page.name);
     return firstValueFrom(
       this.http.post<{ scanId: string; consentIds: string[] }>(

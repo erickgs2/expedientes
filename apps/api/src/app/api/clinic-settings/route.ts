@@ -33,6 +33,7 @@ const OPTIONAL_TEXT_FIELDS = [
   'whatsappConfirmationTemplate',
   'whatsappReminderTemplate',
   'whatsappTemplateLanguage',
+  'secondWitnessName',
 ] as const;
 
 export const GET = withApiErrors(async (request: NextRequest) => {
@@ -109,6 +110,26 @@ export const PUT = withApiErrors(async (request: NextRequest) => {
 
   if (values.clinicName !== undefined) {
     data.clinicName = values.clinicName;
+  }
+
+  // The clinic's usual second witness (NOM-004-SSA3-2012 10.1.1 asks for two). Optional: omitted
+  // keeps what is stored, an empty name clears it along with its signature.
+  if (values.secondWitnessName !== undefined) {
+    data.secondWitnessName = values.secondWitnessName || null;
+    if (!values.secondWitnessName) data.secondWitnessSignaturePath = null;
+  }
+  const secondWitnessSignature = formData.get('secondWitnessSignature');
+  if (secondWitnessSignature instanceof Blob && values.secondWitnessName !== '') {
+    const buffer = Buffer.from(await secondWitnessSignature.arrayBuffer());
+    if (buffer.length > MAX_SIGNATURE_BYTES || buffer.length < MIN_SIGNATURE_BYTES) {
+      return apiError('INVALID_INPUT', 'Signature is too large or too small', 400);
+    }
+    if (!isJpeg(buffer)) {
+      return apiError('INVALID_INPUT', 'secondWitnessSignature must be a JPEG image', 400);
+    }
+    data.secondWitnessSignaturePath = await saveFile(buffer, 'clinic', 'settings', 'witness-2.jpg');
+  } else if (formData.get('secondWitnessSignatureClear') === 'true') {
+    data.secondWitnessSignaturePath = null;
   }
   for (const field of [
     'whatsappPhoneNumberId',

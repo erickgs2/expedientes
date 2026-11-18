@@ -9,16 +9,17 @@ export async function getValoracionPatientId(valoracionId: string): Promise<stri
   return valoracion?.patientId ?? null;
 }
 
-export async function listPhotos(valoracionId: string) {
+/** The valoración's gallery; `archived: true` lists the photos retired from it instead. */
+export async function listPhotos(valoracionId: string, options: { archived?: boolean } = {}) {
   return prisma.photo.findMany({
-    where: { valoracionId },
+    where: { valoracionId, archivedAt: options.archived ? { not: null } : null },
     orderBy: { createdAt: 'asc' },
   });
 }
 
 export async function listPatientPhotos(patientId: string) {
   return prisma.photo.findMany({
-    where: { patientId },
+    where: { patientId, archivedAt: null },
     orderBy: { createdAt: 'asc' },
   });
 }
@@ -35,14 +36,36 @@ export async function createPhoto(
 }
 
 /**
- * Deletes a photo only if it actually belongs to `valoracionId` — a bare `prisma.photo.delete({
- * where: { id: photoId } })` would delete by id alone, letting a caller pass any photo id
- * alongside an unrelated (even a different patient's) `valoracionId` in the URL. `deleteMany`
- * with both fields in `where` makes the ownership check and the delete a single atomic operation.
+ * Retires a photo from the valoración's gallery instead of deleting it (NOM-004-SSA3-2012 5.4 and
+ * 5.11: a clinical record is kept whole). The file stays where it is and still counts toward the
+ * clinic's storage. Scoped by both ids, so a photo id cannot be retired through someone else's
+ * valoración. Returns false when no active photo matched.
  */
-export async function deletePhoto(valoracionId: string, photoId: string): Promise<boolean> {
-  const result = await prisma.photo.deleteMany({
-    where: { id: photoId, valoracionId },
+export async function retirePhoto(valoracionId: string, photoId: string, userId: string): Promise<boolean> {
+  const result = await prisma.photo.updateMany({
+    where: { id: photoId, valoracionId, archivedAt: null },
+    data: { archivedAt: new Date(), archivedById: userId },
   });
   return result.count > 0;
+}
+
+/** Puts a retired photo back in the gallery. Returns false when no retired photo matched. */
+export async function restorePhoto(valoracionId: string, photoId: string): Promise<boolean> {
+  const result = await prisma.photo.updateMany({
+    where: { id: photoId, valoracionId, archivedAt: { not: null } },
+    data: { archivedAt: null, archivedById: null },
+  });
+  return result.count > 0;
+}
+
+/** Adds who retired each photo, by name, for the "retired photos" list. */
+export async function withArchiverNames<T extends { archivedById: string | null }>(
+  photos: T[]
+): Promise<(T & { archivedByName: string | null })[]> {
+  const ids = [...new Set(photos.map((p) => p.archivedById).filter((id): id is string => !!id))];
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true } })
+    : [];
+  const names = new Map(users.map((u) => [u.id, u.fullName]));
+  return photos.map((p) => ({ ...p, archivedByName: p.archivedById ? names.get(p.archivedById) ?? null : null }));
 }

@@ -43,9 +43,9 @@ export async function getPatientSummaryStats(
       orderBy: { fecha: 'desc' },
       select: { fecha: true },
     }),
-    prisma.photo.count({ where: { patientId } }),
+    prisma.photo.count({ where: { patientId, archivedAt: null } }),
     includeTreatmentPhotos
-      ? prisma.treatmentItemPhoto.count({ where: { patientId } })
+      ? prisma.treatmentItemPhoto.count({ where: { patientId, archivedAt: null } })
       : Promise.resolve(0),
     prisma.treatment.count({ where: { patientId } }),
     prisma.treatment.findFirst({

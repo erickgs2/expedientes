@@ -49,6 +49,10 @@ const styles = StyleSheet.create({
   diagramImage: { marginRight: 8, marginBottom: 8 },
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
+  retiredGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+  retiredCell: { width: '48%', marginRight: '2%', marginBottom: 14 },
+  retiredImage: { width: '100%', height: 180, objectFit: 'contain', backgroundColor: '#f4f4f1' },
+  retiredCaption: { fontSize: 8, color: '#444444', marginTop: 3 },
 });
 
 function Field({ label, value }: { label: string; value: string | null }) {
@@ -320,6 +324,14 @@ export async function buildExportPdf(
         console.error(`Failed to read witness signature image for treatment item ${id}`, error);
       }
     }
+    if (entry.consent.secondWitnessSignatureImagePath) {
+      try {
+        const buffer = await readStoredFile(entry.consent.secondWitnessSignatureImagePath);
+        signatureImages.set(`${id}:secondWitness`, buffer);
+      } catch (error) {
+        console.error(`Failed to read second witness signature image for treatment item ${id}`, error);
+      }
+    }
   }
 
   // Each scan is read once however many letters it covers; an unreadable page is skipped (logged)
@@ -394,6 +406,8 @@ export async function buildExportPdf(
     if (patientSignature) signatures.patient = patientSignature;
     const witnessSignature = signatureImages.get(`${entry.treatmentItemId}:witness`);
     if (witnessSignature) signatures.witness = witnessSignature;
+    const secondWitnessSignature = signatureImages.get(`${entry.treatmentItemId}:secondWitness`);
+    if (secondWitnessSignature) signatures.secondWitness = secondWitnessSignature;
     if (doctorSignature) signatures.doctor = doctorSignature;
 
     return (
@@ -417,6 +431,44 @@ export async function buildExportPdf(
       />
     );
   });
+
+  // Retired photos (only when the export asked for them), read up front like every other image.
+  const retiredPhotoImages: Array<{ photo: NonNullable<ExportData['retiredPhotos']>[number]; data: Buffer; format: 'png' | 'jpg' }> = [];
+  for (const photo of data.retiredPhotos ?? []) {
+    try {
+      const buffer = await readStoredFile(photo.filePath);
+      retiredPhotoImages.push({ photo, data: buffer, format: isPng(buffer) ? 'png' : 'jpg' });
+    } catch (error) {
+      console.error(`Failed to read retired photo ${photo.filePath}`, error);
+    }
+  }
+  const retired = labels.retiredPhotos;
+  const retiredPage =
+    data.retiredPhotos && data.retiredPhotos.length > 0 ? (
+      <Page size="A4" style={styles.page} wrap>
+        {letterhead}
+        <Text style={styles.sectionTitle}>{retired.title}</Text>
+        <Text style={styles.subtitle}>
+          {data.patient.fullName} · {retired.intro}
+        </Text>
+        <View style={styles.retiredGrid}>
+          {retiredPhotoImages.map(({ photo, data: img, format }, i) => (
+            <View key={i} style={styles.retiredCell} wrap={false}>
+              <Image style={styles.retiredImage} src={{ data: img, format }} />
+              <Text style={styles.retiredCaption}>
+                {photo.source.kind === 'valoracion' ? retired.valoracion : photo.source.treatmentTypeName} ·{' '}
+                {photo.source.fecha} · {retired.tags[photo.tag]}
+              </Text>
+              <Text style={styles.retiredCaption}>
+                {retired.takenOn} {photo.takenAt.substring(0, 10)} · {retired.retiredOn}{' '}
+                {photo.archivedAt.substring(0, 10)}
+                {photo.archivedByName ? ` ${retired.by} ${photo.archivedByName}` : ''}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </Page>
+    ) : null;
 
   const document = (
     <Document>
@@ -456,6 +508,7 @@ export async function buildExportPdf(
           </Text>
         )}
       </Page>
+      {retiredPage}
       {consentPages}
     </Document>
   );

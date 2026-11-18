@@ -48,6 +48,16 @@ import { ExportService, type ExportDiagramImage } from './export.service';
           </mat-checkbox>
         </div>
 
+        <!-- Off by default: retired photos are kept as part of the record, but are not part of the
+             working view, so they only go out when someone asks for them. -->
+        <div class="optional" role="group" [attr.aria-label]="'export.optional.title' | transloco">
+          <p class="optional-title">{{ 'export.optional.title' | transloco }}</p>
+          <mat-checkbox [(ngModel)]="includeRetiredPhotos">
+            {{ 'export.modules.retiredPhotos' | transloco }}
+          </mat-checkbox>
+          <p class="optional-hint">{{ 'export.optional.retiredPhotosHint' | transloco }}</p>
+        </div>
+
         @if (errorMessage()) {
           <p class="error-message" role="alert">{{ errorMessage() }}</p>
         }
@@ -77,6 +87,21 @@ import { ExportService, type ExportDiagramImage } from './export.service';
         flex-direction: column;
         gap: 4px;
       }
+      .optional {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--plate-line);
+      }
+      .optional-title {
+        margin: 0 0 4px;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .optional-hint {
+        margin: 0 0 0 40px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
       .actions {
         margin-top: 20px;
       }
@@ -101,6 +126,7 @@ export class ExportComponent {
   protected includeValoracion = true;
   protected includeTreatments = true;
   protected includeConsents = true;
+  protected includeRetiredPhotos = false;
 
   protected readonly generating = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -121,6 +147,7 @@ export class ExportComponent {
           valoracion: this.includeValoracion,
           treatments: this.includeTreatments,
           consents: this.includeConsents,
+          retiredPhotos: this.includeRetiredPhotos,
         },
         language,
         diagramImages

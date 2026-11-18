@@ -61,6 +61,8 @@ export class TreatmentPhotoComponent implements OnInit {
         list: () => this.treatmentPhotoService.list(this.itemId),
         upload: (blob, tag) => this.treatmentPhotoService.upload(this.itemId, blob, tag),
         delete: (photoId) => this.treatmentPhotoService.delete(this.itemId, photoId),
+        listRetired: () => this.treatmentPhotoService.listRetired(this.itemId),
+        restore: (photoId) => this.treatmentPhotoService.restore(this.itemId, photoId),
       };
     } catch (error) {
       console.error('Failed to load treatment item', error);

@@ -31,7 +31,9 @@ export class ClinicSettingsService {
     logo: File | null,
     /** Blank leaves the stored token alone; `clearAccessToken` removes it. */
     accessToken = '',
-    clearAccessToken = false
+    clearAccessToken = false,
+    /** The clinic's usual second witness signature (NOM-004 10.1.1); null keeps the stored one. */
+    secondWitnessSignature: Blob | null = null
   ): Promise<ClinicSettings> {
     const formData = new FormData();
     for (const [key, value] of Object.entries(input)) {
@@ -43,6 +45,7 @@ export class ClinicSettingsService {
     if (logo) formData.append('clinicLogo', logo, logo.name);
     if (accessToken.trim()) formData.append('whatsappAccessToken', accessToken.trim());
     if (clearAccessToken) formData.append('whatsappAccessTokenClear', 'true');
+    if (secondWitnessSignature) formData.append('secondWitnessSignature', secondWitnessSignature, 'witness-2.jpg');
     return firstValueFrom(
       this.http.put<{ clinicSettings: ClinicSettings }>('/api/clinic-settings', formData)
     ).then((r) => r.clinicSettings);

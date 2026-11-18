@@ -8,6 +8,8 @@ export interface ExportModulesSelection {
   treatments: boolean;
   /** Independent of `treatments`: the signed consents can be exported on their own. */
   consents: boolean;
+  /** Annex of photos retired from the galleries; off unless asked for. */
+  retiredPhotos?: boolean;
 }
 
 export interface ExportDiagramImage {

@@ -9,6 +9,7 @@ import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../lib/patients/patient-archive';
 
 const VALID_STATUSES: AppointmentStatus[] = [
   'SCHEDULED',
@@ -52,6 +53,7 @@ export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'appointments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('appointment', id);
     const body = (await request.json()) as UpdateAppointmentBody;
 
     if (body.startTime !== undefined && Number.isNaN(new Date(body.startTime).getTime())) {
@@ -104,6 +106,7 @@ export const DELETE = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'appointments', 'delete');
     const { id } = await params;
+    await assertRecordWritable('appointment', id);
 
     const appointment = await getAppointment(id);
     if (!appointment) return apiError('NOT_FOUND', 'Appointment not found', 404);

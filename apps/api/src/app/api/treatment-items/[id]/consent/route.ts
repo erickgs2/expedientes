@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { ConsentSection } from '@expedientes/shared-types';
-import { getTreatmentItemDetail, signTreatmentItemConsent } from '../../../../../lib/treatment/consent';
-import { buildConsentDocument } from '../../../../../lib/consent/build-consent-document';
-import { CONSENT_LABELS } from '../../../../../lib/consent/consent-labels';
+import {
+  consentDocumentFromSnapshot,
+  getTreatmentItemDetail,
+  signTreatmentItemConsent,
+} from '../../../../../lib/treatment/consent';
 import { isJpeg } from '../../../../../lib/storage/image-signature';
 import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 // Same ceiling/floor as the photo-upload endpoint — this app's only other binary-upload routes.
-// Doubled here relative to a single-image upload because a witnessed consent carries two signature
-// images in the one request; each individual image is still held to MAX_SIGNATURE_BYTES below.
+// Tripled here relative to a single-image upload because a consent carries up to three signature
+// images in the one request (patient and two witnesses); each image is still held to
+// MAX_SIGNATURE_BYTES below.
 const MAX_SIGNATURE_BYTES = 10 * 1024 * 1024;
 const MIN_SIGNATURE_BYTES = 1024;
-const MAX_REQUEST_BYTES = MAX_SIGNATURE_BYTES * 2;
+const MAX_REQUEST_BYTES = MAX_SIGNATURE_BYTES * 3;
 const MAX_FIELD_LENGTH = 200;
 
 export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('treatmentItem', id);
 
     // Cheap early-out so an obviously-oversized request is never buffered — not authoritative,
     // the real check runs against the actually-read buffers below.
@@ -41,6 +45,8 @@ export const POST = withApiErrors(
     const witnessNameRaw = formData.get('witnessName');
     const patientSignature = formData.get('patientSignature');
     const witnessSignature = formData.get('witnessSignature');
+    const secondWitnessNameRaw = formData.get('secondWitnessName');
+    const secondWitnessSignature = formData.get('secondWitnessSignature');
     const templateUpdatedAt = formData.get('templateUpdatedAt');
     const settingsUpdatedAt = formData.get('settingsUpdatedAt');
 
@@ -59,20 +65,19 @@ export const POST = withApiErrors(
       return apiError('INVALID_INPUT', 'patientIdentification is too long', 400);
     }
 
+    // NOM-004-SSA3-2012 10.1.1: two witnesses, each with name and signature. The second one may
+    // use the clinic's stored signature (set in the clinic settings) instead of signing here.
     const witnessNameTrimmed = typeof witnessNameRaw === 'string' ? witnessNameRaw.trim() : '';
-    const hasWitnessName = witnessNameTrimmed.length > 0;
-    const hasWitnessSignature = witnessSignature instanceof Blob;
-    // A witness is either fully present or fully absent — a name with no signature (or a signature
-    // with no name) can't be reconciled into a single consistent "who witnessed this" answer.
-    if (hasWitnessName !== hasWitnessSignature) {
-      return apiError(
-        'INVALID_INPUT',
-        'A witness name requires a witness signature, and vice versa',
-        400
-      );
+    const secondWitnessNameTrimmed = typeof secondWitnessNameRaw === 'string' ? secondWitnessNameRaw.trim() : '';
+    const useClinicSecondWitness = formData.get('useClinicSecondWitnessSignature') === 'true';
+    if (!witnessNameTrimmed || !(witnessSignature instanceof Blob)) {
+      return apiError('WITNESSES_REQUIRED', 'The first witness needs a name and a signature', 400);
     }
-    if (witnessNameTrimmed.length > MAX_FIELD_LENGTH) {
-      return apiError('INVALID_INPUT', 'witnessName is too long', 400);
+    if (!secondWitnessNameTrimmed || (!(secondWitnessSignature instanceof Blob) && !useClinicSecondWitness)) {
+      return apiError('WITNESSES_REQUIRED', 'The second witness needs a name and a signature', 400);
+    }
+    if (witnessNameTrimmed.length > MAX_FIELD_LENGTH || secondWitnessNameTrimmed.length > MAX_FIELD_LENGTH) {
+      return apiError('INVALID_INPUT', 'witness name is too long', 400);
     }
 
     if (!(patientSignature instanceof Blob)) {
@@ -119,25 +124,40 @@ export const POST = withApiErrors(
       return apiError('INVALID_INPUT', 'patientSignature must be a JPEG image', 400);
     }
 
-    let witnessBuffer: Buffer | null = null;
-    if (witnessSignature instanceof Blob) {
-      witnessBuffer = Buffer.from(await witnessSignature.arrayBuffer());
-      if (witnessBuffer.length > MAX_SIGNATURE_BYTES || witnessBuffer.length < MIN_SIGNATURE_BYTES) {
-        return apiError('INVALID_INPUT', 'Signature is too large or too small', 400);
+    const readSignature = async (file: Blob, field: string): Promise<Buffer | string> => {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      if (buffer.length > MAX_SIGNATURE_BYTES || buffer.length < MIN_SIGNATURE_BYTES) {
+        return 'Signature is too large or too small';
       }
-      if (!isJpeg(witnessBuffer)) {
-        return apiError('INVALID_INPUT', 'witnessSignature must be a JPEG image', 400);
-      }
+      if (!isJpeg(buffer)) return `${field} must be a JPEG image`;
+      return buffer;
+    };
+    const witnessBuffer = await readSignature(witnessSignature, 'witnessSignature');
+    if (typeof witnessBuffer === 'string') return apiError('INVALID_INPUT', witnessBuffer, 400);
+    let secondWitnessBuffer: Buffer | null = null;
+    if (secondWitnessSignature instanceof Blob) {
+      const read = await readSignature(secondWitnessSignature, 'secondWitnessSignature');
+      if (typeof read === 'string') return apiError('INVALID_INPUT', read, 400);
+      secondWitnessBuffer = read;
     }
 
     const result = await signTreatmentItemConsent(id, {
       place: placeTrimmed,
       patientIdentification: patientIdentificationTrimmed,
-      witnessName: hasWitnessName ? witnessNameTrimmed : null,
+      witnessName: witnessNameTrimmed,
       patientSignature: patientBuffer,
       witnessSignature: witnessBuffer,
+      secondWitnessName: secondWitnessNameTrimmed,
+      secondWitnessSignature: secondWitnessBuffer,
     });
     if (!result) return apiError('NOT_FOUND', 'Treatment item not found', 404);
+    if (result === 'NO_SECOND_WITNESS_SIGNATURE') {
+      return apiError(
+        'WITNESSES_REQUIRED',
+        'The clinic has no stored second-witness signature: have the second witness sign here',
+        400
+      );
+    }
     if (result === 'NO_CLINIC_IDENTITY') {
       return apiError(
         'CONFLICT',
@@ -156,21 +176,7 @@ export const POST = withApiErrors(
 
     // Built fresh from the snapshot that was just written, so the screen can render the signed
     // document without a refetch.
-    const consentDocument = buildConsentDocument({
-      clinicName: result.consent.clinicNameSnapshot,
-      doctorTitle: result.consent.doctorTitleSnapshot,
-      doctorName: result.consent.doctorNameSnapshot,
-      doctorLicense: result.consent.doctorLicenseSnapshot,
-      patientName: result.consent.patientNameSnapshot,
-      patientIdentification: result.consent.patientIdentification,
-      place: result.consent.place,
-      signedDate: result.consent.signedDateSnapshot,
-      declarationBefore: result.consent.declarationBeforeSnapshot,
-      declarationAfter: result.consent.declarationAfterSnapshot,
-      sections: result.consent.sections as unknown as ConsentSection[],
-      witnessName: result.consent.witnessName,
-      labels: CONSENT_LABELS.es,
-    });
+    const consentDocument = consentDocumentFromSnapshot(result.consent);
 
     return NextResponse.json(
       {
@@ -182,6 +188,8 @@ export const POST = withApiErrors(
           witnessName: result.consent.witnessName,
           patientSignatureImagePath: result.consent.patientSignatureImagePath,
           witnessSignatureImagePath: result.consent.witnessSignatureImagePath,
+          secondWitnessName: result.consent.secondWitnessName,
+          secondWitnessSignatureImagePath: result.consent.secondWitnessSignatureImagePath,
           scanPages: [],
           signedAt: result.consent.signedAt,
         },

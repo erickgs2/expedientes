@@ -6,12 +6,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { PlanUpgradeDialogComponent } from '../plan/plan-upgrade-dialog.component';
 import { catchError, throwError } from 'rxjs';
+import { TranslocoService } from '@jsverse/transloco';
 import { SUPPRESS_404_TOAST } from '../historia-clinica/historia-clinica.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const snackBar = inject(MatSnackBar);
   const dialog = inject(MatDialog);
+  const transloco = inject(TranslocoService);
 
   return next(req).pipe(
     catchError((error) => {
@@ -42,7 +44,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           dialog.open(PlanUpgradeDialogComponent, { data: error.error.error.details, maxWidth: 440 });
         }
       } else if (!expected404 && !handledByLogin) {
-        const message = error.error?.error?.message ?? 'Unexpected error';
+        // Codes the app explains in the user's language (`apiErrors.<CODE>`); others show the API's text.
+        const code: string | undefined = error.error?.error?.code;
+        const translated = code ? transloco.translate(`apiErrors.${code}`) : '';
+        const message =
+          code && translated && translated !== `apiErrors.${code}`
+            ? translated
+            : error.error?.error?.message ?? 'Unexpected error';
         snackBar.open(message, undefined, { duration: 4000 });
       }
       return throwError(() => error);

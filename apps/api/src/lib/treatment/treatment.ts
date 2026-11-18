@@ -37,7 +37,7 @@ export async function getTreatment(id: string) {
         include: {
           treatmentType: true,
           consent: { select: { id: true } },
-          photos: { select: { tag: true } },
+          photos: { where: { archivedAt: null }, select: { tag: true } },
           _count: { select: { diagrams: true, products: true } },
         },
       },

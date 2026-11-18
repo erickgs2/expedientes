@@ -18,7 +18,7 @@ import { ActivePatientStore } from './active-patient.store';
 import { NewPatientDialogComponent } from './new-patient-dialog.component';
 import { PatientsService } from './patients.service';
 
-type ListTab = 'today' | 'recent' | 'all';
+type ListTab = 'today' | 'recent' | 'all' | 'archived';
 
 /** One row of the left-hand list, whichever source filled it. */
 interface ListRow {
@@ -90,6 +90,23 @@ type Section = 'resumen' | 'historia-clinica' | 'valoracion' | 'photos' | 'treat
           </div>
         }
 
+        @if (query().trim() && searchArchived()) {
+          <p class="scope">
+            <span>{{ 'patientDrive.browse.searchingArchived' | transloco }}</span>
+            <button mat-button type="button" (click)="toggleArchivedSearch(false)">
+              {{ 'patientDrive.browse.backToActive' | transloco }}
+            </button>
+          </p>
+        } @else if (query().trim() && archivedMatches() > 0) {
+          <p class="scope">
+            <mat-icon aria-hidden="true">inventory_2</mat-icon>
+            <span>{{ 'patientDrive.browse.archivedMatches' | transloco: { n: archivedMatches() } }}</span>
+            <button mat-button type="button" (click)="toggleArchivedSearch(true)">
+              {{ 'patientDrive.browse.showArchived' | transloco }}
+            </button>
+          </p>
+        }
+
         @if (listLoading()) {
           <p class="note">{{ 'common.loading' | transloco }}</p>
         } @else if (rows().length === 0) {
@@ -132,6 +149,12 @@ type Section = 'resumen' | 'historia-clinica' | 'valoracion' | 'photos' | 'treat
               <h2>{{ p.patient.fullName }}</h2>
               <p>{{ identityLine(p) }}</p>
               <p>{{ 'patientDrive.browse.since' | transloco: { date: monthYear(p.patient.createdAt) } }}</p>
+              @if (p.patient.archivedAt) {
+                <p class="archived-tag">
+                  <mat-icon aria-hidden="true">inventory_2</mat-icon>
+                  {{ 'patientDrive.browse.archivedOn' | transloco: { date: longDate(p.patient.archivedAt) } }}
+                </p>
+              }
             </div>
             <button mat-flat-button color="primary" type="button" (click)="openRecord(p.patient.id)">
               {{ 'patientDrive.browse.open' | transloco }}
@@ -412,6 +435,26 @@ type Section = 'resumen' | 'historia-clinica' | 'valoracion' | 'photos' | 'treat
         font-weight: 600;
         font-variant-numeric: tabular-nums;
       }
+      /* Where the search is looking, when it is not the usual active list. */
+      .scope {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 4px 4px 4px 12px;
+        border: 1px dashed var(--plate-line-strong);
+        border-radius: var(--plate-radius);
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+      .scope span {
+        flex: 1 1 auto;
+      }
+      .scope mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
       .note,
       .empty {
         margin: 0;
@@ -448,6 +491,22 @@ type Section = 'resumen' | 'historia-clinica' | 'valoracion' | 'photos' | 'treat
         margin: 2px 0 0;
         color: var(--mat-sys-on-surface-variant);
         font-variant-numeric: tabular-nums;
+      }
+      .p-id .archived-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 2px 10px 2px 8px;
+        border: 1px solid var(--plate-line-strong);
+        border-radius: 999px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface);
+      }
+      .p-id .archived-tag mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
       }
       .alert {
         display: flex;
@@ -627,6 +686,8 @@ export class PatientSearchComponent implements OnInit {
       : []),
     { value: 'recent', label: 'patientDrive.browse.tabRecent' },
     { value: 'all', label: 'patientDrive.browse.tabAll' },
+    // NOM-004-SSA3-2012 5.4: an archived record is kept and stays reachable, just off the work lists.
+    { value: 'archived', label: 'patientDrive.browse.tabArchived' },
   ];
 
   protected readonly query = signal('');
@@ -714,8 +775,23 @@ export class PatientSearchComponent implements OnInit {
         time: null,
       }));
     }
+    if (tab === 'archived') {
+      const { patients } = await this.patientsService.searchList('', { archived: true });
+      return patients.map((p) => this.fromArchived(p));
+    }
     const all = await this.patientsService.search('');
     return all.map((p) => this.fromSummary(p));
+  }
+
+  private fromArchived(p: PatientSummary): ListRow {
+    return {
+      id: p.id,
+      fullName: p.fullName,
+      meta: this.transloco.translate('patientDrive.browse.archivedOn', {
+        date: p.archivedAt ? this.longDate(p.archivedAt) : '',
+      }),
+      time: null,
+    };
   }
 
   private fromSummary(p: PatientSummary): ListRow {
@@ -731,20 +807,38 @@ export class PatientSearchComponent implements OnInit {
     };
   }
 
+  /** A search reaches into the archived patients only when asked to. */
+  protected readonly searchArchived = signal(false);
+  /** Archived patients matching the current active search (0 when searching the archived). */
+  protected readonly archivedMatches = signal(0);
+
+  protected toggleArchivedSearch(archived: boolean): void {
+    this.searchArchived.set(archived);
+    this.onQueryChange(this.query());
+  }
+
   protected onQueryChange(value: string): void {
     this.query.set(value);
     const seq = ++this.searchSeq;
     if (!value.trim()) {
       this.searchRows.set([]);
+      this.archivedMatches.set(0);
+      this.searchArchived.set(false);
       return;
     }
+    const archived = this.searchArchived();
     this.latestSearch = this.patientsService
-      .search(value)
-      .then((patients) => {
-        if (seq === this.searchSeq) this.searchRows.set(patients.map((p) => this.fromSummary(p)));
+      .searchList(value, { archived })
+      .then(({ patients, archivedMatches }) => {
+        if (seq !== this.searchSeq) return;
+        this.searchRows.set(patients.map((p) => (archived ? this.fromArchived(p) : this.fromSummary(p))));
+        this.archivedMatches.set(archived ? 0 : archivedMatches);
       })
       .catch(() => {
-        if (seq === this.searchSeq) this.searchRows.set([]);
+        if (seq === this.searchSeq) {
+          this.searchRows.set([]);
+          this.archivedMatches.set(0);
+        }
       });
   }
 

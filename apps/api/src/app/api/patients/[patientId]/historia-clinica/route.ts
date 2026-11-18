@@ -11,6 +11,7 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertPatientWritable } from '../../../../../lib/patients/patient-archive';
 
 interface HistoriaClinicaBody {
   ocupacion?: string | null;
@@ -85,6 +86,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'historia-clinica', 'create');
     const { patientId } = await params;
+    await assertPatientWritable(patientId);
     const body = (await request.json()) as HistoriaClinicaBody;
 
     let historia;
@@ -113,6 +115,7 @@ export const PATCH = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ patientId: string }> }) => {
     const userId = await requireAuth(request, 'historia-clinica', 'edit');
     const { patientId } = await params;
+    await assertPatientWritable(patientId);
     const body = (await request.json()) as HistoriaClinicaBody;
 
     let historia;

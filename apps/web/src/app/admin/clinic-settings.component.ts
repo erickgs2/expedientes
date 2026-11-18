@@ -181,6 +181,43 @@ const PLACEHOLDERS = [
               </div>
             </section>
 
+            <!-- NOM-004-SSA3-2012 10.1.1: every consent carries two witnesses. The second is usually
+                 the same staff member, so it can be stored here and offered pre-filled at signing. -->
+            <section id="cs-witness" class="card">
+              <h2>{{ 'clinicSettings.witness.title' | transloco }}</h2>
+              <p class="hint">{{ 'clinicSettings.witness.help' | transloco }}</p>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinicSettings.witness.name' | transloco }}</mat-label>
+                <input matInput formControlName="secondWitnessName" />
+              </mat-form-field>
+              @if (value().secondWitnessName?.trim()) {
+                <div class="asset">
+                  <p class="asset-label">{{ 'clinicSettings.witness.signature' | transloco }}</p>
+                  @if (currentWitnessSignaturePath() && !drawingWitnessSignature()) {
+                    <img
+                      class="signature-image"
+                      [src]="fileUrl(currentWitnessSignaturePath()!)"
+                      [alt]="'clinicSettings.witness.signature' | transloco"
+                    />
+                    @if (canEdit) {
+                      <button mat-stroked-button type="button" (click)="drawingWitnessSignature.set(true)">
+                        <mat-icon>draw</mat-icon>{{ 'clinicSettings.replaceSignature' | transloco }}
+                      </button>
+                    }
+                  }
+                  <div [hidden]="!!currentWitnessSignaturePath() && !drawingWitnessSignature()">
+                    <app-signature-pad #witnessSignaturePad [disabled]="saving() || !canEdit"></app-signature-pad>
+                    @if (currentWitnessSignaturePath() && drawingWitnessSignature()) {
+                      <button mat-button type="button" (click)="cancelWitnessSignature()">
+                        {{ 'clinicSettings.keepSignature' | transloco }}
+                      </button>
+                    }
+                  </div>
+                  <p class="hint small">{{ 'clinicSettings.witness.signatureHelp' | transloco }}</p>
+                </div>
+              }
+            </section>
+
             <section id="cs-declarations" class="card">
               <div class="card-head">
                 <h2>{{ 'clinicSettings.declarationsTitle' | transloco }}</h2>
@@ -253,6 +290,21 @@ const PLACEHOLDERS = [
                 <div>
                   <div class="sig-line"></div>
                   <p>PACIENTE</p>
+                </div>
+                <div>
+                  <div class="sig-line"></div>
+                  <p>TESTIGO</p>
+                </div>
+                <div>
+                  <div class="sig-line">
+                    @if (currentWitnessSignaturePath() && !drawingWitnessSignature() && value().secondWitnessName?.trim()) {
+                      <img [src]="fileUrl(currentWitnessSignaturePath()!)" alt="" />
+                    }
+                  </div>
+                  <p>TESTIGO</p>
+                  @if (value().secondWitnessName?.trim()) {
+                    <p class="sub">{{ value().secondWitnessName }}</p>
+                  }
                 </div>
                 <div>
                   <div class="sig-line">
@@ -746,6 +798,9 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
 
   protected readonly pad = viewChild<SignaturePadComponent>('signaturePad');
+  protected readonly witnessPad = viewChild<SignaturePadComponent>('witnessSignaturePad');
+  protected readonly currentWitnessSignaturePath = signal<string | null>(null);
+  protected readonly drawingWitnessSignature = signal(false);
   private readonly beforeArea = viewChild<ElementRef<HTMLTextAreaElement>>('beforeArea');
   private readonly afterArea = viewChild<ElementRef<HTMLTextAreaElement>>('afterArea');
 
@@ -789,6 +844,7 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
     whatsappNotificationsEnabled: [false],
     declarationBefore: ['', Validators.required],
     declarationAfter: ['', Validators.required],
+    secondWitnessName: [''],
   });
 
   /** The form's live values, so the status cards and the preview follow every keystroke. */
@@ -827,7 +883,8 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
       this.form.dirty ||
       this.pendingLogo() !== null ||
       this.clearingAccessToken() ||
-      !!this.pad()?.hasStrokes()
+      !!this.pad()?.hasStrokes() ||
+      !!this.witnessPad()?.hasStrokes()
     );
   });
 
@@ -884,6 +941,8 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
     this.clearingAccessToken.set(false);
     this.drawingSignature.set(false);
     this.currentSignaturePath.set(settings?.doctorSignaturePath ?? null);
+    this.drawingWitnessSignature.set(false);
+    this.currentWitnessSignaturePath.set(settings?.secondWitnessSignaturePath ?? null);
     // A file picked but not yet saved wins over the stored one, so reloading settings mid-edit
     // doesn't silently discard the user's pending choice.
     if (!this.pendingLogo()) {
@@ -904,6 +963,7 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
       whatsappNotificationsEnabled: settings?.whatsappNotificationsEnabled ?? false,
       declarationBefore: settings?.declarationBefore ?? '',
       declarationAfter: settings?.declarationAfter ?? '',
+      secondWitnessName: settings?.secondWitnessName ?? '',
     });
     this.form.markAsPristine();
     this.pristineTick.update((n) => n + 1);
@@ -944,6 +1004,11 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
     this.clearingAccessToken.set(true);
     this.form.patchValue({ whatsappAccessToken: '' });
     this.form.markAsDirty();
+  }
+
+  protected cancelWitnessSignature(): void {
+    this.witnessPad()?.clear();
+    this.drawingWitnessSignature.set(false);
   }
 
   protected cancelSignature(): void {
@@ -1014,15 +1079,20 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
         whatsappNotificationsEnabled: raw.whatsappNotificationsEnabled ? 'true' : 'false',
         declarationBefore: raw.declarationBefore,
         declarationAfter: raw.declarationAfter,
+        secondWitnessName: raw.secondWitnessName,
       };
       const pad = this.pad();
       const signature = pad?.hasStrokes() ? await pad.toJpegBlob() : null;
+      const witnessPad = this.witnessPad();
+      const witnessSignature =
+        raw.secondWitnessName.trim() && witnessPad?.hasStrokes() ? await witnessPad.toJpegBlob() : null;
       const settings = await this.clinicSettingsService.save(
         input,
         signature,
         this.pendingLogo(),
         raw.whatsappAccessToken,
-        this.clearingAccessToken()
+        this.clearingAccessToken(),
+        witnessSignature
       );
       // Clear the pending file first so `applySettings` adopts the stored logo's URL, then release
       // the object URL the preview was using.
@@ -1030,6 +1100,7 @@ export class ClinicSettingsComponent implements OnInit, OnDestroy {
       this.applySettings(settings);
       this.releasePendingLogoUrl();
       pad?.clear();
+      witnessPad?.clear();
       this.snackBar.open(this.transloco.translate('clinicSettings.saved'), undefined, { duration: 3000 });
     } finally {
       this.saving.set(false);

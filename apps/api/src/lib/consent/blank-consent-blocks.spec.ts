@@ -9,11 +9,24 @@ const blocks: ConsentBlock[] = [
 ];
 
 describe('withBlankWitness', () => {
-  it('inserts a witness line between patient and doctor when none exists', () => {
+  it('inserts both witness lines between patient and doctor when none exists', () => {
     const roles = withBlankWitness(blocks)
       .filter((b) => b.kind === 'signatureBlock')
       .map((b) => (b as { role: string }).role);
-    expect(roles).toEqual(['patient', 'witness', 'doctor']);
+    expect(roles).toEqual(['patient', 'witness', 'secondWitness', 'doctor']);
+  });
+
+  it('adds only the missing second witness to a letter that already has one', () => {
+    const withOne: ConsentBlock[] = [
+      blocks[0],
+      blocks[1],
+      { kind: 'signatureBlock', role: 'witness', caption: 'TESTIGO', subCaption: 'ANA' },
+      blocks[2],
+    ];
+    const roles = withBlankWitness(withOne)
+      .filter((b) => b.kind === 'signatureBlock')
+      .map((b) => (b as { role: string }).role);
+    expect(roles).toEqual(['patient', 'witness', 'secondWitness', 'doctor']);
   });
 
   it('does not duplicate an existing witness line', () => {
@@ -52,9 +65,9 @@ describe('prepareBlankConsentBlocks', () => {
     expect(date).toEqual({ kind: 'fieldLine', label: 'FECHA', value: '' });
   });
 
-  it('keeps every other field and adds the witness line', () => {
+  it('keeps every other field and adds both witness lines', () => {
     const result = prepareBlankConsentBlocks(withDate);
     expect(result).toContainEqual({ kind: 'fieldLine', label: 'LUGAR', value: 'Culiacan' });
-    expect(result.filter((b) => b.kind === 'signatureBlock')).toHaveLength(3);
+    expect(result.filter((b) => b.kind === 'signatureBlock')).toHaveLength(4);
   });
 });

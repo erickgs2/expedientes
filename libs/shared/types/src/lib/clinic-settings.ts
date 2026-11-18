@@ -6,6 +6,9 @@ export interface ClinicSettings {
   doctorLicense: string;
   doctorSignaturePath: string | null;
   clinicLogoPath: string | null;
+  /** The clinic's usual second witness for consents (NOM-004-SSA3-2012 10.1.1). */
+  secondWitnessName: string | null;
+  secondWitnessSignaturePath: string | null;
   declarationBefore: string;
   declarationAfter: string;
   whatsappPhoneNumberId: string | null;
@@ -35,4 +38,6 @@ export interface ClinicSettingsInput {
   doctorLicense: string;
   declarationBefore: string;
   declarationAfter: string;
+  /** Empty clears the stored second witness (and its signature). */
+  secondWitnessName: string;
 }

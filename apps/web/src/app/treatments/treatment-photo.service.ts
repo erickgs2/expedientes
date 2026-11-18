@@ -33,9 +33,22 @@ export class TreatmentPhotoService {
     ).then((r) => r.photo);
   }
 
+  /** Retires the photo from the gallery; it is kept and can be put back. */
   delete(itemId: string, photoId: string): Promise<void> {
     return firstValueFrom(
       this.http.delete<void>(`/api/treatment-items/${itemId}/photos/${photoId}`)
+    ).then(() => undefined);
+  }
+
+  listRetired(itemId: string): Promise<PhotoRecord[]> {
+    return firstValueFrom(
+      this.http.get<{ photos: PhotoRecord[] }>(`/api/treatment-items/${itemId}/photos`, { params: { archived: '1' } })
+    ).then((r) => r.photos);
+  }
+
+  restore(itemId: string, photoId: string): Promise<void> {
+    return firstValueFrom(
+      this.http.post<void>(`/api/treatment-items/${itemId}/photos/${photoId}/restore`, {})
     ).then(() => undefined);
   }
 

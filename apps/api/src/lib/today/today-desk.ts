@@ -62,8 +62,11 @@ export async function getTodayDesk(
       access.treatments
         ? prisma.treatmentItem.count({
             where: {
-              treatment: { fecha: { gte: new Date(now.getTime() - AFTER_PHOTO_WINDOW_DAYS * DAY_MS) } },
-              photos: { some: { tag: 'BEFORE' }, none: { tag: 'AFTER' } },
+              treatment: {
+                fecha: { gte: new Date(now.getTime() - AFTER_PHOTO_WINDOW_DAYS * DAY_MS) },
+                patient: { archivedAt: null },
+              },
+              photos: { some: { tag: 'BEFORE', archivedAt: null }, none: { tag: 'AFTER', archivedAt: null } },
             },
           })
         : Promise.resolve(null),

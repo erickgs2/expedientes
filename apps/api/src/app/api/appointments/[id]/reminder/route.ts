@@ -3,6 +3,7 @@ import { sendReminderNow } from '../../../../../lib/notifications/appointment-no
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 /**
  * The front desk's "send reminder now". Responds 200 with the send's outcome even when nothing was
@@ -14,6 +15,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'appointments', 'edit');
     const { id } = await params;
+    await assertRecordWritable('appointment', id);
 
     const outcome = await sendReminderNow(id, userId);
     if (!outcome) return apiError('NOT_FOUND', 'Appointment not found', 404);

@@ -86,4 +86,16 @@ export class ValoracionService {
       this.http.delete<void>(`/api/valoracion/${valoracionId}/photos/${photoId}`)
     ).then(() => undefined);
   }
+
+  listRetiredPhotos(valoracionId: string): Promise<Photo[]> {
+    return firstValueFrom(
+      this.http.get<{ photos: Photo[] }>(`/api/valoracion/${valoracionId}/photos`, { params: { archived: '1' } })
+    ).then((r) => r.photos);
+  }
+
+  restorePhoto(valoracionId: string, photoId: string): Promise<void> {
+    return firstValueFrom(
+      this.http.post<void>(`/api/valoracion/${valoracionId}/photos/${photoId}/restore`, {})
+    ).then(() => undefined);
+  }
 }

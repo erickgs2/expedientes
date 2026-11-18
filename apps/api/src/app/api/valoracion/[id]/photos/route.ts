@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPhoto, getValoracionPatientId, listPhotos } from '../../../../../lib/photo/photo';
+import { createPhoto, getValoracionPatientId, listPhotos, withArchiverNames } from '../../../../../lib/photo/photo';
 import { assertStorageFor } from '../../../../../lib/plan/limits';
 import { saveFile } from '../../../../../lib/storage/file-storage';
 import { isJpeg } from '../../../../../lib/storage/image-signature';
@@ -7,6 +7,7 @@ import { writeAuditLogSafe } from '../../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
+import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
 
 const VALID_TAGS = ['BEFORE', 'AFTER'] as const;
 
@@ -24,7 +25,9 @@ export const GET = withApiErrors(
     const patientId = await getValoracionPatientId(id);
     if (!patientId) return apiError('NOT_FOUND', 'Valoración not found', 404);
 
-    const photos = await listPhotos(id);
+    // `?archived=1` lists the photos retired from the gallery, with who retired them.
+    const archived = request.nextUrl.searchParams.get('archived') === '1';
+    const photos = archived ? await withArchiverNames(await listPhotos(id, { archived })) : await listPhotos(id);
 
     await writeAuditLogSafe({
       userId,
@@ -42,6 +45,7 @@ export const POST = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const userId = await requireAuth(request, 'valoracion', 'edit');
     const { id } = await params;
+    await assertRecordWritable('valoracion', id);
 
     // Cheap early-out so an obviously-oversized request is never buffered. Not authoritative —
     // the header can be absent, wrong, or avoided with chunked encoding — so the real check runs

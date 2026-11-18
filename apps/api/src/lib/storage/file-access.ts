@@ -25,7 +25,7 @@ export function parseStoredFileOwner(segments: string[]): StoredFileOwner {
 /**
  * Whether the current clinic may read this stored file. Paths are guessable enough (a patient id
  * plus a UUID) that a permission alone is not enough: the patient must be one of this clinic's, and a
- * clinic asset must be the logo or signature this clinic's settings point to.
+ * clinic asset must be the logo or a signature this clinic's settings point to.
  */
 export async function storedFileBelongsToCurrentClinic(segments: string[]): Promise<boolean> {
   const owner = parseStoredFileOwner(segments);
@@ -36,7 +36,9 @@ export async function storedFileBelongsToCurrentClinic(segments: string[]): Prom
     const settings = await getClinicSettings();
     return Boolean(
       settings &&
-        (settings.doctorSignaturePath === owner.path || settings.clinicLogoPath === owner.path)
+        (settings.doctorSignaturePath === owner.path ||
+          settings.clinicLogoPath === owner.path ||
+          settings.secondWitnessSignaturePath === owner.path)
     );
   }
   return false;

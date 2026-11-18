@@ -7,7 +7,7 @@ export interface ConsentDocumentLabels {
   patient: string;
   identifiesWith: string;
   sections: Record<ConsentSectionKey, string>;
-  signatures: { patient: string; witness: string; doctor: string };
+  signatures: { patient: string; witness: string; secondWitness: string; doctor: string };
 }
 
 export interface ConsentDocumentInput {
@@ -24,6 +24,13 @@ export interface ConsentDocumentInput {
   declarationAfter: string;
   sections: ConsentSection[];
   witnessName: string | null;
+  /** Null on letters signed with a single witness (before two were required). */
+  secondWitnessName?: string | null;
+  /**
+   * The contingencies clause as printed (10.1.1), already or not yet interpolated. Null on letters
+   * signed before it was added, which print without it, exactly as they were signed.
+   */
+  contingencyClause?: string | null;
   labels: ConsentDocumentLabels;
 }
 
@@ -92,6 +99,9 @@ export function buildConsentDocument(input: ConsentDocumentInput): ConsentBlock[
   }
 
   blocks.push({ kind: 'paragraph', text: interpolate(input.declarationAfter, values) });
+  if (input.contingencyClause && input.contingencyClause.trim()) {
+    blocks.push({ kind: 'paragraph', text: interpolate(input.contingencyClause, values) });
+  }
 
   blocks.push({ kind: 'signatureBlock', role: 'patient', caption: l.signatures.patient });
   if (input.witnessName && input.witnessName.trim()) {
@@ -100,6 +110,14 @@ export function buildConsentDocument(input: ConsentDocumentInput): ConsentBlock[
       role: 'witness',
       caption: l.signatures.witness,
       subCaption: input.witnessName.trim(),
+    });
+  }
+  if (input.secondWitnessName && input.secondWitnessName.trim()) {
+    blocks.push({
+      kind: 'signatureBlock',
+      role: 'secondWitness',
+      caption: l.signatures.secondWitness,
+      subCaption: input.secondWitnessName.trim(),
     });
   }
   blocks.push({
