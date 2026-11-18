@@ -95,10 +95,20 @@ export interface PlatformGrantView {
   revokedReason: string | null;
 }
 
+export interface PlatformPaymentView {
+  id: string;
+  type: string;
+  amountCents: number | null;
+  summary: string | null;
+  receivedAt: string;
+}
+
 export interface PlatformClinicDetail extends PlatformClinicRow {
   phone: string | null;
   timeZone: string;
   grants: PlatformGrantView[];
+  /** Stripe events for the clinic, newest first (payments, failures, vouchers). */
+  payments: PlatformPaymentView[];
 }
 
 export interface GrantPremiumRequest {

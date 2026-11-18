@@ -27,6 +27,8 @@ model Clinic {
   /// recounted from the stored files when storageCountedAt is empty (see lib/plan/storage-usage.ts).
   storageBytes     BigInt    @default(0)
   storageCountedAt DateTime?
+  /// The clinic's customer in Stripe, created on its first checkout and reused after.
+  stripeCustomerId String?   @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,6 +103,9 @@ model Subscription {
   price                PlanPrice?         @relation(fields: [priceId], references: [id])
   stripeCustomerId     String?
   stripeSubscriptionId String?            @unique
+  /// OXXO periods do not renew on their own: when the owner was reminded 7 days and 1 day before.
+  renewalNotice7SentAt DateTime?
+  renewalNotice1SentAt DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 }
@@ -855,4 +860,18 @@ model ServerMetricSample {
   processRssBytes BigInt
 
   @@index([takenAt])
+}
+
+/// A Stripe webhook event already applied, by its Stripe id, so a redelivered event changes
+/// nothing; also the payment history shown in the portal.
+model PaymentEvent {
+  id          String   @id
+  type        String
+  clinicId    String?
+  /// Amount charged, in centavos, when the event is a payment.
+  amountCents Int?
+  summary     String?
+  receivedAt  DateTime @default(now())
+
+  @@index([clinicId, receivedAt])
 }

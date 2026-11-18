@@ -11,10 +11,15 @@ export const GET = withApiErrors(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     await requirePlatformAdmin(request);
     const { id } = await params;
-    const [rows, clinic, grants] = await Promise.all([
+    const [rows, clinic, grants, payments] = await Promise.all([
       loadClinicRows(),
       prismaUnscoped.clinic.findUnique({ where: { id }, select: { phone: true, timeZone: true } }),
       prismaUnscoped.planGrant.findMany({ where: { clinicId: id }, orderBy: { createdAt: 'desc' } }),
+      prismaUnscoped.paymentEvent.findMany({
+        where: { clinicId: id, NOT: { summary: 'Ignorado' } },
+        orderBy: { receivedAt: 'desc' },
+        take: 50,
+      }),
     ]);
     const row = rows.find((r) => r.id === id);
     if (!row || !clinic) return apiError('NOT_FOUND', 'Clinic not found', 404);
@@ -32,6 +37,13 @@ export const GET = withApiErrors(
         createdAt: g.createdAt.toISOString(),
         revokedAt: g.revokedAt?.toISOString() ?? null,
         revokedReason: g.revokedReason,
+      })),
+      payments: payments.map((p) => ({
+        id: p.id,
+        type: p.type,
+        amountCents: p.amountCents,
+        summary: p.summary,
+        receivedAt: p.receivedAt.toISOString(),
       })),
     };
     return NextResponse.json(body);

@@ -6,6 +6,9 @@ import { currentClinicPlan, currentPlanPrice } from '../../../lib/plan/clinic-pl
 import { currentClinicUsage } from '../../../lib/plan/limits';
 import { currentClinicId } from '../../../lib/tenancy/context';
 import { requireAuth } from '../../../lib/http/require-auth';
+import { prisma } from '../../../lib/prisma/client';
+import { stripeConfigured } from '../../../lib/billing/stripe-client';
+import { oxxoVoucherDays } from '../../../lib/billing/checkout';
 import { withApiErrors } from '../../../lib/http/with-api-errors';
 
 /**
@@ -13,13 +16,14 @@ import { withApiErrors } from '../../../lib/http/with-api-errors';
  * each limit, and the current Premium price. Backs the Plan screen.
  */
 export const GET = withApiErrors(async (request: NextRequest) => {
-  await requireAuth(request, 'clinic-settings', 'view');
+  const userId = await requireAuth(request, 'clinic-settings', 'view');
 
-  const [plan, usage, price, subscription] = await Promise.all([
+  const [plan, usage, price, subscription, ownership] = await Promise.all([
     currentClinicPlan(),
     currentClinicUsage(),
     currentPlanPrice(),
     prismaUnscoped.subscription.findUnique({ where: { clinicId: currentClinicId() } }),
+    prisma.membership.findFirst({ where: { userId, isOwner: true }, select: { id: true } }),
   ]);
 
   const body: ClinicPlanDetails = {
@@ -35,6 +39,11 @@ export const GET = withApiErrors(async (request: NextRequest) => {
         }
       : null,
     price,
+    billing: {
+      enabled: stripeConfigured(),
+      isOwner: Boolean(ownership),
+      oxxoVoucherDays: oxxoVoucherDays(),
+    },
   };
   return NextResponse.json(body);
 });

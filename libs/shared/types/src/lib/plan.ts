@@ -75,6 +75,13 @@ export interface ClinicPlanDetails extends ClinicPlanSummary {
     currentPeriodEnd: string;
   } | null;
   price: PlanPriceSummary | null;
+  billing: {
+    /** Online payment is configured (Stripe keys present). */
+    enabled: boolean;
+    /** Only the owner can buy or manage the plan. */
+    isOwner: boolean;
+    oxxoVoucherDays: number;
+  };
 }
 
 /** `error.details` of a 402 PLAN_LIMIT response. */

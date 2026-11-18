@@ -166,3 +166,60 @@ export function legalChangedEmail(
     ),
   };
 }
+
+function pesos(cents: number): string {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(cents / 100);
+}
+
+export function paymentReceivedEmail(
+  to: string,
+  params: { clinicName: string; amountCents: number | null; paidUntil: Date; timeZone: string; method: 'CARD' | 'OXXO' }
+): OutgoingEmail {
+  const until = formatDate(params.paidUntil, params.timeZone);
+  const amount = params.amountCents ? `${pesos(params.amountCents)} ` : '';
+  const intro = `Recibimos tu pago ${amount}de MedCloud Premium para ${params.clinicName}.`;
+  const detail =
+    params.method === 'CARD'
+      ? `Tu plan está vigente hasta el ${until} y se renueva solo con tu tarjeta.`
+      : `Tu plan está vigente hasta el ${until}. Como pagaste en OXXO, te avisaremos antes de que termine para que generes la siguiente ficha.`;
+  const url = `${appBaseUrl()}/admin/plan`;
+  return {
+    to,
+    subject: 'Recibimos tu pago de MedCloud Premium',
+    text: `${intro}\n${detail}\n\nVer tu plan: ${url}`,
+    html: layout('Pago recibido', paragraph(intro) + paragraph(detail) + button('Ver mi plan', url)),
+  };
+}
+
+export function paymentFailedEmail(
+  to: string,
+  params: { clinicName: string; graceEndsAt: Date; timeZone: string }
+): OutgoingEmail {
+  const until = formatDate(params.graceEndsAt, params.timeZone);
+  const intro = `No pudimos cobrar la renovación de MedCloud Premium de ${params.clinicName} con tu tarjeta.`;
+  const detail = `Tu Premium sigue activo hasta el ${until} mientras reintentamos. Actualiza tu tarjeta para no perderlo; si no, volverás al plan Gratis y conservarás todos tus datos.`;
+  const url = `${appBaseUrl()}/admin/plan`;
+  return {
+    to,
+    subject: 'No pudimos cobrar tu MedCloud Premium',
+    text: `${intro}\n${detail}\n\nActualizar tarjeta: ${url}`,
+    html: layout('Revisa tu forma de pago', paragraph(intro) + paragraph(detail) + button('Actualizar tarjeta', url)),
+  };
+}
+
+export function prepaidEndingEmail(
+  to: string,
+  params: { clinicName: string; endsAt: Date; timeZone: string; days: number }
+): OutgoingEmail {
+  const until = formatDate(params.endsAt, params.timeZone);
+  const when = params.days <= 1 ? 'mañana' : `en ${params.days} días`;
+  const intro = `El periodo de MedCloud Premium que pagaste en OXXO para ${params.clinicName} termina ${when}, el ${until}.`;
+  const detail = 'Genera la siguiente ficha OXXO (o cambia a tarjeta) para seguir en Premium. Si no, volverás al plan Gratis y conservarás todos tus datos.';
+  const url = `${appBaseUrl()}/admin/plan`;
+  return {
+    to,
+    subject: `Tu Premium termina ${when}`,
+    text: `${intro}\n${detail}\n\nRenovar: ${url}`,
+    html: layout('Renueva tu Premium', paragraph(intro) + paragraph(detail) + button('Renovar', url)),
+  };
+}

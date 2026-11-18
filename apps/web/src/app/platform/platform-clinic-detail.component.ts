@@ -7,7 +7,7 @@ import type { PlatformClinicDetail } from '@expedientes/shared-types';
 import { PlatformService } from './platform.service';
 import { GrantPremiumDialogComponent } from './grant-premium-dialog.component';
 import { ReasonDialogComponent, type ReasonDialogData } from './reason-dialog.component';
-import { bytes, dateTime, shortDate } from './format';
+import { bytes, dateTime, mxn, shortDate } from './format';
 
 /** One clinic: plan, counts, contact, suspension, and the history of manual grants. */
 @Component({
@@ -80,6 +80,26 @@ import { bytes, dateTime, shortDate } from './format';
                       <button mat-button color="warn" (click)="revoke(g.id)">Revocar</button>
                     }
                   </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <h2 class="payments-title">Pagos</h2>
+      @if (c.payments.length === 0) {
+        <p class="empty">Sin pagos en línea.</p>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Movimiento</th><th class="num">Monto</th></tr></thead>
+            <tbody>
+              @for (p of c.payments; track p.id) {
+                <tr>
+                  <td class="num">{{ stamp(p.receivedAt) }}</td>
+                  <td>{{ p.summary ?? p.type }}</td>
+                  <td class="num amount">{{ p.amountCents !== null ? money(p.amountCents) : '—' }}</td>
                 </tr>
               }
             </tbody>
@@ -197,6 +217,12 @@ import { bytes, dateTime, shortDate } from './format';
       td.num:nth-child(2) {
         text-align: right;
       }
+      .payments-title {
+        margin-top: 28px;
+      }
+      td.amount {
+        text-align: right;
+      }
       .why {
         display: block;
         font-size: 12px;
@@ -220,6 +246,7 @@ export class PlatformClinicDetailComponent implements OnInit {
   protected readonly date = shortDate;
   protected readonly stamp = dateTime;
   protected readonly size = bytes;
+  protected readonly money = mxn;
 
   ngOnInit(): void {
     void this.load();
