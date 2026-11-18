@@ -1,7 +1,11 @@
 import { prisma } from '../prisma/client';
 import { currentClinicId } from '../tenancy/context';
+import { HISTORIA_CLINICAL_FIELDS, type ParsedFields } from '../clinical/clinical-fields';
 
-export interface HistoriaClinicaData {
+/** Plus the 6.1 clinical fields of phase D, all optional. */
+export type HistoriaClinicaData = HistoriaClinicaBaseData & ParsedFields<typeof HISTORIA_CLINICAL_FIELDS>;
+
+interface HistoriaClinicaBaseData {
   ocupacion?: string | null;
   fechaNacimiento?: Date | null;
   sexo?: string | null;
@@ -30,6 +34,17 @@ const HISTORIA_INCLUDE = { allergies: { include: { allergy: true } } } as const;
 function scalarFields(data: HistoriaClinicaData) {
   const { allergyNames: _allergyNames, ...scalars } = data;
   return scalars;
+}
+
+/**
+ * Birth date and sex also live on the patient, so every note and the PDF header can show age and
+ * sex (NOM-004-SSA3-2012 5.9). The historia is where they are captured; each save copies them.
+ */
+async function syncPatientIdentity(patientId: string, data: HistoriaClinicaData): Promise<void> {
+  const identity: { birthDate?: Date | null; sex?: string | null } = {};
+  if (data.fechaNacimiento !== undefined) identity.birthDate = data.fechaNacimiento;
+  if (data.sexo !== undefined) identity.sex = data.sexo;
+  if (Object.keys(identity).length > 0) await prisma.patient.update({ where: { id: patientId }, data: identity });
 }
 
 async function resolveAllergyIds(names: string[]): Promise<string[]> {
@@ -61,6 +76,7 @@ export async function createHistoriaClinica(patientId: string, data: HistoriaCli
   }
 
   const allergyIds = await resolveAllergyIds(data.allergyNames ?? []);
+  await syncPatientIdentity(patientId, data);
   return prisma.historiaClinica.create({
     data: {
       patientId,
@@ -79,6 +95,7 @@ export async function updateHistoriaClinica(patientId: string, data: HistoriaCli
   }
 
   const allergyIds = await resolveAllergyIds(data.allergyNames ?? []);
+  await syncPatientIdentity(patientId, data);
   return prisma.historiaClinica.update({
     where: { patientId },
     data: {

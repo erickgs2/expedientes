@@ -1,9 +1,10 @@
+import type { HistoriaClinicalContent } from './clinical-fields.js';
 export interface AllergyOption {
   id: string;
   name: string;
 }
 
-export interface HistoriaClinica {
+export interface HistoriaClinica extends Partial<HistoriaClinicalContent> {
   id: string;
   patientId: string;
   fecha: string;
@@ -27,7 +28,7 @@ export interface HistoriaClinica {
   allergies: { allergy: AllergyOption }[];
 }
 
-export interface HistoriaClinicaInput {
+export interface HistoriaClinicaInput extends Partial<HistoriaClinicalContent> {
   ocupacion?: string | null;
   fechaNacimiento?: string | null;
   sexo?: string | null;

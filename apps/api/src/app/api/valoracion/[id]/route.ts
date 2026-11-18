@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { EVOLUTION_FIELDS, parseClinicalFields } from '../../../../lib/clinical/clinical-fields';
 import { getValoracion, updateValoracion } from '../../../../lib/valoracion/valoracion';
 import { writeAuditLogSafe } from '../../../../lib/audit/audit-log';
 import { requireAuth } from '../../../../lib/http/require-auth';
@@ -41,6 +42,8 @@ export const PATCH = withApiErrors(
     await assertRecordWritable('valoracion', id);
     const noteEdit = await beginNoteEdit('valoracion', id);
     const body = (await request.json()) as ValoracionBody;
+    const evolution = parseClinicalFields(body as Record<string, unknown>, EVOLUTION_FIELDS);
+    if (!evolution.ok) return apiError('INVALID_INPUT', evolution.error, 400);
 
     // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which
     // `withApiErrors` already maps to a 404 — see apps/api/src/lib/http/with-api-errors.ts.
@@ -52,6 +55,7 @@ export const PATCH = withApiErrors(
       queQuiereElPaciente: body.queQuiereElPaciente,
       queNecesitaElPaciente: body.queNecesitaElPaciente,
       notas: body.notas,
+      ...evolution.data,
     });
 
     await writeAuditLogSafe({

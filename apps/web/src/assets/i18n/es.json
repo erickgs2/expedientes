@@ -212,7 +212,10 @@
       "personalInfo": "Información del paciente",
       "medicalInfo": "Información médica",
       "personalHistory": "Antecedentes personales no patológicos",
-      "familyHistory": "Antecedentes heredofamiliares"
+      "familyHistory": "Antecedentes heredofamiliares",
+      "pathologicalHistory": "Antecedentes patológicos",
+      "physicalExam": "Exploración física",
+      "assessment": "Diagnóstico y plan"
     },
     "fields": {
       "ocupacion": "Ocupación",
@@ -272,7 +275,10 @@
         "personalInfo": "Datos de contacto, alergias y lo que la paciente busca.",
         "medicalInfo": "Pregunta por enfermedades, medicamentos y tratamientos previos.",
         "personalHistory": "Toca la respuesta en las preguntas cerradas; lo que no aplique, déjalo en blanco.",
-        "familyHistory": "Enfermedades relevantes en la familia directa."
+        "familyHistory": "Enfermedades relevantes en la familia directa.",
+        "pathologicalHistory": "Opcional. Llena solo lo que aplique a la paciente.",
+        "physicalExam": "Opcional. Signos vitales y exploración de la piel; el IMC se calcula solo.",
+        "assessment": "Opcional. Estudios, diagnóstico, pronóstico y tratamiento indicado."
       }
     }
   },
@@ -1237,6 +1243,71 @@
       "WRONG_PASSWORD": "La contraseña no es correcta.",
       "TOO_MANY_ATTEMPTS": "Demasiados intentos. Espera unos minutos.",
       "UNKNOWN": "No se pudo guardar. Inténtalo de nuevo."
+    }
+  },
+  "clinical": {
+    "optional": "opcional",
+    "systems": "Interrogatorio por aparatos y sistemas",
+    "identity": {
+      "record": "Exp. {{n}}",
+      "age": "{{n}} años",
+      "missing": "faltan edad o sexo"
+    },
+    "vitals": {
+      "title": "Signos vitales",
+      "sys": "TA sist.",
+      "dia": "TA diast.",
+      "hr": "FC",
+      "rr": "FR",
+      "temp": "Temp.",
+      "weight": "Peso",
+      "height": "Talla",
+      "bmi": "IMC"
+    },
+    "evolution": {
+      "title": "Nota de evolución",
+      "evolucion": "Evolución del cuadro",
+      "indicaciones": "Indicaciones"
+    },
+    "fields": {
+      "antecedentesPersonalesPatologicos": "Antecedentes personales patológicos",
+      "padecimientoActual": "Padecimiento actual",
+      "interrogatorioPiel": "Piel y anexos",
+      "interrogatorioCardiovascular": "Cardiovascular",
+      "interrogatorioEndocrino": "Endócrino",
+      "interrogatorioNeurologico": "Neurológico",
+      "interrogatorioOtros": "Otros aparatos y sistemas",
+      "fototipoFitzpatrick": "Fototipo de Fitzpatrick",
+      "tipoPiel": "Tipo de piel",
+      "exploracionFacial": "Exploración facial",
+      "lesionesCutaneas": "Lesiones cutáneas",
+      "resultadosEstudios": "Resultados de estudios",
+      "diagnostico": "Diagnóstico",
+      "pronostico": "Pronóstico",
+      "indicacionTerapeutica": "Indicación terapéutica"
+    },
+    "skinTypes": {
+      "normal": "Normal",
+      "seca": "Seca",
+      "grasa": "Grasa",
+      "mixta": "Mixta",
+      "sensible": "Sensible"
+    },
+    "dose": {
+      "title": "Aplicación",
+      "quantity": "Cantidad",
+      "unit": "Unidad",
+      "route": "Vía",
+      "zone": "Zona",
+      "frequency": "Frecuencia (si es un esquema)"
+    },
+    "routes": {
+      "intradermica": "Intradérmica",
+      "subcutanea": "Subcutánea",
+      "supraperiostica": "Supraperióstica",
+      "intramuscular": "Intramuscular",
+      "intralesional": "Intralesional",
+      "topica": "Tópica"
     }
   }
 }

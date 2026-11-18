@@ -23,7 +23,22 @@ export interface PdfLabels {
     retiredOn: string;
     by: string;
   };
-  patientInfo: { phone: string; documentId: string };
+  patientInfo: { phone: string; documentId: string; recordNumber: string; age: string; years: string; sex: string };
+  /** NOM-004-SSA3-2012 6.1/6.2 fields added in phase D (see lib/clinical/clinical-fields.ts). */
+  clinical: {
+    pathological: string;
+    systems: string;
+    physicalExam: string;
+    assessment: string;
+    evolution: string;
+    vitals: string;
+    bmi: string;
+    fields: Record<string, string>;
+    skinTypes: Record<string, string>;
+    units: Record<string, string>;
+    routes: Record<string, string>;
+    dose: string;
+  };
   historiaClinica: {
     sectionTitle: string;
     personalInfo: string;
@@ -93,7 +108,52 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       retiredOn: 'Retirada el',
       by: 'por',
     },
-    patientInfo: { phone: 'Teléfono', documentId: 'CURP' },
+    patientInfo: { phone: 'Teléfono', documentId: 'CURP', recordNumber: 'Expediente', age: 'Edad', years: 'años', sex: 'Sexo' },
+    clinical: {
+      pathological: 'Antecedentes personales patológicos y padecimiento actual',
+      systems: 'Interrogatorio por aparatos y sistemas',
+      physicalExam: 'Exploración física',
+      assessment: 'Estudios, diagnóstico y plan',
+      evolution: 'Nota de evolución',
+      vitals: 'Signos vitales',
+      bmi: 'IMC',
+      fields: {
+        antecedentesPersonalesPatologicos: 'Antecedentes personales patológicos',
+        padecimientoActual: 'Padecimiento actual',
+        interrogatorioPiel: 'Piel y anexos',
+        interrogatorioCardiovascular: 'Cardiovascular',
+        interrogatorioEndocrino: 'Endócrino',
+        interrogatorioNeurologico: 'Neurológico',
+        interrogatorioOtros: 'Otros aparatos y sistemas',
+        presionSistolica: 'TA',
+        frecuenciaCardiaca: 'FC',
+        frecuenciaRespiratoria: 'FR',
+        temperatura: 'Temp.',
+        peso: 'Peso',
+        talla: 'Talla',
+        fototipoFitzpatrick: 'Fototipo de Fitzpatrick',
+        tipoPiel: 'Tipo de piel',
+        exploracionFacial: 'Exploración facial',
+        lesionesCutaneas: 'Lesiones cutáneas',
+        resultadosEstudios: 'Resultados de estudios',
+        diagnostico: 'Diagnóstico',
+        pronostico: 'Pronóstico',
+        indicacionTerapeutica: 'Indicación terapéutica',
+        evolucion: 'Evolución del cuadro',
+        indicaciones: 'Indicaciones',
+      },
+      skinTypes: { normal: 'Normal', seca: 'Seca', grasa: 'Grasa', mixta: 'Mixta', sensible: 'Sensible' },
+      units: { U: 'U', ml: 'ml', mg: 'mg', g: 'g' },
+      routes: {
+        intradermica: 'intradérmica',
+        subcutanea: 'subcutánea',
+        supraperiostica: 'supraperióstica',
+        intramuscular: 'intramuscular',
+        intralesional: 'intralesional',
+        topica: 'tópica',
+      },
+      dose: 'Aplicación',
+    },
     historiaClinica: {
       sectionTitle: 'Historia clínica',
       personalInfo: 'Información del paciente',
@@ -165,7 +225,52 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       retiredOn: 'Retired on',
       by: 'by',
     },
-    patientInfo: { phone: 'Phone', documentId: 'CURP' },
+    patientInfo: { phone: 'Phone', documentId: 'CURP', recordNumber: 'Record no.', age: 'Age', years: 'years', sex: 'Sex' },
+    clinical: {
+      pathological: 'Past medical history and present illness',
+      systems: 'Review of systems',
+      physicalExam: 'Physical examination',
+      assessment: 'Studies, diagnosis and plan',
+      evolution: 'Progress note',
+      vitals: 'Vital signs',
+      bmi: 'BMI',
+      fields: {
+        antecedentesPersonalesPatologicos: 'Past medical history',
+        padecimientoActual: 'Present illness',
+        interrogatorioPiel: 'Skin',
+        interrogatorioCardiovascular: 'Cardiovascular',
+        interrogatorioEndocrino: 'Endocrine',
+        interrogatorioNeurologico: 'Neurological',
+        interrogatorioOtros: 'Other systems',
+        presionSistolica: 'BP',
+        frecuenciaCardiaca: 'HR',
+        frecuenciaRespiratoria: 'RR',
+        temperatura: 'Temp.',
+        peso: 'Weight',
+        talla: 'Height',
+        fototipoFitzpatrick: 'Fitzpatrick phototype',
+        tipoPiel: 'Skin type',
+        exploracionFacial: 'Facial examination',
+        lesionesCutaneas: 'Skin lesions',
+        resultadosEstudios: 'Study results',
+        diagnostico: 'Diagnosis',
+        pronostico: 'Prognosis',
+        indicacionTerapeutica: 'Treatment plan',
+        evolucion: 'Progress',
+        indicaciones: 'Instructions',
+      },
+      skinTypes: { normal: 'Normal', seca: 'Dry', grasa: 'Oily', mixta: 'Combination', sensible: 'Sensitive' },
+      units: { U: 'U', ml: 'ml', mg: 'mg', g: 'g' },
+      routes: {
+        intradermica: 'intradermal',
+        subcutanea: 'subcutaneous',
+        supraperiostica: 'supraperiosteal',
+        intramuscular: 'intramuscular',
+        intralesional: 'intralesional',
+        topica: 'topical',
+      },
+      dose: 'Applied',
+    },
     historiaClinica: {
       sectionTitle: 'Medical History',
       personalInfo: 'Patient information',

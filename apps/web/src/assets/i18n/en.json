@@ -212,7 +212,10 @@
       "personalInfo": "Patient information",
       "medicalInfo": "Medical information",
       "personalHistory": "Non-pathological personal history",
-      "familyHistory": "Family history"
+      "familyHistory": "Family history",
+      "pathologicalHistory": "Medical history",
+      "physicalExam": "Physical exam",
+      "assessment": "Diagnosis and plan"
     },
     "fields": {
       "ocupacion": "Occupation",
@@ -272,7 +275,10 @@
         "personalInfo": "Contact details, allergies and what the patient is looking for.",
         "medicalInfo": "Ask about conditions, medications and previous treatments.",
         "personalHistory": "Tap the answer for closed questions; leave blank what doesn't apply.",
-        "familyHistory": "Relevant conditions in close family."
+        "familyHistory": "Relevant conditions in close family.",
+        "pathologicalHistory": "Optional. Fill in only what applies to the patient.",
+        "physicalExam": "Optional. Vital signs and skin examination; the BMI is computed.",
+        "assessment": "Optional. Studies, diagnosis, prognosis and the treatment indicated."
       }
     }
   },
@@ -1237,6 +1243,71 @@
       "WRONG_PASSWORD": "The password is not correct.",
       "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes.",
       "UNKNOWN": "Could not save. Try again."
+    }
+  },
+  "clinical": {
+    "optional": "optional",
+    "systems": "Review of systems",
+    "identity": {
+      "record": "Rec. {{n}}",
+      "age": "{{n}} yrs",
+      "missing": "age or sex missing"
+    },
+    "vitals": {
+      "title": "Vital signs",
+      "sys": "BP sys.",
+      "dia": "BP dia.",
+      "hr": "HR",
+      "rr": "RR",
+      "temp": "Temp.",
+      "weight": "Weight",
+      "height": "Height",
+      "bmi": "BMI"
+    },
+    "evolution": {
+      "title": "Progress note",
+      "evolucion": "Progress",
+      "indicaciones": "Instructions"
+    },
+    "fields": {
+      "antecedentesPersonalesPatologicos": "Past medical history",
+      "padecimientoActual": "Present illness",
+      "interrogatorioPiel": "Skin",
+      "interrogatorioCardiovascular": "Cardiovascular",
+      "interrogatorioEndocrino": "Endocrine",
+      "interrogatorioNeurologico": "Neurological",
+      "interrogatorioOtros": "Other systems",
+      "fototipoFitzpatrick": "Fitzpatrick phototype",
+      "tipoPiel": "Skin type",
+      "exploracionFacial": "Facial examination",
+      "lesionesCutaneas": "Skin lesions",
+      "resultadosEstudios": "Study results",
+      "diagnostico": "Diagnosis",
+      "pronostico": "Prognosis",
+      "indicacionTerapeutica": "Treatment plan"
+    },
+    "skinTypes": {
+      "normal": "Normal",
+      "seca": "Dry",
+      "grasa": "Oily",
+      "mixta": "Combination",
+      "sensible": "Sensitive"
+    },
+    "dose": {
+      "title": "Applied",
+      "quantity": "Amount",
+      "unit": "Unit",
+      "route": "Route",
+      "zone": "Zone",
+      "frequency": "Frequency (for a course)"
+    },
+    "routes": {
+      "intradermica": "Intradermal",
+      "subcutanea": "Subcutaneous",
+      "supraperiostica": "Supraperiosteal",
+      "intramuscular": "Intramuscular",
+      "intralesional": "Intralesional",
+      "topica": "Topical"
     }
   }
 }

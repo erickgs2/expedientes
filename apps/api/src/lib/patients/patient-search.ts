@@ -44,9 +44,25 @@ export interface CreatePatientData {
   contactPatientId?: string | null;
 }
 
+/**
+ * Registers a patient with the clinic's next record number ("número de expediente",
+ * NOM-004-SSA3-2012 5.9). Two registrations at the same instant can pick the same number; the
+ * unique (clinicId, recordNumber) index refuses the second, which then takes the next one.
+ */
 export async function createPatient(data: CreatePatientData) {
   await assertInClinic('patient', [data.contactPatientId]);
-  return prisma.patient.create({ data, include: { contactPatient: CONTACT_SELECT } });
+  for (let attempt = 0; ; attempt++) {
+    const { _max } = await prisma.patient.aggregate({ _max: { recordNumber: true } });
+    try {
+      return await prisma.patient.create({
+        data: { ...data, recordNumber: (_max.recordNumber ?? 0) + 1 },
+        include: { contactPatient: CONTACT_SELECT },
+      });
+    } catch (error) {
+      const conflict = (error as { code?: string }).code === 'P2002';
+      if (!conflict || attempt >= 4) throw error;
+    }
+  }
 }
 
 export async function getPatientById(id: string) {

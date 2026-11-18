@@ -1,3 +1,5 @@
+import type { EvolutionNote } from '@expedientes/shared-types';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +27,8 @@ import {
   ConsentScanDialogComponent,
   type ConsentScanDialogData,
 } from './consent-scan-dialog.component';
+import { EvolutionNoteComponent } from '../shared/clinical/evolution-note.component';
+import { EVOLUTION_KEYS, cleanClinical, evolutionGroup, hasEvolution, toControlValues } from '../shared/clinical/clinical-form.util';
 import { TreatmentDiagramService } from './treatment-diagram.service';
 import type { AddendumDiagramReferences } from '../shared/note-signature/addendum-dialog.component';
 import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
@@ -49,6 +53,7 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
   standalone: true,
   imports: [
     NoteSignatureComponent,
+    EvolutionNoteComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -227,6 +232,10 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
           <p class="empty">{{ 'visitSheet.pickTreatment' | transloco }}</p>
         }
       </div>
+
+      @if (items().length > 0) {
+        <app-evolution-note [group]="evolution" [startOpen]="evolutionHasContent()" />
+      }
 
       @if (actionError()) {
         <p class="action-error" role="alert">{{ actionError()! | transloco }}</p>
@@ -526,7 +535,19 @@ export class TreatmentDetailComponent implements OnInit {
   protected readonly selectedItems = computed(() => this.items().filter((i) => i.selected));
   /** What was last loaded or saved, to tell whether anything is waiting to be saved. */
   private readonly savedSnapshot = signal('');
-  protected readonly dirty = computed(() => this.snapshotOf(this.items()) !== this.savedSnapshot());
+  /** The visit's nota de evolución (NOM-004-SSA3-2012 6.2), all optional. */
+  protected readonly evolution = evolutionGroup();
+  protected readonly evolutionHasContent = signal(false);
+  private readonly evolutionValue = toSignal(this.evolution.valueChanges, { initialValue: this.evolution.value });
+  private readonly evolutionSaved = signal(0);
+  private evolutionDirty(): boolean {
+    this.evolutionValue();
+    this.evolutionSaved();
+    return this.evolution.dirty;
+  }
+  protected readonly dirty = computed(
+    () => this.snapshotOf(this.items()) !== this.savedSnapshot() || this.evolutionDirty()
+  );
   /** The first selected treatment with a step still to do — the one the doctor is on. */
   protected readonly currentItemId = computed(
     () => this.selectedItems().find((i) => i.itemId && this.stepsOf(i).next)?.treatmentTypeId ?? null
@@ -561,6 +582,8 @@ export class TreatmentDetailComponent implements OnInit {
    */
   protected setLocked(signed: boolean): void {
     this.canEdit = this.mayEdit && !signed;
+    if (this.canEdit) this.evolution.enable({ emitEvent: false });
+    else this.evolution.disable({ emitEvent: false });
   }
 
   async ngOnInit(): Promise<void> {
@@ -588,6 +611,10 @@ export class TreatmentDetailComponent implements OnInit {
         return;
       }
       this.fecha.set(treatment.fecha);
+      this.evolution.patchValue(toControlValues(treatment, EVOLUTION_KEYS), { emitEvent: false });
+      this.evolution.markAsPristine();
+      this.evolutionHasContent.set(hasEvolution(treatment));
+      if (!this.canEdit) this.evolution.disable({ emitEvent: false });
       this.items.set(this.buildItems(treatment, treatmentTypes));
       this.savedSnapshot.set(this.snapshotOf(this.items()));
       // Allergies for the strip; only for users who may see the clinical history.
@@ -725,6 +752,14 @@ export class TreatmentDetailComponent implements OnInit {
   async save(): Promise<void> {
     this.saving.set(true);
     try {
+      if (this.evolution.dirty) {
+        await this.treatmentsService.updateEvolution(
+          this.treatmentId,
+          cleanClinical(this.evolution.getRawValue(), EVOLUTION_KEYS) as Partial<EvolutionNote>
+        );
+        this.evolution.markAsPristine();
+        this.evolutionSaved.update((n) => n + 1);
+      }
       const selectedItems = this.items()
         .filter((i) => i.selected)
         .map((i) => ({ treatmentTypeId: i.treatmentTypeId, notes: i.notes.trim() || null }));

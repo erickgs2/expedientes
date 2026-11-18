@@ -3,6 +3,7 @@ import { verifyPassword } from '../auth/password';
 import { createFailureLimiter } from '../auth/failure-limiter';
 import { ApiProblem } from '../http/api-problem';
 import { hashContent, stableStringify } from './content-hash';
+import { EVOLUTION_FIELDS, HISTORIA_CLINICAL_FIELDS, PRODUCT_DOSE_FIELDS, filledFields } from '../clinical/clinical-fields';
 import { ensureBaseRevision, latestRevision, recordRevision, stampRevisionSignature } from '../historia-clinica/revisions';
 
 export { hashContent, stableStringify };
@@ -61,6 +62,7 @@ export async function noteContent(
         queQuiereElPaciente: v.queQuiereElPaciente,
         queNecesitaElPaciente: v.queNecesitaElPaciente,
         notas: v.notas,
+        ...filledFields(v, EVOLUTION_FIELDS),
         diagrams: v.diagrams.map((d) => ({ view: d.view, data: d.data })).sort(byKey((d) => d.view)),
       },
     };
@@ -75,12 +77,18 @@ export async function noteContent(
       patientId: t.patientId,
       content: {
         fecha: t.fecha,
+        ...filledFields(t, EVOLUTION_FIELDS),
         items: t.items
           .map((i) => ({
             treatmentTypeId: i.treatmentTypeId,
             notes: i.notes,
             diagrams: i.diagrams.map((d) => ({ view: d.view, data: d.data })).sort(byKey((d) => d.view)),
-            products: i.products.map((p) => ({ brand: p.brand, lotNumber: p.lotNumber, expiryDate: p.expiryDate })),
+            products: i.products.map((p) => ({
+              brand: p.brand,
+              lotNumber: p.lotNumber,
+              expiryDate: p.expiryDate,
+              ...filledFields(p, PRODUCT_DOSE_FIELDS),
+            })),
           }))
           .sort(byKey((i) => i.treatmentTypeId)),
       },
@@ -108,7 +116,12 @@ export async function noteContent(
     allergies,
     ...fields
   } = h;
-  return { patientId, content: { ...fields, allergies: allergies.map((a) => a.allergy.name).sort() } };
+  // Phase D fields count only once filled, so a version saved before they existed hashes the same.
+  const phaseD = new Set(Object.keys(HISTORIA_CLINICAL_FIELDS));
+  const kept = Object.fromEntries(
+    Object.entries(fields).filter(([k, v]) => !phaseD.has(k) || (v !== null && v !== undefined))
+  );
+  return { patientId, content: { ...kept, allergies: allergies.map((a) => a.allergy.name).sort() } };
 }
 
 interface SignatureColumns {

@@ -5,6 +5,11 @@ export interface ProductWriteData {
   lotNumber: string;
   expiryDate: Date | null;
   photoPath?: string;
+  quantity?: number | null;
+  unit?: string | null;
+  route?: string | null;
+  zone?: string | null;
+  frequency?: string | null;
 }
 
 export function listProducts(treatmentItemId: string) {

@@ -11,10 +11,12 @@ import type { ValoracionDiagram } from '@expedientes/shared-types';
 import { HasPermissionDirective } from '../auth/has-permission.directive';
 import { AuthService } from '../auth/auth.service';
 import type { AddendumDiagramReferences } from '../shared/note-signature/addendum-dialog.component';
+import { EvolutionNoteComponent } from '../shared/clinical/evolution-note.component';
+import { EVOLUTION_KEYS, cleanClinical, evolutionGroup, hasEvolution, toControlValues } from '../shared/clinical/clinical-form.util';
 import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { HistoriaClinicaService } from '../historia-clinica/historia-clinica.service';
-import type { HistoriaClinica, ValoracionSummary } from '@expedientes/shared-types';
+import type { EvolutionNote, HistoriaClinica, ValoracionSummary } from '@expedientes/shared-types';
 import { ValoracionService } from './valoracion.service';
 import { FacialDiagramViewsComponent } from '../shared/facial-diagram/facial-diagram-views.component';
 import type { DiagramDataSource } from '../shared/facial-diagram/diagram-data-source';
@@ -35,6 +37,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
     FacialDiagramViewsComponent,
     PhotoGalleryComponent,
     NoteSignatureComponent,
+    EvolutionNoteComponent,
   ],
   template: `
     @if (loading()) {
@@ -111,6 +114,7 @@ import type { PhotoDataSource } from '../shared/photo/photo-data-source';
               <mat-label>{{ 'visitSheet.notesLabel' | transloco }}</mat-label>
               <textarea matInput formControlName="notas" rows="8"></textarea>
             </mat-form-field>
+            <app-evolution-note [group]="form.controls.evolution" [startOpen]="evolutionHasContent()" />
           </section>
 
           @if (previousVisit(); as prev) {
@@ -364,7 +368,10 @@ export class ValoracionDetailComponent implements OnInit {
     queQuiereElPaciente: [''],
     queNecesitaElPaciente: [''],
     notas: [''],
+    /** Nota de evolución (NOM-004-SSA3-2012 6.2), all optional. */
+    evolution: evolutionGroup(),
   });
+  protected readonly evolutionHasContent = signal(false);
 
   /** The visit before this one, shown as a reference card. */
   protected readonly previousVisit = signal<ValoracionSummary | null>(null);
@@ -431,7 +438,9 @@ export class ValoracionDetailComponent implements OnInit {
         queQuiereElPaciente: valoracion.queQuiereElPaciente ?? '',
         queNecesitaElPaciente: valoracion.queNecesitaElPaciente ?? '',
         notas: valoracion.notas ?? '',
+        evolution: toControlValues(valoracion, EVOLUTION_KEYS),
       });
+      this.evolutionHasContent.set(hasEvolution(valoracion));
       this.form.markAsPristine();
       this.savedTick.update((n) => n + 1);
       this.diagrams = valoracion.diagrams;
@@ -531,6 +540,7 @@ export class ValoracionDetailComponent implements OnInit {
         queQuiereElPaciente: raw.queQuiereElPaciente?.trim() || null,
         queNecesitaElPaciente: raw.queNecesitaElPaciente?.trim() || null,
         notas: raw.notas?.trim() || null,
+        ...(cleanClinical(this.form.controls.evolution.getRawValue(), EVOLUTION_KEYS) as Partial<EvolutionNote>),
       });
       this.form.markAsPristine();
       this.savedTick.update((n) => n + 1);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PRODUCT_DOSE_FIELDS, formDataFields, parseClinicalFields } from '../../../../../lib/clinical/clinical-fields';
 import {
   createProduct,
   getTreatmentItemPatientId,
@@ -67,6 +68,9 @@ export const POST = withApiErrors(
     const lotNumber = formData.get('lotNumber');
     const expiryDate = formData.get('expiryDate');
     const file = formData.get('photo');
+    // What was applied (NOM-004-SSA3-2012 6.2.6): optional, but checked when given.
+    const dose = parseClinicalFields(formDataFields(formData, PRODUCT_DOSE_FIELDS), PRODUCT_DOSE_FIELDS);
+    if (!dose.ok) return apiError('INVALID_INPUT', dose.error, 400);
 
     if (
       typeof brand !== 'string' ||
@@ -117,6 +121,7 @@ export const POST = withApiErrors(
       brand: brand.trim(),
       lotNumber: lotNumber.trim(),
       expiryDate: normalizedExpiry,
+      ...dose.data,
       ...(photoPath ? { photoPath } : {}),
     });
 

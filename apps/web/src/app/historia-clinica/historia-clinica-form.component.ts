@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,17 +13,58 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AllergyOption } from '@expedientes/shared-types';
+import {
+  FITZPATRICK_PHOTOTYPES,
+  SKIN_TYPES,
+  type AllergyOption,
+  type HistoriaClinicalContent,
+} from '@expedientes/shared-types';
+import { VitalSignsComponent } from '../shared/clinical/vital-signs.component';
+import { VITAL_KEYS, cleanClinical, clinicalControls, toControlValues } from '../shared/clinical/clinical-form.util';
 import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { PatientsService } from '../patient-drive/patients.service';
 import { HistoriaClinicaService } from './historia-clinica.service';
 import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 
-const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'] as const;
+/**
+ * The first four steps are the clinic's interview; the last three are the rest of NOM-004-SSA3-2012
+ * 6.1 (pathological history and review of systems, physical exam, studies/diagnosis/plan), every
+ * field optional: an aesthetic consultation often has nothing to note in them.
+ */
+const STEPS = [
+  'personalInfo',
+  'medicalInfo',
+  'personalHistory',
+  'familyHistory',
+  'pathologicalHistory',
+  'physicalExam',
+  'assessment',
+] as const;
+
+/** The 6.1 fields of phase D kept in this form (vital signs come from `VITAL_KEYS`). */
+const CLINICAL_KEYS = [
+  'antecedentesPersonalesPatologicos',
+  'padecimientoActual',
+  'interrogatorioPiel',
+  'interrogatorioCardiovascular',
+  'interrogatorioEndocrino',
+  'interrogatorioNeurologico',
+  'interrogatorioOtros',
+  ...VITAL_KEYS,
+  'talla',
+  'fototipoFitzpatrick',
+  'tipoPiel',
+  'exploracionFacial',
+  'lesionesCutaneas',
+  'resultadosEstudios',
+  'diagnostico',
+  'pronostico',
+  'indicacionTerapeutica',
+] as const;
 
 /**
- * The historia clínica as a guided interview: four short steps instead of one long accordion, big
+ * The historia clínica as a guided interview: short steps instead of one long accordion, big
  * answers to tap for the closed questions, and the whole record saved each time the doctor moves
  * on — so leaving mid-interview loses at most the step in progress. `?paso=N` opens a given step,
  * which is how the overview's section links land on the right one.
@@ -35,6 +76,7 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
   standalone: true,
   imports: [
     NoteSignatureComponent,
+    VitalSignsComponent,
     ReactiveFormsModule,
     FormsModule,
     MatFormFieldModule,
@@ -250,6 +292,76 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
               <textarea matInput rows="6" formControlName="antecedentesHeredofamiliares"></textarea>
             </mat-form-field>
           }
+          @case (4) {
+            <ng-container [formGroup]="form.controls.clinical">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.antecedentesPersonalesPatologicos' | transloco }}</mat-label>
+                <textarea matInput rows="3" formControlName="antecedentesPersonalesPatologicos"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.padecimientoActual' | transloco }}</mat-label>
+                <textarea matInput rows="3" formControlName="padecimientoActual"></textarea>
+              </mat-form-field>
+              <h3 class="group-title">{{ 'clinical.systems' | transloco }}</h3>
+              <div class="grid">
+                @for (key of systemKeys; track key) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'clinical.fields.' + key | transloco }}</mat-label>
+                    <textarea matInput rows="2" [formControlName]="key"></textarea>
+                  </mat-form-field>
+                }
+              </div>
+            </ng-container>
+          }
+          @case (5) {
+            <ng-container [formGroup]="form.controls.clinical">
+              <app-vital-signs [group]="form.controls.clinical" [withHeight]="true" />
+              <fieldset class="choice">
+                <legend>{{ 'clinical.fields.fototipoFitzpatrick' | transloco }}</legend>
+                <mat-button-toggle-group formControlName="fototipoFitzpatrick" class="toggles" hideSingleSelectionIndicator>
+                  @for (f of phototypes; track f) {
+                    <mat-button-toggle [value]="f">{{ f }}</mat-button-toggle>
+                  }
+                </mat-button-toggle-group>
+              </fieldset>
+              <fieldset class="choice">
+                <legend>{{ 'clinical.fields.tipoPiel' | transloco }}</legend>
+                <mat-button-toggle-group formControlName="tipoPiel" class="toggles" hideSingleSelectionIndicator>
+                  @for (t of skinTypes; track t) {
+                    <mat-button-toggle [value]="t">{{ 'clinical.skinTypes.' + t | transloco }}</mat-button-toggle>
+                  }
+                </mat-button-toggle-group>
+              </fieldset>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.exploracionFacial' | transloco }}</mat-label>
+                <textarea matInput rows="3" formControlName="exploracionFacial"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.lesionesCutaneas' | transloco }}</mat-label>
+                <textarea matInput rows="2" formControlName="lesionesCutaneas"></textarea>
+              </mat-form-field>
+            </ng-container>
+          }
+          @case (6) {
+            <ng-container [formGroup]="form.controls.clinical">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.resultadosEstudios' | transloco }}</mat-label>
+                <textarea matInput rows="3" formControlName="resultadosEstudios"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.diagnostico' | transloco }}</mat-label>
+                <textarea matInput rows="2" formControlName="diagnostico"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.pronostico' | transloco }}</mat-label>
+                <textarea matInput rows="2" formControlName="pronostico"></textarea>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'clinical.fields.indicacionTerapeutica' | transloco }}</mat-label>
+                <textarea matInput rows="3" formControlName="indicacionTerapeutica"></textarea>
+              </mat-form-field>
+            </ng-container>
+          }
         }
 
         <div class="action-bar">
@@ -310,6 +422,11 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
         width: 16px;
         height: 16px;
         font-size: 16px;
+      }
+      .group-title {
+        margin: 8px 0 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
       }
       .stepper {
         list-style: none;
@@ -469,7 +586,18 @@ export class HistoriaClinicaFormComponent implements OnInit {
     vacunas: [''],
     posibilidadEmbarazo: [''],
     antecedentesHeredofamiliares: [''],
+    /** NOM-004-SSA3-2012 6.1 fields of phase D, all optional. */
+    clinical: new FormGroup(clinicalControls(CLINICAL_KEYS)),
   });
+  protected readonly systemKeys = [
+    'interrogatorioPiel',
+    'interrogatorioCardiovascular',
+    'interrogatorioEndocrino',
+    'interrogatorioNeurologico',
+    'interrogatorioOtros',
+  ] as const;
+  protected readonly phototypes = FITZPATRICK_PHOTOTYPES;
+  protected readonly skinTypes = SKIN_TYPES;
 
   private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.value });
 
@@ -479,12 +607,18 @@ export class HistoriaClinicaFormComponent implements OnInit {
     ['enfermedadesActuales', 'medicamentosAcne3Meses', 'cirugiasEsteticasAnteriores', 'rutinaCuidadoFacial'],
     ['consumoAlcohol', 'consumoTabaco', 'consumoDrogas', 'tipoFrecuenciaEjercicio', 'vacunas', 'posibilidadEmbarazo'],
     ['antecedentesHeredofamiliares'],
+    // Optional steps: "done" as soon as anything was noted in them.
+    ['clinical.antecedentesPersonalesPatologicos', 'clinical.padecimientoActual', 'clinical.interrogatorioPiel', 'clinical.interrogatorioCardiovascular', 'clinical.interrogatorioEndocrino', 'clinical.interrogatorioNeurologico', 'clinical.interrogatorioOtros'],
+    ['clinical.presionSistolica', 'clinical.frecuenciaCardiaca', 'clinical.peso', 'clinical.talla', 'clinical.fototipoFitzpatrick', 'clinical.tipoPiel', 'clinical.exploracionFacial', 'clinical.lesionesCutaneas'],
+    ['clinical.resultadosEstudios', 'clinical.diagnostico', 'clinical.pronostico', 'clinical.indicacionTerapeutica'],
   ];
+  private static readonly OPTIONAL_FROM = 4;
 
   protected readonly sectionFilled = computed(() => {
-    const value = this.formValue() as Record<string, string | null | undefined>;
-    return HistoriaClinicaFormComponent.STEP_FIELDS.map((fields) =>
-      fields.every((f) => String(value[f] ?? '').trim() !== '')
+    this.formValue();
+    const read = (f: string) => String(this.form.get(f)?.value ?? '').trim() !== '';
+    return HistoriaClinicaFormComponent.STEP_FIELDS.map((fields, i) =>
+      i >= HistoriaClinicaFormComponent.OPTIONAL_FROM ? fields.some(read) : fields.every(read)
     );
   });
 
@@ -558,6 +692,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
           vacunas: historia.vacunas ?? '',
           posibilidadEmbarazo: historia.posibilidadEmbarazo ?? '',
           antecedentesHeredofamiliares: historia.antecedentesHeredofamiliares ?? '',
+          clinical: toControlValues(historia, CLINICAL_KEYS),
         });
         this.allergyNames.set(historia.allergies.map((entry) => entry.allergy.name));
       }
@@ -688,6 +823,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
       vacunas: clean(raw.vacunas),
       posibilidadEmbarazo: clean(raw.posibilidadEmbarazo),
       antecedentesHeredofamiliares: clean(raw.antecedentesHeredofamiliares),
+      ...(cleanClinical(raw.clinical, CLINICAL_KEYS) as Partial<HistoriaClinicalContent>),
       allergyNames: this.allergyNames(),
     };
     const documentId = raw.documentId?.trim() ?? '';
@@ -710,6 +846,9 @@ export class HistoriaClinicaFormComponent implements OnInit {
       if (Object.keys(changes).length > 0) {
         const updated = await this.patientsService.updateDetails(patient.id, changes);
         this.activePatient.select(updated);
+      } else if (input.fechaNacimiento !== (patient.birthDate?.substring(0, 10) ?? null) || input.sexo !== (patient.sex ?? null)) {
+        // Birth date and sex are copied onto the patient by the API; refresh the banner's age and sex.
+        this.activePatient.select(await this.patientsService.getById(patient.id));
       }
       this.form.markAsPristine();
       this.allergiesDirty = false;

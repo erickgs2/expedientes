@@ -25,6 +25,11 @@ export interface PatientSummary {
   archiveReason?: string | null;
   /** Who archived it. Only on the single-patient endpoint. */
   archivedByName?: string | null;
+  /** Short record number per clinic ("número de expediente", NOM-004-SSA3-2012 5.9). */
+  recordNumber?: number | null;
+  /** Copied from the historia clínica; ISO timestamp. */
+  birthDate?: string | null;
+  sex?: string | null;
 }
 
 /** When an archived patient's record could be purged (owner only, five years after the last care). */
