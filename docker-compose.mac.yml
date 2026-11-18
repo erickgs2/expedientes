@@ -91,6 +91,8 @@ services:
       # Cloudflare Turnstile on the sign-up form; off while unset.
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      # Key that encrypts platform admins' TOTP secrets; JWT_SECRET is used when unset.
+      PLATFORM_SECRET_KEY: ${PLATFORM_SECRET_KEY:-}
       STORAGE_ROOT: /data/storage
       STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-}
@@ -142,6 +144,10 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD must be set}
       # Name of the first clinic on a fresh install; ignored once a clinic exists.
       SEED_CLINIC_NAME: ${SEED_CLINIC_NAME:-Mi clínica}
+      # First platform admin (/plataforma), created once. Remove the password from .env afterwards.
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-}
+      PLATFORM_ADMIN_NAME: ${PLATFORM_ADMIN_NAME:-}
     command: ['sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
     depends_on:
       db:

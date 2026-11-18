@@ -58,6 +58,10 @@ export const GLOBAL_MODELS: ReadonlySet<string> = new Set([
   'PasswordResetCode',
   'LegalDocument',
   'TermsAcceptance',
+  // The platform operator's own data.
+  'PlatformAdmin',
+  'PlatformAuditLog',
+  'ServerMetricSample',
 ]);
 
 /**

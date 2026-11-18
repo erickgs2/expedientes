@@ -13,3 +13,4 @@ export {
   DEFAULT_DECLARATION_AFTER,
   DEFAULT_DECLARATION_BEFORE,
 } from '@expedientes/shared-types/consent-boilerplate';
+export { findLegalPlaceholders } from '@expedientes/shared-types/legal-markdown';

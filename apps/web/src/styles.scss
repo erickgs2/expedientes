@@ -122,6 +122,33 @@ h3 {
   --mat-sys-corner-medium: 10px;
   --mat-sys-corner-large: 14px;
   --mat-sys-corner-extra-large: 18px;
+  // Chart series: the one place the plate admits more hues, because a line of data must be told
+  // apart from its neighbours. Validated for colour-blind separation on both surfaces (dataviz
+  // palette, slots 1-3). Only for data marks, never for text, controls or decoration.
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+}
+
+html[data-theme='dark'] {
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    --chart-series-1: #3987e5;
+    --chart-series-2: #d95926;
+    --chart-series-3: #199e70;
+  }
+}
+
+// Loading placeholders in the shape of what will arrive, instead of a spinner over content.
+.skeleton {
+  display: block;
+  border-radius: 6px;
+  background: var(--mat-sys-surface-container);
 }
 
 ::selection {

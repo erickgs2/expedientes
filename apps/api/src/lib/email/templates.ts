@@ -103,3 +103,66 @@ export function invitationEmail(
     ),
   };
 }
+
+function formatDate(iso: Date, timeZone = 'America/Mexico_City'): string {
+  return iso.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone });
+}
+
+export function premiumGrantedEmail(
+  to: string,
+  params: { clinicName: string; endsAt: Date; timeZone: string }
+): OutgoingEmail {
+  const until = formatDate(params.endsAt, params.timeZone);
+  const intro = `${params.clinicName} tiene MedCloud Premium hasta el ${until}.`;
+  const detail =
+    'Incluye usuarios y tipos de tratamiento ilimitados, recordatorios por WhatsApp, roles personalizados y 20 GB para fotos.';
+  const url = `${appBaseUrl()}/admin/plan`;
+  return {
+    to,
+    subject: `${params.clinicName} ya tiene Premium`,
+    text: `${intro}\n${detail}\n\nVer tu plan: ${url}`,
+    html: layout('Tu clínica ya tiene Premium', paragraph(intro) + paragraph(detail) + button('Ver mi plan', url)),
+  };
+}
+
+export function premiumEndingEmail(
+  to: string,
+  params: { clinicName: string; endsAt: Date; timeZone: string }
+): OutgoingEmail {
+  const until = formatDate(params.endsAt, params.timeZone);
+  const intro = `El Premium de ${params.clinicName} termina el ${until}.`;
+  const detail =
+    'Después vuelves al plan Gratis y conservas todos tus datos; solo se limita agregar usuarios, tipos de tratamiento y fotos por encima del plan Gratis.';
+  const url = `${appBaseUrl()}/admin/plan`;
+  return {
+    to,
+    subject: `Tu Premium termina el ${until}`,
+    text: `${intro}\n${detail}\n\nVer tu plan: ${url}`,
+    html: layout('Tu Premium está por terminar', paragraph(intro) + paragraph(detail) + button('Ver mi plan', url)),
+  };
+}
+
+export function legalChangedEmail(
+  to: string,
+  params: { kind: 'PRIVACY' | 'TERMS'; version: string; changeSummary: string; effectiveFrom: Date; requiresAcceptance: boolean }
+): OutgoingEmail {
+  const name = params.kind === 'PRIVACY' ? 'Aviso de privacidad' : 'Términos y condiciones';
+  const url = `${appBaseUrl()}/${params.kind === 'PRIVACY' ? 'privacidad' : 'terminos'}`;
+  const intro = `Actualizamos nuestro ${name} (versión ${params.version}), vigente desde el ${formatDate(params.effectiveFrom)}.`;
+  const action = params.requiresAcceptance
+    ? 'Te pediremos aceptarlo la próxima vez que entres a MedCloud.'
+    : 'No necesitas hacer nada; puedes leerlo completo en el enlace.';
+  return {
+    to,
+    subject: `Actualizamos nuestro ${name}`,
+    text: `${intro}\n\nQué cambia:\n${params.changeSummary}\n\n${action}\n\nLeerlo: ${url}`,
+    html: layout(
+      `Actualizamos nuestro ${name}`,
+      paragraph(intro) +
+        `<p style="margin:0 0 6px;font-size:15px;font-weight:600">Qué cambia</p>` +
+        params.changeSummary.split(/\n+/).map(paragraph).join('') +
+        paragraph(action) +
+        button('Leer el documento', url)
+    ),
+  };
+}

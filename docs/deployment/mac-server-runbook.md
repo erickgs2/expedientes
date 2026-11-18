@@ -178,7 +178,15 @@ MAIL_FROM="MedCloud <no-reply@intech-erp.com>"
 # Opcionales:
 # APP_BASE_URL=https://medcloud.intech-erp.com   (dirección de los enlaces en los correos)
 # TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY       (CAPTCHA del registro; sin ellas no hay CAPTCHA)
+# Primer administrador del portal /plataforma (se crea una sola vez en el deploy):
+PLATFORM_ADMIN_EMAIL=<tu correo>
+PLATFORM_ADMIN_PASSWORD=<contraseña de al menos 12 caracteres, de Contraseñas de Apple>
+PLATFORM_ADMIN_NAME=<tu nombre>
 ```
+
+Después del primer deploy entra a `https://medcloud.intech-erp.com/plataforma`, activa la verificación
+en dos pasos con tu app autenticadora y **borra `PLATFORM_ADMIN_PASSWORD` del `.env`**: la cuenta ya
+existe y el seed nunca la vuelve a tocar.
 
 Sin `RESEND_API_KEY` el API no envía correos: los escribe en su log (`docker compose logs api`),
 códigos incluidos. Sirve para probar, pero en producción la clave debe estar puesta.

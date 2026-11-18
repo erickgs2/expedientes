@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { permissionGuard } from './auth/permission.guard';
+import { platformGuard } from './platform/platform.guard';
 import { legacyPatientRedirect, patientRouteGuard } from './patient-drive/patient-route.guards';
 
 /**
@@ -102,6 +103,47 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./today/today.component').then((m) => m.TodayComponent),
   },
   { path: 'login', loadComponent: () => import('./login/login.component').then((m) => m.LoginComponent) },
+  // The platform portal, for the operator of the whole service; its own sign-in and session.
+  {
+    path: 'plataforma/login',
+    loadComponent: () => import('./platform/platform-login.component').then((m) => m.PlatformLoginComponent),
+  },
+  {
+    path: 'plataforma',
+    canActivate: [platformGuard],
+    loadComponent: () => import('./platform/platform-shell.component').then((m) => m.PlatformShellComponent),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./platform/platform-dashboard.component').then((m) => m.PlatformDashboardComponent),
+      },
+      {
+        path: 'clinicas',
+        loadComponent: () =>
+          import('./platform/platform-clinics.component').then((m) => m.PlatformClinicsComponent),
+      },
+      {
+        path: 'clinicas/:id',
+        loadComponent: () =>
+          import('./platform/platform-clinic-detail.component').then((m) => m.PlatformClinicDetailComponent),
+      },
+      {
+        path: 'precios',
+        loadComponent: () =>
+          import('./platform/platform-prices.component').then((m) => m.PlatformPricesComponent),
+      },
+      {
+        path: 'legales',
+        loadComponent: () => import('./platform/platform-legal.component').then((m) => m.PlatformLegalComponent),
+      },
+      {
+        path: 'bitacora',
+        loadComponent: () => import('./platform/platform-audit.component').then((m) => m.PlatformAuditComponent),
+      },
+    ],
+  },
   // Public: signing up, recovering a password, accepting an invitation and the legal documents.
   { path: 'registro', loadComponent: () => import('./signup/signup.component').then((m) => m.SignupComponent) },
   {

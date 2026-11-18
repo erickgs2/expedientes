@@ -105,9 +105,9 @@ import { parseLegalMarkdown, type LegalSpan } from '@expedientes/shared-types';
       }
       .note {
         padding: 10px 12px;
-        border-left: 3px solid var(--plate-mark);
+        border: 1px dashed var(--plate-line-strong);
         background: var(--mat-sys-surface-container-low);
-        border-radius: 4px;
+        border-radius: var(--plate-radius);
       }
       ul,
       ol {
