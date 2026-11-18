@@ -13,7 +13,7 @@ import { assertRecordWritable } from '../../../../../lib/patients/patient-archiv
 
 // Same ceiling/floor as the photo-upload endpoint — this app's only other binary-upload routes.
 // Tripled here relative to a single-image upload because a consent carries up to three signature
-// images in the one request (patient and two witnesses); each image is still held to
+// images in the one request (patient and up to two witnesses); each image is still held to
 // MAX_SIGNATURE_BYTES below.
 const MAX_SIGNATURE_BYTES = 10 * 1024 * 1024;
 const MIN_SIGNATURE_BYTES = 1024;
@@ -65,16 +65,19 @@ export const POST = withApiErrors(
       return apiError('INVALID_INPUT', 'patientIdentification is too long', 400);
     }
 
-    // NOM-004-SSA3-2012 10.1.1: two witnesses, each with name and signature. The second one may
-    // use the clinic's stored signature (set in the clinic settings) instead of signing here.
+    // Witnesses are optional: the clinic decides whether a consent carries them (NOM-004-SSA3-2012
+    // 10.1.1 asks for two; leaving them out is the clinic's call). A witness given is whole: a name
+    // with a signature. The second one may use the clinic's stored signature instead of signing here.
     const witnessNameTrimmed = typeof witnessNameRaw === 'string' ? witnessNameRaw.trim() : '';
     const secondWitnessNameTrimmed = typeof secondWitnessNameRaw === 'string' ? secondWitnessNameRaw.trim() : '';
     const useClinicSecondWitness = formData.get('useClinicSecondWitnessSignature') === 'true';
-    if (!witnessNameTrimmed || !(witnessSignature instanceof Blob)) {
-      return apiError('WITNESSES_REQUIRED', 'The first witness needs a name and a signature', 400);
+    const hasWitnessSignature = witnessSignature instanceof Blob;
+    const hasSecondSignature = secondWitnessSignature instanceof Blob || useClinicSecondWitness;
+    if (!!witnessNameTrimmed !== hasWitnessSignature) {
+      return apiError('WITNESS_INCOMPLETE', 'The first witness needs both a name and a signature, or neither', 400);
     }
-    if (!secondWitnessNameTrimmed || (!(secondWitnessSignature instanceof Blob) && !useClinicSecondWitness)) {
-      return apiError('WITNESSES_REQUIRED', 'The second witness needs a name and a signature', 400);
+    if (!!secondWitnessNameTrimmed !== hasSecondSignature) {
+      return apiError('WITNESS_INCOMPLETE', 'The second witness needs both a name and a signature, or neither', 400);
     }
     if (witnessNameTrimmed.length > MAX_FIELD_LENGTH || secondWitnessNameTrimmed.length > MAX_FIELD_LENGTH) {
       return apiError('INVALID_INPUT', 'witness name is too long', 400);
@@ -132,8 +135,12 @@ export const POST = withApiErrors(
       if (!isJpeg(buffer)) return `${field} must be a JPEG image`;
       return buffer;
     };
-    const witnessBuffer = await readSignature(witnessSignature, 'witnessSignature');
-    if (typeof witnessBuffer === 'string') return apiError('INVALID_INPUT', witnessBuffer, 400);
+    let witnessBuffer: Buffer | null = null;
+    if (witnessSignature instanceof Blob) {
+      const read = await readSignature(witnessSignature, 'witnessSignature');
+      if (typeof read === 'string') return apiError('INVALID_INPUT', read, 400);
+      witnessBuffer = read;
+    }
     let secondWitnessBuffer: Buffer | null = null;
     if (secondWitnessSignature instanceof Blob) {
       const read = await readSignature(secondWitnessSignature, 'secondWitnessSignature');
@@ -144,11 +151,9 @@ export const POST = withApiErrors(
     const result = await signTreatmentItemConsent(id, {
       place: placeTrimmed,
       patientIdentification: patientIdentificationTrimmed,
-      witnessName: witnessNameTrimmed,
       patientSignature: patientBuffer,
-      witnessSignature: witnessBuffer,
-      secondWitnessName: secondWitnessNameTrimmed,
-      secondWitnessSignature: secondWitnessBuffer,
+      witness: witnessBuffer ? { name: witnessNameTrimmed, signature: witnessBuffer } : null,
+      secondWitness: secondWitnessNameTrimmed ? { name: secondWitnessNameTrimmed, signature: secondWitnessBuffer } : null,
     });
     if (!result) return apiError('NOT_FOUND', 'Treatment item not found', 404);
     if (result === 'NO_SECOND_WITNESS_SIGNATURE') {
