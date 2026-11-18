@@ -16,7 +16,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
-import { afterNoteEdit, treatmentIdOfItem } from '../../../../../lib/signature/note-signature';
+import { afterNoteEdit, beginNoteEdit, treatmentIdOfItem } from '../../../../../lib/signature/note-signature';
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MIN_PHOTO_BYTES = 1024;
@@ -49,6 +49,8 @@ export const POST = withApiErrors(
     const userId = await requireAuth(request, 'treatments', 'edit');
     const { id } = await params;
     await assertRecordWritable('treatmentItem', id);
+    const treatmentId = await treatmentIdOfItem(id);
+    const noteEdit = await beginNoteEdit('treatment', treatmentId);
 
     // Cheap early-out so an obviously-oversized request is never buffered — not authoritative,
     // the real check runs against the actually-read buffer below.
@@ -126,7 +128,7 @@ export const POST = withApiErrors(
       patientId,
     });
 
-    await afterNoteEdit('treatment', await treatmentIdOfItem(id), userId);
+    await afterNoteEdit('treatment', treatmentId, userId, undefined, noteEdit);
     return NextResponse.json({ product }, { status: 201 });
   }
 );

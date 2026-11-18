@@ -74,7 +74,13 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
         }
       </header>
       @if (historiaId()) {
-        <app-note-signature kind="historiaClinica" [noteId]="historiaId()!" [canSign]="canEdit" [refresh]="savedTick()" />
+        <app-note-signature
+          kind="historiaClinica"
+          [noteId]="historiaId()!"
+          [canSign]="canEdit"
+          [refresh]="savedTick()"
+          [patientId]="patient()?.id ?? ''"
+        />
       }
 
       <ol class="stepper" [attr.aria-label]="'historiaClinica.interview.steps' | transloco">

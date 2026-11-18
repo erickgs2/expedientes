@@ -1,15 +1,25 @@
-import { createHash } from 'node:crypto';
 import { prisma } from '../prisma/client';
 import { verifyPassword } from '../auth/password';
 import { createFailureLimiter } from '../auth/failure-limiter';
+import { ApiProblem } from '../http/api-problem';
+import { hashContent, stableStringify } from './content-hash';
+import { ensureBaseRevision, latestRevision, recordRevision, stampRevisionSignature } from '../historia-clinica/revisions';
+
+export { hashContent, stableStringify };
 
 /**
  * NOM-004-SSA3-2012 5.10: every note in the record carries the date, time, full name of whoever
  * wrote it, and their signature (autograph, electronic or digital). MedCloud signs with a simple
  * electronic signature: the author confirms with a personal 6-digit PIN, and the note keeps who
  * signed, when, their name, title and licence as they were at that moment, and a SHA-256 of the
- * note's content. Editing a signed note voids the signature (phase C replaces this with locking
- * and addenda). Notes written before signatures existed (`legacyRecord`) are never signed later.
+ * note's content. Notes written before signatures existed (`legacyRecord`) are never signed later.
+ *
+ * Phase C: a signed valoración or treatment visit is locked; every route that edits one calls
+ * `beginNoteEdit` first, which answers 409 NOTE_SIGNED, and the correction goes in a signed
+ * addendum (addenda.ts). The historia clínica is not locked: each save keeps a revision
+ * (historia-clinica/revisions.ts) and signing signs the latest one, so editing it voids only the
+ * signature of the current version. Every edit of a draft records the fields' before and after in
+ * the audit log.
  */
 export type NoteKind = 'valoracion' | 'treatment' | 'historiaClinica';
 
@@ -22,25 +32,13 @@ export const NOTE_PERMISSION: Record<NoteKind, string> = {
   historiaClinica: 'historia-clinica',
 };
 
+/** Signed notes of these kinds cannot be edited; the historia clínica keeps revisions instead. */
+export const LOCKED_WHEN_SIGNED: NoteKind[] = ['valoracion', 'treatment'];
+
 export const SIGNING_PIN_PATTERN = /^\d{6}$/;
 
 /** Five wrong PINs in 15 minutes lock signing for that user until the window passes. */
 export const pinFailures = createFailureLimiter({ maxFailures: 5, windowMs: 15 * 60_000 });
-
-/** JSON with object keys sorted at every level, so the same content always hashes the same. */
-export function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value ?? null);
-  if (value instanceof Date) return JSON.stringify(value.toISOString());
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
-}
-
-export function hashContent(content: unknown): string {
-  return createHash('sha256').update(stableStringify(content)).digest('hex');
-}
 
 const byKey = <T>(key: (t: T) => string) => (a: T, b: T) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0);
 
@@ -170,25 +168,41 @@ export function toSignatureView(row: SignatureColumns, createdByName: string | n
 
 /** The signature view of one note, with the author's current name. */
 export async function noteSignature(kind: NoteKind, id: string): Promise<NoteSignatureView | null> {
-  const row = await signatureRow(kind, id);
+  let row = await signatureRow(kind, id);
   if (!row) return null;
+  if (kind === 'historiaClinica') {
+    // The historia's line describes its current version: who last saved it and when.
+    const latest = await latestRevision(id);
+    if (latest) {
+      row = { ...row, createdById: latest.changedById, createdAt: latest.changedAt, legacyRecord: latest.legacyRecord };
+    }
+  }
   const author = row.createdById
     ? await prisma.user.findUnique({ where: { id: row.createdById }, select: { fullName: true } })
     : null;
   return toSignatureView(row, author?.fullName ?? null);
 }
 
-export type SignResult =
-  | { ok: true; signature: NoteSignatureView; patientId: string }
-  | { ok: false; code: 'NOT_FOUND' | 'LEGACY_RECORD' | 'ALREADY_SIGNED' | 'NO_SIGNING_PIN' | 'LICENSE_REQUIRED' | 'WRONG_PIN' | 'TOO_MANY_ATTEMPTS'; retryAfterSeconds?: number };
+export type SignerFailure =
+  | 'NO_SIGNING_PIN'
+  | 'LICENSE_REQUIRED'
+  | 'WRONG_PIN'
+  | 'TOO_MANY_ATTEMPTS';
 
-/** Signs a note with the user's PIN. The caller has already checked the user may edit it. */
-export async function signNote(kind: NoteKind, id: string, userId: string, pin: string, now = new Date()): Promise<SignResult> {
-  const row = await signatureRow(kind, id);
-  if (!row) return { ok: false, code: 'NOT_FOUND' };
-  if (row.legacyRecord) return { ok: false, code: 'LEGACY_RECORD' };
-  if (row.signedAt) return { ok: false, code: 'ALREADY_SIGNED' };
+export interface Signer {
+  name: string;
+  title: string | null;
+  license: string;
+}
 
+/**
+ * Checks the user's signing PIN and returns who signs, as it will be stamped. Shared by signing a
+ * note and by writing an addendum; failures count against the same per-user limit.
+ */
+export async function verifySigner(
+  userId: string,
+  pin: string
+): Promise<{ ok: true; signer: Signer } | { ok: false; code: SignerFailure; retryAfterSeconds?: number }> {
   const limit = pinFailures.check(userId);
   if (!limit.allowed) return { ok: false, code: 'TOO_MANY_ATTEMPTS', retryAfterSeconds: limit.retryAfterSeconds };
 
@@ -203,17 +217,44 @@ export async function signNote(kind: NoteKind, id: string, userId: string, pin: 
     return { ok: false, code: 'WRONG_PIN' };
   }
   pinFailures.reset(userId);
+  return {
+    ok: true,
+    signer: { name: user.fullName, title: user.professionalTitle?.trim() || null, license: user.professionalLicense.trim() },
+  };
+}
+
+export type SignResult =
+  | { ok: true; signature: NoteSignatureView; patientId: string }
+  | { ok: false; code: 'NOT_FOUND' | 'LEGACY_RECORD' | 'ALREADY_SIGNED' | SignerFailure; retryAfterSeconds?: number };
+
+/** Signs a note with the user's PIN. The caller has already checked the user may edit it. */
+export async function signNote(kind: NoteKind, id: string, userId: string, pin: string, now = new Date()): Promise<SignResult> {
+  const row = await signatureRow(kind, id);
+  if (!row) return { ok: false, code: 'NOT_FOUND' };
+  if (row.legacyRecord) return { ok: false, code: 'LEGACY_RECORD' };
+  if (row.signedAt) return { ok: false, code: 'ALREADY_SIGNED' };
+
+  const verified = await verifySigner(userId, pin);
+  if (!verified.ok) return verified;
+  const { signer } = verified;
 
   const note = await noteContent(kind, id);
   if (!note) return { ok: false, code: 'NOT_FOUND' };
-  await writeSignature(kind, id, {
+  const signedHash = hashContent(note.content);
+  const stamp = {
     signedById: userId,
     signedAt: now,
-    signedHash: hashContent(note.content),
-    signerName: user.fullName,
-    signerTitle: user.professionalTitle?.trim() || null,
-    signerLicense: user.professionalLicense.trim(),
-  });
+    signerName: signer.name,
+    signerTitle: signer.title,
+    signerLicense: signer.license,
+  };
+  await writeSignature(kind, id, { ...stamp, signedHash });
+  if (kind === 'historiaClinica') {
+    // The signature belongs to the version being signed; it stays on that revision when the
+    // historia is edited later.
+    const revision = await recordRevision(id, note.content, userId);
+    await stampRevisionSignature(revision.id, stamp);
+  }
   const signature = await noteSignature(kind, id);
   return { ok: true, signature: signature as NoteSignatureView, patientId: note.patientId };
 }
@@ -246,36 +287,107 @@ export async function signatureIntact(kind: NoteKind, id: string): Promise<boole
   return !!note && row.signedHash === hashContent(note.content);
 }
 
+/** The state of a note just before an edit, taken by `beginNoteEdit`. */
+export interface NoteEditStart {
+  kind: NoteKind;
+  id: string;
+  before: unknown;
+}
+
 /**
- * Called by every route that edits a note's content: voids a signature that no longer matches and
- * records it in the audit log, so a changed note never keeps showing a signature for other words.
+ * Called by every route that edits a note's content, before it writes. A signed valoración or
+ * treatment visit answers 409 NOTE_SIGNED: it is corrected with an addendum. Returns the content
+ * before the edit, for the audit log (null when the note does not exist; the route 404s itself).
+ */
+export async function beginNoteEdit(kind: NoteKind, id: string | null | undefined): Promise<NoteEditStart | null> {
+  if (!id) return null;
+  const row = await signatureRow(kind, id);
+  if (!row) return null;
+  if (row.signedAt && LOCKED_WHEN_SIGNED.includes(kind)) {
+    throw new ApiProblem('NOTE_SIGNED', 'This note is signed; add an addendum instead of editing it', 409);
+  }
+  const note = await noteContent(kind, id);
+  if (!note) return null;
+  if (kind === 'historiaClinica') await ensureBaseRevision(id, note.content);
+  return { kind, id, before: note.content };
+}
+
+/**
+ * Diagram strokes are large and unreadable in a log: the audit records each view by a short hash,
+ * which still shows which views changed.
+ */
+export function auditable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(auditable);
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const isDiagram = 'view' in (value as object) && 'data' in (value as object);
+    return Object.fromEntries(
+      entries.map(([k, v]) => [k, isDiagram && k === 'data' ? hashContent(v).slice(0, 12) : auditable(v)])
+    );
+  }
+  return value;
+}
+
+/** The top-level fields that differ between two versions of a note, with both values. */
+export function diffContent(before: unknown, after: unknown): Record<string, { before: unknown; after: unknown }> {
+  const a = (auditable(before) ?? {}) as Record<string, unknown>;
+  const b = (auditable(after) ?? {}) as Record<string, unknown>;
+  const changes: Record<string, { before: unknown; after: unknown }> = {};
+  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (stableStringify(a[key]) !== stableStringify(b[key])) {
+      changes[key] = { before: JSON.parse(stableStringify(a[key])), after: JSON.parse(stableStringify(b[key])) };
+    }
+  }
+  return changes;
+}
+
+/**
+ * Called by every route that edits a note's content, after it writes. Records which fields changed
+ * (before and after) in the audit log; for the historia clínica also keeps the new version as a
+ * revision and voids the current signature when the content no longer matches it.
  */
 export async function afterNoteEdit(
   kind: NoteKind,
   id: string | null | undefined,
   userId: string,
-  patientId?: string | null
+  patientId?: string | null,
+  start?: NoteEditStart | null
 ): Promise<void> {
   if (!id) return;
   try {
-    if (await voidSignatureIfChanged(kind, id)) {
+    const note = await noteContent(kind, id);
+    if (!note) return;
+    const changes = start ? diffContent(start.before, note.content) : {};
+    const voided = await voidSignatureIfChanged(kind, id);
+    let revision: number | undefined;
+    if (kind === 'historiaClinica') {
+      const saved = await recordRevision(id, note.content, userId);
+      if (saved.created) {
+        revision = saved.revision;
+        // Saved by a known user, the current version can be signed even if the first one was not.
+        await prisma.historiaClinica.update({ where: { id }, data: { legacyRecord: false } });
+      }
+    }
+    if (Object.keys(changes).length > 0 || voided) {
       await prisma.auditLog.create({
         data: {
           userId,
           action: 'update',
           entity: ENTITY[kind],
           entityId: id,
-          patientId: patientId ?? undefined,
-          metadata: { signatureVoided: true },
+          patientId: patientId ?? note.patientId,
+          metadata: JSON.parse(
+            stableStringify({ changes, signatureVoided: voided || undefined, revision })
+          ),
         },
       });
     }
   } catch (error) {
-    console.error('signature check after edit failed', error);
+    console.error('recording a note edit failed', error);
   }
 }
 
-const ENTITY: Record<NoteKind, string> = {
+export const ENTITY: Record<NoteKind, string> = {
   valoracion: 'Valoracion',
   treatment: 'Treatment',
   historiaClinica: 'HistoriaClinica',

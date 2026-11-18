@@ -1,3 +1,4 @@
+import { NoteSignatureService } from '../shared/note-signature/note-signature.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,14 +20,27 @@ import { TreatmentDiagramService } from './treatment-diagram.service';
       <p>{{ 'common.loadError' | transloco }}</p>
     } @else {
       <h1>{{ 'treatments.diagramTitle' | transloco }} — {{ item()?.treatmentTypeName }}</h1>
+      @if (locked()) {
+        <p class="locked-note">{{ 'noteSignature.lockedNote' | transloco }}</p>
+      }
       <app-facial-diagram-views
         [dataSource]="dataSource"
         permissionModule="treatments"
         [diagrams]="item()!.diagrams"
+        [readonly]="locked()"
       />
       <button mat-button (click)="back()">{{ 'common.back' | transloco }}</button>
     }
   `,
+  styles: [
+    `
+      .locked-note {
+        margin: 0 0 16px;
+        font-size: 13px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+    `,
+  ],
 })
 export class TreatmentDiagramComponent implements OnInit {
   private readonly treatmentDiagramService = inject(TreatmentDiagramService);
@@ -37,6 +51,9 @@ export class TreatmentDiagramComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   protected readonly item = signal<TreatmentItemDetail | null>(null);
+  /** The visit is signed: its diagrams are read-only (NOM-004-SSA3-2012 5.10). */
+  protected readonly locked = signal(false);
+  private readonly noteSignatures = inject(NoteSignatureService);
   protected dataSource!: DiagramDataSource;
 
   private itemId = '';
@@ -60,6 +77,7 @@ export class TreatmentDiagramComponent implements OnInit {
         this.router.navigate(['/treatments']);
         return;
       }
+      this.locked.set(!!(await this.noteSignatures.get('treatment', item.treatmentId).catch(() => null))?.signed);
       this.item.set(item);
       this.dataSource = {
         listReferenceOptions: async () => {

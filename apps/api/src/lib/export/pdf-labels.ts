@@ -11,6 +11,7 @@ export interface PdfLabels {
     license: string;
     unsigned: string;
     legacy: string;
+    addendum: string;
   };
   /** Annex of photos retired from the galleries (exported only when asked for). */
   retiredPhotos: {
@@ -81,6 +82,7 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       license: 'Céd.',
       unsigned: 'Sin firma',
       legacy: 'Registro anterior a la firma electrónica',
+      addendum: 'Adenda',
     },
     retiredPhotos: {
       title: 'Fotos retiradas de la galería',
@@ -152,6 +154,7 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
       license: 'Lic.',
       unsigned: 'Not signed',
       legacy: 'Recorded before electronic signatures',
+      addendum: 'Addendum',
     },
     retiredPhotos: {
       title: 'Photos retired from the gallery',

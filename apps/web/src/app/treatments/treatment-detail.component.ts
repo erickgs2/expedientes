@@ -25,6 +25,8 @@ import {
   ConsentScanDialogComponent,
   type ConsentScanDialogData,
 } from './consent-scan-dialog.component';
+import { TreatmentDiagramService } from './treatment-diagram.service';
+import type { AddendumDiagramReferences } from '../shared/note-signature/addendum-dialog.component';
 import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 
 interface TreatmentItemForm {
@@ -73,14 +75,21 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
 
       <div class="head">
         <h1>{{ 'treatments.detailTitle' | transloco }}</h1>
-        @if (canEdit && pendingItems().length > 0) {
+        @if (mayEdit && pendingItems().length > 0) {
           <button mat-stroked-button type="button" (click)="registerScan()">
             <mat-icon aria-hidden="true">document_scanner</mat-icon>
             {{ 'treatments.registerScan' | transloco }}
           </button>
         }
       </div>
-      <app-note-signature kind="treatment" [noteId]="treatmentNoteId" [canSign]="canEdit" [refresh]="savedTick()" />
+      <app-note-signature
+        kind="treatment"
+        [noteId]="treatmentNoteId"
+        [canSign]="mayEdit"
+        [refresh]="savedTick()"
+        [diagramReferences]="addendumReferences"
+        (signedChange)="setLocked($event)"
+      />
 
       <section class="picker" [attr.aria-label]="'visitSheet.treatmentsToday' | transloco">
         <p class="hint">{{ 'visitSheet.treatmentsToday' | transloco }}</p>
@@ -190,8 +199,8 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
                     }
                     {{ 'visitSheet.photosState' | transloco: { before: item.progress.photosBefore, after: item.progress.photosAfter } }}
                   </p>
-                  <a [class]="st.next === 'photos' && canEdit ? 'step-cta' : 'step-link'" [routerLink]="['/treatments/items', item.itemId, 'photos']">
-                    {{ (canEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco }}
+                  <a [class]="st.next === 'photos' && mayEdit ? 'step-cta' : 'step-link'" [routerLink]="['/treatments/items', item.itemId, 'photos']">
+                    {{ (mayEdit ? 'treatments.addPhotos' : 'treatments.viewPhotos') | transloco }}
                   </a>
                 </li>
               </ol>
@@ -500,6 +509,7 @@ export class TreatmentDetailComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly historiaService = inject(HistoriaClinicaService);
   private readonly transloco = inject(TranslocoService);
+  private readonly treatmentDiagramService = inject(TreatmentDiagramService);
 
   protected readonly patient = this.activePatient.patient;
   protected readonly loading = signal(true);
@@ -529,13 +539,33 @@ export class TreatmentDetailComponent implements OnInit {
   // FacialDiagramViewsComponent/PhotoGalleryComponent for the same read-only-vs-editable split —
   // permissions don't change mid-session, so a one-time check in ngOnInit is sufficient.
   protected canEdit = false;
+  /** The permission itself: signing, photos and consent scans stay open on a signed visit. */
+  protected mayEdit = false;
   /** Bumped after each save: the signature line re-reads whether the visit is still signed. */
   protected readonly savedTick = signal(0);
   protected treatmentNoteId = '';
   private treatmentId = '';
 
+  /** The visit's diagrams, one reference per treatment, when an addendum is drawn. */
+  protected readonly addendumReferences: AddendumDiagramReferences = {
+    options: () =>
+      this.items()
+        .filter((i) => i.selected && i.itemId)
+        .map((i) => ({ id: i.itemId as string, label: i.name })),
+    get: async (itemId) => (await this.treatmentDiagramService.getItem(itemId)).diagrams,
+  };
+
+  /**
+   * A signed visit is read-only: treatments, notes, diagrams and products are what was signed, and
+   * a correction goes in an addendum (NOM-004-SSA3-2012 5.10). Photos and consents stay open.
+   */
+  protected setLocked(signed: boolean): void {
+    this.canEdit = this.mayEdit && !signed;
+  }
+
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission('treatments', 'edit');
+    this.mayEdit = this.canEdit;
     this.treatmentId = this.route.snapshot.paramMap.get('id') ?? '';
     this.treatmentNoteId = this.treatmentId;
     if (!this.treatmentId) {

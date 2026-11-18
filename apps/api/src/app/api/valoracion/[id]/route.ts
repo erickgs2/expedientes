@@ -5,7 +5,7 @@ import { requireAuth } from '../../../../lib/http/require-auth';
 import { apiError } from '../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../lib/patients/patient-archive';
-import { afterNoteEdit, noteSignature } from '../../../../lib/signature/note-signature';
+import { afterNoteEdit, beginNoteEdit, noteSignature } from '../../../../lib/signature/note-signature';
 
 interface ValoracionBody {
   fecha?: string;
@@ -39,6 +39,7 @@ export const PATCH = withApiErrors(
     const userId = await requireAuth(request, 'valoracion', 'edit');
     const { id } = await params;
     await assertRecordWritable('valoracion', id);
+    const noteEdit = await beginNoteEdit('valoracion', id);
     const body = (await request.json()) as ValoracionBody;
 
     // No existence pre-check needed: if `id` doesn't exist, Prisma's update throws P2025, which
@@ -61,7 +62,7 @@ export const PATCH = withApiErrors(
       patientId: valoracion.patientId,
     });
 
-    await afterNoteEdit('valoracion', valoracion.id, userId, valoracion.patientId);
+    await afterNoteEdit('valoracion', valoracion.id, userId, valoracion.patientId, noteEdit);
     return NextResponse.json({ valoracion, signature: await noteSignature('valoracion', valoracion.id) });
   }
 );

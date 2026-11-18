@@ -54,6 +54,8 @@ export async function deletePatient(patientId: string): Promise<boolean> {
     await tx.valoracionDiagram.deleteMany({ where: { valoracion: { patientId } } });
     await tx.valoracion.deleteMany({ where: { patientId } });
 
+    await tx.clinicalAddendum.deleteMany({ where: { patientId } });
+    await tx.historiaClinicaRevision.deleteMany({ where: { historiaClinica: { patientId } } });
     await tx.historiaClinica.deleteMany({ where: { patientId } });
     await tx.appointment.deleteMany({ where: { patientId } });
     await tx.patient.delete({ where: { id: patientId } });

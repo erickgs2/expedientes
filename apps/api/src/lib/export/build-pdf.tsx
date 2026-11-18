@@ -8,7 +8,14 @@ import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 import { ConsentPage } from './consent-document-pdf';
 import type { NoteSignatureView } from '../signature/note-signature';
-import type { ExportData, ExportDiagramRef, ExportTreatment, ExportTreatmentItem, ExportValoracion } from './gather-export-data';
+import type {
+  ExportAddendum,
+  ExportData,
+  ExportDiagramRef,
+  ExportTreatment,
+  ExportTreatmentItem,
+  ExportValoracion,
+} from './gather-export-data';
 import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 
 const styles = StyleSheet.create({
@@ -51,6 +58,8 @@ const styles = StyleSheet.create({
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
   noteSignature: { fontSize: 8, color: '#444444', marginTop: 6 },
+  addendum: { marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: '#bbbbbb' },
+  addendumTitle: { fontSize: 9, fontWeight: 'bold', marginBottom: 2 },
   retiredGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
   retiredCell: { width: '48%', marginRight: '2%', marginBottom: 14 },
   retiredImage: { width: '100%', height: 180, objectFit: 'contain', backgroundColor: '#f4f4f1' },
@@ -95,6 +104,41 @@ function NoteSignatureLine({
     <Text style={styles.noteSignature}>
       {recorded} · {signed}
     </Text>
+  );
+}
+
+/** The signed addenda of a note, in order, each with its own signature line. */
+function Addenda({
+  addenda,
+  labels,
+  diagramImages,
+  timeZone,
+  language,
+}: {
+  addenda: ExportAddendum[];
+  labels: PdfLabels;
+  diagramImages: Map<string, Buffer>;
+  timeZone: string;
+  language: 'es' | 'en';
+}) {
+  const l = labels.signature;
+  return (
+    <>
+      {addenda.map((a, i) => (
+        <View key={i} style={styles.addendum} wrap={false}>
+          <Text style={styles.addendumTitle}>
+            {l.addendum} {i + 1} · {stamp(a.signed.at, timeZone, language)}
+          </Text>
+          {a.text ? <Text style={styles.fieldValue}>{a.text}</Text> : null}
+          <DiagramImages diagrams={a.diagrams} diagramImages={diagramImages} />
+          <Text style={styles.noteSignature}>
+            {l.signedBy} {[a.signed.title, a.signed.name].filter(Boolean).join(' ')}
+            {a.signed.license ? ` (${l.license} ${a.signed.license})` : ''} {l.recordedAt}{' '}
+            {stamp(a.signed.at, timeZone, language)}
+          </Text>
+        </View>
+      ))}
+    </>
   );
 }
 
@@ -234,6 +278,7 @@ function ValoracionSection({
           />
           <DiagramImages diagrams={v.diagrams} diagramImages={diagramImages} />
           <NoteSignatureLine signature={v.signature} labels={labels} {...meta} />
+          <Addenda addenda={v.addenda} labels={labels} diagramImages={diagramImages} {...meta} />
         </View>
       ))}
     </View>
@@ -325,6 +370,7 @@ function TreatmentsSection({
             />
           ))}
           <NoteSignatureLine signature={t.signature} labels={labels} {...meta} />
+          <Addenda addenda={t.addenda} labels={labels} diagramImages={diagramImages} {...meta} />
         </View>
       ))}
     </View>

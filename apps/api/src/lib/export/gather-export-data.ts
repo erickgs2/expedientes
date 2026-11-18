@@ -2,6 +2,7 @@ import type { ConsentBlock } from '@expedientes/shared-types';
 import { prisma, prismaUnscoped } from '../prisma/client';
 import { currentClinicId } from '../tenancy/context';
 import { noteSignature, type NoteSignatureView } from '../signature/note-signature';
+import { listAddenda, type AddendumKind } from '../signature/addenda';
 import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
@@ -67,8 +68,16 @@ export interface ExportHistoriaClinica {
   allergyNames: string[];
 }
 
+/** A signed addendum printed under its note (NOM-004-SSA3-2012 5.10). */
+export interface ExportAddendum {
+  text: string;
+  signed: { at: string; name: string; title: string | null; license: string | null };
+  diagrams: ExportDiagramRef[];
+}
+
 export interface ExportValoracion {
   signature: NoteSignatureView | null;
+  addenda: ExportAddendum[];
   fecha: string;
   queQuiereElPaciente: string | null;
   queNecesitaElPaciente: string | null;
@@ -113,6 +122,7 @@ export interface ExportConsent {
 export interface ExportTreatment {
   fecha: string;
   signature: NoteSignatureView | null;
+  addenda: ExportAddendum[];
   items: ExportTreatmentItem[];
 }
 
@@ -162,9 +172,11 @@ async function gatherValoraciones(patientId: string): Promise<ExportValoracion[]
   const fullOnes = await Promise.all(summaries.map((v) => getValoracion(v.id)));
   const valoraciones = fullOnes.filter((v): v is NonNullable<typeof v> => v !== null);
   const signatures = await Promise.all(valoraciones.map((v) => noteSignature('valoracion', v.id)));
+  const addenda = await Promise.all(valoraciones.map((v) => gatherAddenda('valoracion', v.id)));
   return valoraciones
     .map((v, i) => ({
       signature: signatures[i],
+      addenda: addenda[i],
       fecha: v.fecha.toISOString(),
       queQuiereElPaciente: v.queQuiereElPaciente,
       queNecesitaElPaciente: v.queNecesitaElPaciente,
@@ -216,7 +228,12 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
           };
         })
       );
-      return { fecha: t.fecha.toISOString(), signature: await noteSignature('treatment', t.id), items };
+      return {
+        fecha: t.fecha.toISOString(),
+        signature: await noteSignature('treatment', t.id),
+        addenda: await gatherAddenda('treatment', t.id),
+        items,
+      };
     })
   );
 }
@@ -321,4 +338,19 @@ export async function gatherExportData(
       (await prismaUnscoped.clinic.findUnique({ where: { id: currentClinicId() }, select: { timeZone: true } }))
         ?.timeZone ?? 'America/Mexico_City',
   };
+}
+
+/**
+ * A note's addenda, oldest first. Their diagrams are rendered by the client like any other and
+ * uploaded as `diagram_addendum_<id>_<view>`.
+ */
+async function gatherAddenda(kind: AddendumKind, noteId: string): Promise<ExportAddendum[]> {
+  return (await listAddenda(kind, noteId)).map((a) => ({
+    text: a.text,
+    signed: a.signed,
+    diagrams: a.diagrams.map((d) => ({
+      view: d.view as ExportDiagramRef['view'],
+      imageKey: `diagram_addendum_${a.id}_${d.view}`,
+    })),
+  }));
 }

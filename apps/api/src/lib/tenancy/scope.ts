@@ -33,6 +33,8 @@ export const TENANT_MODELS: ReadonlySet<string> = new Set([
   'TreatmentItemPhoto',
   'TreatmentItemProduct',
   'Appointment',
+  'ClinicalAddendum',
+  'HistoriaClinicaRevision',
 ]);
 
 /**
