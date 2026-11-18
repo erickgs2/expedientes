@@ -640,6 +640,13 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
   protected onKeyDown(event: KeyboardEvent): void {
     const editingText = (this.canvas?.getActiveObject() as IText | undefined)?.isEditing;
+    // Escape leaves a sticky tool for "select" (a note being typed handles Escape itself first).
+    if (event.key === 'Escape' && !editingText && this.activeTool() !== 'select') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.setTool('select');
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && !editingText && this.canEdit) {
       const key = event.key.toLowerCase();
       if (key === 'z' || key === 'y') {
@@ -675,15 +682,26 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
     this.canvas.requestRenderAll();
   }
 
+  /**
+   * Tools are sticky: a marker, line or note leaves its tool selected, so several can be placed in
+   * a row; the user goes back to "select" (or another tool) by choosing it, or with Escape.
+   */
   setTool(tool: DiagramTool): void {
     this.activeTool.set(tool);
     this.canvas.isDrawingMode = tool === 'pencil';
     if (tool === 'pencil') {
       this.applyBrushSettings();
     }
-    // Dragging a line out relies on the canvas NOT starting a selection rectangle under the
-    // pointer; restored the moment the tool changes back.
-    this.canvas.selection = tool !== 'line';
+    // Only "select" picks, moves and box-selects objects. With a placing tool active, a click on an
+    // existing mark places a new one there instead of grabbing the mark under the pointer, and a
+    // line drag never starts a selection rectangle.
+    this.canvas.selection = tool === 'select';
+    this.canvas.skipTargetFind = tool !== 'select';
+    if (tool !== 'select') {
+      const active = this.canvas.getActiveObject() as IText | undefined;
+      if (!active?.isEditing) this.canvas.discardActiveObject();
+      this.canvas.requestRenderAll();
+    }
   }
 
   /**
@@ -707,7 +725,6 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
       this.scheduleSnapshot();
     }
     this.canvas.requestRenderAll();
-    this.setTool('select');
   }
 
   setColor(color: string): void {
@@ -762,7 +779,6 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
         backgroundColor: 'rgba(255,255,255,0.85)',
       });
       this.canvas.add(note);
-      this.setTool('select');
       this.canvas.setActiveObject(note);
       note.enterEditing();
       this.canvas.requestRenderAll();
@@ -778,7 +794,6 @@ export class FacialDiagramCanvasComponent implements OnInit, OnChanges, AfterVie
 
     this.canvas.add(marker);
     this.canvas.requestRenderAll();
-    this.setTool('select');
   }
 
   /**
