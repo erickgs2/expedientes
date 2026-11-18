@@ -18,28 +18,31 @@ export class ConsentService {
     input: {
       place: string;
       patientIdentification: string;
-      witnessName: string;
       patientSignature: Blob;
-      witnessSignature: Blob;
-      secondWitnessName: string;
-      /** Null to use the clinic's stored second-witness signature. */
-      secondWitnessSignature: Blob | null;
+      /** Witnesses are optional; each one sent has a name and a signature. */
+      witness: { name: string; signature: Blob } | null;
+      /** `signature: null` uses the clinic's stored second-witness signature. */
+      secondWitness: { name: string; signature: Blob | null } | null;
       templateUpdatedAt: string;
       settingsUpdatedAt: string;
     }
   ): Promise<{ consent: Consent; consentDocument: ConsentBlock[] }> {
     const formData = new FormData();
     formData.append('patientSignature', input.patientSignature, 'signature.jpg');
-    formData.append('witnessSignature', input.witnessSignature, 'witness.jpg');
-    if (input.secondWitnessSignature) {
-      formData.append('secondWitnessSignature', input.secondWitnessSignature, 'witness-2.jpg');
-    } else {
-      formData.append('useClinicSecondWitnessSignature', 'true');
+    if (input.witness) {
+      formData.append('witnessSignature', input.witness.signature, 'witness.jpg');
+      formData.append('witnessName', input.witness.name);
+    }
+    if (input.secondWitness) {
+      formData.append('secondWitnessName', input.secondWitness.name);
+      if (input.secondWitness.signature) {
+        formData.append('secondWitnessSignature', input.secondWitness.signature, 'witness-2.jpg');
+      } else {
+        formData.append('useClinicSecondWitnessSignature', 'true');
+      }
     }
     formData.append('place', input.place);
     formData.append('patientIdentification', input.patientIdentification);
-    formData.append('witnessName', input.witnessName);
-    formData.append('secondWitnessName', input.secondWitnessName);
     formData.append('templateUpdatedAt', input.templateUpdatedAt);
     formData.append('settingsUpdatedAt', input.settingsUpdatedAt);
     return firstValueFrom(

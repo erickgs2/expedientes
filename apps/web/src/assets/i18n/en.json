@@ -649,7 +649,11 @@
     "useStoredSignature": "Use {{name}}'s stored signature",
     "signHere": "Sign here",
     "storedSignatureNote": "The signature stored in the clinic settings will be used. If you change the name, sign here.",
-    "witnessesRequired": "The patient and two witnesses sign (NOM-004)."
+    "addWitnesses": "Add witnesses",
+    "witnessesOptionalHint": "Optional. NOM-004 asks for two witnesses on a consent; add them if your clinic uses them.",
+    "witnesses": "Witnesses",
+    "removeWitnesses": "Remove witnesses",
+    "witnessIncomplete": "Each witness needs a name and a signature, or leave it empty."
   },
   "appointments": {
     "calendarTitle": "Calendar",
@@ -1172,7 +1176,8 @@
     "NOT_ARCHIVED": "Archive the patient before purging the record.",
     "CONFIRMATION_MISMATCH": "The name does not match the patient's.",
     "NOTE_SIGNED": "This note is signed; add an addendum to correct it.",
-    "NOTE_NOT_SIGNED": "Only a signed note takes addenda; edit the draft instead."
+    "NOTE_NOT_SIGNED": "Only a signed note takes addenda; edit the draft instead.",
+    "WITNESS_INCOMPLETE": "Each witness needs both a name and a signature, or neither."
   },
   "noteSignature": {
     "recordedBy": "Recorded by {{name}} · {{when}}",

@@ -649,7 +649,11 @@
     "useStoredSignature": "Usar la firma registrada de {{name}}",
     "signHere": "Firmar aquí",
     "storedSignatureNote": "Se usará la firma registrada en la configuración de la clínica. Si cambias el nombre, firma aquí.",
-    "witnessesRequired": "Firman el paciente y dos testigos (NOM-004)."
+    "addWitnesses": "Agregar testigos",
+    "witnessesOptionalHint": "Opcional. La NOM-004 pide dos testigos en el consentimiento; agrégalos si tu clínica los usa.",
+    "witnesses": "Testigos",
+    "removeWitnesses": "Quitar testigos",
+    "witnessIncomplete": "Cada testigo necesita nombre y firma, o déjalo vacío."
   },
   "appointments": {
     "calendarTitle": "Calendario",
@@ -1172,7 +1176,8 @@
     "NOT_ARCHIVED": "Archiva al paciente antes de depurar el expediente.",
     "CONFIRMATION_MISMATCH": "El nombre no coincide con el del paciente.",
     "NOTE_SIGNED": "Esta nota está firmada; agrega una adenda para corregirla.",
-    "NOTE_NOT_SIGNED": "Solo una nota firmada lleva adendas; edita el borrador."
+    "NOTE_NOT_SIGNED": "Solo una nota firmada lleva adendas; edita el borrador.",
+    "WITNESS_INCOMPLETE": "Cada testigo necesita nombre y firma, o ninguno de los dos."
   },
   "noteSignature": {
     "recordedBy": "Registró {{name}} · {{when}}",

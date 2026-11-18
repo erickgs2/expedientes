@@ -157,12 +157,14 @@ export async function getTreatmentItemDetail(id: string) {
 export interface SignConsentInput {
   place: string;
   patientIdentification: string;
-  witnessName: string;
   patientSignature: Buffer;
-  witnessSignature: Buffer;
-  secondWitnessName: string;
-  /** Signed at the table, or null to use the clinic's stored second-witness signature. */
-  secondWitnessSignature: Buffer | null;
+  /**
+   * Witnesses are optional: the clinic decides whether a consent carries them. Each one present
+   * has a name and a signature (the route refuses half a witness).
+   */
+  witness: { name: string; signature: Buffer } | null;
+  /** `signature: null` uses the clinic's stored second-witness signature. */
+  secondWitness: { name: string; signature: Buffer | null } | null;
 }
 
 /**
@@ -195,21 +197,21 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
     patientId,
     'signature.jpg'
   );
-  const witnessSignatureImagePath = await saveFile(input.witnessSignature, 'consents', patientId, 'witness.jpg');
+  const witnessSignatureImagePath = input.witness
+    ? await saveFile(input.witness.signature, 'consents', patientId, 'witness.jpg')
+    : null;
 
   // The clinic's stored second-witness signature is copied onto the consent, never referenced: a
   // later change in the settings must not alter a letter that was already signed.
-  let secondWitnessSignature = input.secondWitnessSignature;
-  if (!secondWitnessSignature) {
-    if (!settings.secondWitnessSignaturePath) return 'NO_SECOND_WITNESS_SIGNATURE' as const;
-    secondWitnessSignature = await readStoredFile(settings.secondWitnessSignaturePath);
+  let secondWitnessSignatureImagePath: string | null = null;
+  if (input.secondWitness) {
+    let secondWitnessSignature = input.secondWitness.signature;
+    if (!secondWitnessSignature) {
+      if (!settings.secondWitnessSignaturePath) return 'NO_SECOND_WITNESS_SIGNATURE' as const;
+      secondWitnessSignature = await readStoredFile(settings.secondWitnessSignaturePath);
+    }
+    secondWitnessSignatureImagePath = await saveFile(secondWitnessSignature, 'consents', patientId, 'witness-2.jpg');
   }
-  const secondWitnessSignatureImagePath = await saveFile(
-    secondWitnessSignature,
-    'consents',
-    patientId,
-    'witness-2.jpg'
-  );
 
   const consent = await prisma.consent.create({
     data: {
@@ -221,8 +223,8 @@ export async function signTreatmentItemConsent(treatmentItemId: string, input: S
         patientIdentification: input.patientIdentification,
         place: input.place,
         signedDate: localSigningDate(),
-        witnessName: input.witnessName,
-        secondWitnessName: input.secondWitnessName,
+        witnessName: input.witness?.name ?? null,
+        secondWitnessName: input.secondWitness?.name ?? null,
         sections: sectionsFromTreatmentType(item.treatmentType),
       }),
       patientSignatureImagePath,
