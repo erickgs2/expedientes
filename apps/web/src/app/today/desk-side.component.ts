@@ -1,14 +1,30 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { TodayDesk } from '@expedientes/shared-types';
+import type { TodayDesk, UnsignedNote } from '@expedientes/shared-types';
+import { NoteSignatureService } from '../shared/note-signature/note-signature.service';
 
-/** The right-hand column: clinic follow-ups, then the records this user opened last. */
+/**
+ * The right-hand column: the user's own notes still to sign (NOM-004-SSA3-2012 5.10), clinic
+ * follow-ups, then the records this user opened last.
+ */
 @Component({
   selector: 'app-desk-side',
   standalone: true,
   imports: [RouterLink, TranslocoModule],
   template: `
+    @if (unsigned().length > 0) {
+      <section class="plate" [attr.aria-label]="'today.desk.side.toSign' | transloco">
+        <h2><span class="dot" aria-hidden="true"></span>{{ 'today.desk.side.toSign' | transloco: { n: unsigned().length } }}</h2>
+        @for (n of unsigned(); track n.kind + n.id) {
+          <a class="row recent" [routerLink]="noteLink(n)">
+            <span class="name">{{ n.patientName }}</span>
+            <span class="meta">{{ ('today.desk.side.noteKinds.' + n.kind) | transloco }} · {{ when(n.createdAt) }}</span>
+          </a>
+        }
+      </section>
+    }
+
     <section class="plate" [attr.aria-label]="'today.desk.side.pending' | transloco">
       <h2>{{ 'today.desk.side.pending' | transloco }}</h2>
       <a class="row" routerLink="/calendar">
@@ -57,10 +73,19 @@ import type { TodayDesk } from '@expedientes/shared-types';
         background: var(--mat-sys-surface);
       }
       h2 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin: 0;
         padding: 16px 20px 8px;
         font-size: 1rem;
         font-weight: 600;
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--plate-mark);
       }
       .row {
         box-sizing: border-box;
@@ -105,9 +130,24 @@ import type { TodayDesk } from '@expedientes/shared-types';
     `,
   ],
 })
-export class DeskSideComponent {
+export class DeskSideComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
+  private readonly notes = inject(NoteSignatureService);
   readonly desk = input.required<TodayDesk>();
+  protected readonly unsigned = signal<UnsignedNote[]>([]);
+
+  ngOnInit(): void {
+    this.notes
+      .unsigned()
+      .then((list) => this.unsigned.set(list))
+      .catch(() => undefined);
+  }
+
+  protected noteLink(n: UnsignedNote): string[] {
+    if (n.kind === 'valoracion') return ['/pacientes', n.patientId, 'valoracion', n.id];
+    if (n.kind === 'treatment') return ['/pacientes', n.patientId, 'treatments', n.id];
+    return ['/pacientes', n.patientId, 'historia-clinica'];
+  }
 
   protected when(iso: string): string {
     return new Date(iso).toLocaleString(this.transloco.getActiveLang(), {

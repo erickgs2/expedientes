@@ -190,6 +190,12 @@ model User {
   invitationsSent  Invitation[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  /// Shown with every note this user signs (NOM-004-SSA3-2012 5.10). The licence is the cédula
+  /// profesional; a user without one cannot sign notes.
+  professionalTitle   String?
+  professionalLicense String?
+  /// bcrypt hash of the 6-digit PIN used to sign notes. Set by the user, never shown.
+  signingPinHash      String?
 }
 
 model Role {
@@ -332,6 +338,18 @@ model HistoriaClinica {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// NOM-004-SSA3-2012 5.10: who wrote the note and who signed it (electronic signature with the
+  /// author's signing PIN). The signer's name, title and licence are frozen at signing, with a
+  /// SHA-256 of the note's content. Editing a signed note voids the signature. `legacyRecord` marks
+  /// notes written before electronic signatures existed; they are never signed retroactively.
+  createdById   String?
+  signedById    String?
+  signedAt      DateTime?
+  signedHash    String?
+  signerName    String?
+  signerTitle   String?
+  signerLicense String?
+  legacyRecord  Boolean   @default(false)
 
   @@index([clinicId])
 }
@@ -380,9 +398,22 @@ model Valoracion {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// NOM-004-SSA3-2012 5.10: who wrote the note and who signed it (electronic signature with the
+  /// author's signing PIN). The signer's name, title and licence are frozen at signing, with a
+  /// SHA-256 of the note's content. Editing a signed note voids the signature. `legacyRecord` marks
+  /// notes written before electronic signatures existed; they are never signed retroactively.
+  createdById   String?
+  signedById    String?
+  signedAt      DateTime?
+  signedHash    String?
+  signerName    String?
+  signerTitle   String?
+  signerLicense String?
+  legacyRecord  Boolean   @default(false)
 
   @@index([patientId])
   @@index([clinicId])
+  @@index([createdById, signedAt])
 }
 
 enum DiagramView {
@@ -478,9 +509,22 @@ model Treatment {
   items     TreatmentItem[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
+  /// NOM-004-SSA3-2012 5.10: who wrote the note and who signed it (electronic signature with the
+  /// author's signing PIN). The signer's name, title and licence are frozen at signing, with a
+  /// SHA-256 of the note's content. Editing a signed note voids the signature. `legacyRecord` marks
+  /// notes written before electronic signatures existed; they are never signed retroactively.
+  createdById   String?
+  signedById    String?
+  signedAt      DateTime?
+  signedHash    String?
+  signerName    String?
+  signerTitle   String?
+  signerLicense String?
+  legacyRecord  Boolean   @default(false)
 
   @@index([patientId])
   @@index([clinicId])
+  @@index([createdById, signedAt])
 }
 
 model TreatmentItem {

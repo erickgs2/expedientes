@@ -10,6 +10,7 @@ import { requireAuth } from '../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../../lib/patients/patient-archive';
+import { afterNoteEdit, treatmentIdOfItem } from '../../../../../lib/signature/note-signature';
 
 // Derived from the service's mapping rather than typed out again, so request validation and the
 // key→enum mapping can never disagree about which views exist.
@@ -54,6 +55,7 @@ export const PATCH = withApiErrors(
       patientId: item.patientId,
     });
 
+    await afterNoteEdit('treatment', await treatmentIdOfItem(id), userId);
     return NextResponse.json({ diagrams });
   }
 );

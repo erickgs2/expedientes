@@ -154,6 +154,9 @@ import { PlanCompareDialogComponent } from './plan/plan-compare-dialog.component
         <mat-icon>{{ theme.mode() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>
       </button>
       @if (auth.currentUser()) {
+        <a mat-icon-button routerLink="/perfil" [attr.aria-label]="'shell.profile' | transloco" [attr.title]="'shell.profile' | transloco">
+          <mat-icon>account_circle</mat-icon>
+        </a>
         <button mat-icon-button (click)="logout()" [attr.aria-label]="'shell.logout' | transloco">
           <mat-icon>logout</mat-icon>
         </button>

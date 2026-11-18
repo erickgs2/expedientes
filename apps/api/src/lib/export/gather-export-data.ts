@@ -1,5 +1,7 @@
 import type { ConsentBlock } from '@expedientes/shared-types';
-import { prisma } from '../prisma/client';
+import { prisma, prismaUnscoped } from '../prisma/client';
+import { currentClinicId } from '../tenancy/context';
+import { noteSignature, type NoteSignatureView } from '../signature/note-signature';
 import { getHistoriaClinica } from '../historia-clinica/historia-clinica';
 import { listValoraciones, getValoracion } from '../valoracion/valoracion';
 import { listTreatments, getTreatment } from '../treatment/treatment';
@@ -43,6 +45,8 @@ export interface ExportDiagramRef {
 }
 
 export interface ExportHistoriaClinica {
+  /** Author and signature (NOM-004-SSA3-2012 5.10). */
+  signature: NoteSignatureView | null;
   ocupacion: string | null;
   fechaNacimiento: string | null;
   sexo: string | null;
@@ -64,6 +68,7 @@ export interface ExportHistoriaClinica {
 }
 
 export interface ExportValoracion {
+  signature: NoteSignatureView | null;
   fecha: string;
   queQuiereElPaciente: string | null;
   queNecesitaElPaciente: string | null;
@@ -107,6 +112,7 @@ export interface ExportConsent {
 
 export interface ExportTreatment {
   fecha: string;
+  signature: NoteSignatureView | null;
   items: ExportTreatmentItem[];
 }
 
@@ -121,12 +127,15 @@ export interface ExportData {
   clinicName: string;
   doctorSignaturePath: string | null;
   clinicLogoPath: string | null;
+  /** IANA zone the note times print in (the clinic's). */
+  timeZone: string;
 }
 
 async function gatherHistoriaClinica(patientId: string): Promise<ExportHistoriaClinica | null> {
   const historia = await getHistoriaClinica(patientId);
   if (!historia) return null;
   return {
+    signature: await noteSignature('historiaClinica', historia.id),
     ocupacion: historia.ocupacion,
     fechaNacimiento: historia.fechaNacimiento ? historia.fechaNacimiento.toISOString() : null,
     sexo: historia.sexo,
@@ -151,9 +160,11 @@ async function gatherHistoriaClinica(patientId: string): Promise<ExportHistoriaC
 async function gatherValoraciones(patientId: string): Promise<ExportValoracion[]> {
   const summaries = await listValoraciones(patientId);
   const fullOnes = await Promise.all(summaries.map((v) => getValoracion(v.id)));
-  return fullOnes
-    .filter((v): v is NonNullable<typeof v> => v !== null)
-    .map((v) => ({
+  const valoraciones = fullOnes.filter((v): v is NonNullable<typeof v> => v !== null);
+  const signatures = await Promise.all(valoraciones.map((v) => noteSignature('valoracion', v.id)));
+  return valoraciones
+    .map((v, i) => ({
+      signature: signatures[i],
       fecha: v.fecha.toISOString(),
       queQuiereElPaciente: v.queQuiereElPaciente,
       queNecesitaElPaciente: v.queNecesitaElPaciente,
@@ -205,7 +216,7 @@ async function gatherTreatments(patientId: string): Promise<ExportTreatment[]> {
           };
         })
       );
-      return { fecha: t.fecha.toISOString(), items };
+      return { fecha: t.fecha.toISOString(), signature: await noteSignature('treatment', t.id), items };
     })
   );
 }
@@ -306,5 +317,8 @@ export async function gatherExportData(
     clinicName: settings?.clinicName ?? '',
     doctorSignaturePath: settings?.doctorSignaturePath ?? null,
     clinicLogoPath: settings?.clinicLogoPath ?? null,
+    timeZone:
+      (await prismaUnscoped.clinic.findUnique({ where: { id: currentClinicId() }, select: { timeZone: true } }))
+        ?.timeZone ?? 'America/Mexico_City',
   };
 }

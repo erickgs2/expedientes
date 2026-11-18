@@ -18,6 +18,7 @@ import { AuthService } from '../auth/auth.service';
 import { ActivePatientStore } from '../patient-drive/active-patient.store';
 import { PatientsService } from '../patient-drive/patients.service';
 import { HistoriaClinicaService } from './historia-clinica.service';
+import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 
 const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'] as const;
 
@@ -33,6 +34,7 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
   selector: 'app-historia-clinica-form',
   standalone: true,
   imports: [
+    NoteSignatureComponent,
     ReactiveFormsModule,
     FormsModule,
     MatFormFieldModule,
@@ -71,6 +73,9 @@ const STEPS = ['personalInfo', 'medicalInfo', 'personalHistory', 'familyHistory'
           </span>
         }
       </header>
+      @if (historiaId()) {
+        <app-note-signature kind="historiaClinica" [noteId]="historiaId()!" [canSign]="canEdit" [refresh]="savedTick()" />
+      }
 
       <ol class="stepper" [attr.aria-label]="'historiaClinica.interview.steps' | transloco">
         @for (s of steps; track s; let i = $index) {
@@ -423,6 +428,10 @@ export class HistoriaClinicaFormComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly exists = signal(false);
+  /** The clinical history's id once it exists, for its signature line. */
+  protected readonly historiaId = signal<string | null>(null);
+  /** Bumped after each save: an edit voids a signature that no longer matches. */
+  protected readonly savedTick = signal(0);
   protected readonly step = signal(0);
   protected readonly lastSavedAt = signal<string | null>(null);
   protected readonly allergyOptions = signal<AllergyOption[]>([]);
@@ -523,6 +532,7 @@ export class HistoriaClinicaFormComponent implements OnInit {
     try {
       const historia = await this.historiaClinicaService.get(patient.id);
       this.exists.set(historia !== null);
+      this.historiaId.set(historia?.id ?? null);
       if (historia) {
         this.form.patchValue({
           ocupacion: historia.ocupacion ?? '',
@@ -681,9 +691,11 @@ export class HistoriaClinicaFormComponent implements OnInit {
       if (this.exists()) {
         await this.historiaClinicaService.update(patient.id, input);
       } else {
-        await this.historiaClinicaService.create(patient.id, input);
+        const created = await this.historiaClinicaService.create(patient.id, input);
         this.exists.set(true);
+        this.historiaId.set(created.id);
       }
+      this.savedTick.update((n) => n + 1);
       // Only the patient fields that actually changed are sent, so an ordinary step does not
       // generate a pointless write and audit entry against the patient.
       const changes: { documentId?: string; phone?: string } = {};

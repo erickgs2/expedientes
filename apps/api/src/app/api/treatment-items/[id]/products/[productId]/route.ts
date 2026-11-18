@@ -12,6 +12,7 @@ import { requireAuth } from '../../../../../../lib/http/require-auth';
 import { apiError } from '../../../../../../lib/http/api-error';
 import { withApiErrors } from '../../../../../../lib/http/with-api-errors';
 import { assertRecordWritable } from '../../../../../../lib/patients/patient-archive';
+import { afterNoteEdit, treatmentIdOfItem } from '../../../../../../lib/signature/note-signature';
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const MIN_PHOTO_BYTES = 1024;
@@ -105,6 +106,7 @@ export const PATCH = withApiErrors(
       patientId: product.patientId,
     });
 
+    await afterNoteEdit('treatment', await treatmentIdOfItem(id), userId);
     return NextResponse.json({ product: updated });
   }
 );
@@ -133,6 +135,7 @@ export const DELETE = withApiErrors(
       patientId: product.patientId,
     });
 
+    await afterNoteEdit('treatment', await treatmentIdOfItem(id), userId);
     return NextResponse.json({ ok: true });
   }
 );

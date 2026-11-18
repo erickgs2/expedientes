@@ -3,7 +3,7 @@ import { prisma } from '../prisma/client';
 
 export interface AuditLogInput {
   userId: string;
-  action: 'create' | 'update' | 'delete' | 'view' | 'archive' | 'restore' | 'purge';
+  action: 'create' | 'update' | 'delete' | 'view' | 'archive' | 'restore' | 'purge' | 'sign';
   entity: string;
   entityId: string;
   patientId?: string;

@@ -7,6 +7,7 @@ import { ConsentScanPages } from './consent-scan-pdf';
 import { interpolate } from '../consent/build-consent-document';
 import { CONSENT_LABELS } from '../consent/consent-labels';
 import { ConsentPage } from './consent-document-pdf';
+import type { NoteSignatureView } from '../signature/note-signature';
 import type { ExportData, ExportDiagramRef, ExportTreatment, ExportTreatmentItem, ExportValoracion } from './gather-export-data';
 import { PDF_LABELS, type PdfLabels } from './pdf-labels';
 
@@ -49,11 +50,53 @@ const styles = StyleSheet.create({
   diagramImage: { marginRight: 8, marginBottom: 8 },
   productRow: { flexDirection: 'row', marginBottom: 2 },
   productCell: { flex: 1 },
+  noteSignature: { fontSize: 8, color: '#444444', marginTop: 6 },
   retiredGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
   retiredCell: { width: '48%', marginRight: '2%', marginBottom: 14 },
   retiredImage: { width: '100%', height: 180, objectFit: 'contain', backgroundColor: '#f4f4f1' },
   retiredCaption: { fontSize: 8, color: '#444444', marginTop: 3 },
 });
+
+/** "dd/mm/yyyy hh:mm" in the clinic's zone. */
+function stamp(iso: string, timeZone: string, language: 'es' | 'en'): string {
+  return new Date(iso).toLocaleString(language === 'en' ? 'en-US' : 'es-MX', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Who recorded the note and when, and who signed it (NOM-004-SSA3-2012 5.10). */
+function NoteSignatureLine({
+  signature,
+  labels,
+  timeZone,
+  language,
+}: {
+  signature: NoteSignatureView | null;
+  labels: PdfLabels;
+  timeZone: string;
+  language: 'es' | 'en';
+}) {
+  if (!signature) return null;
+  const l = labels.signature;
+  const recorded = `${l.recordedBy} ${signature.createdByName ?? l.authorUnknown} ${l.recordedAt} ${stamp(signature.createdAt, timeZone, language)}`;
+  const signed = signature.signed
+    ? `${l.signedBy} ${[signature.signed.title, signature.signed.name].filter(Boolean).join(' ')}${
+        signature.signed.license ? ` (${l.license} ${signature.signed.license})` : ''
+      } ${l.recordedAt} ${stamp(signature.signed.at, timeZone, language)}`
+    : signature.legacy
+      ? l.legacy
+      : l.unsigned;
+  return (
+    <Text style={styles.noteSignature}>
+      {recorded} · {signed}
+    </Text>
+  );
+}
 
 function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
@@ -166,8 +209,10 @@ function ValoracionSection({
   valoraciones,
   diagramImages,
   labels,
+  meta,
 }: {
   valoraciones: ExportValoracion[];
+  meta: { timeZone: string; language: 'es' | 'en' };
   diagramImages: Map<string, Buffer>;
   labels: PdfLabels;
 }) {
@@ -188,6 +233,7 @@ function ValoracionSection({
             }
           />
           <DiagramImages diagrams={v.diagrams} diagramImages={diagramImages} />
+          <NoteSignatureLine signature={v.signature} labels={labels} {...meta} />
         </View>
       ))}
     </View>
@@ -252,8 +298,10 @@ function TreatmentsSection({
   diagramImages,
   labels,
   annexIncluded,
+  meta,
 }: {
   treatments: ExportTreatment[];
+  meta: { timeZone: string; language: 'es' | 'en' };
   diagramImages: Map<string, Buffer>;
   labels: PdfLabels;
   annexIncluded: boolean;
@@ -276,6 +324,7 @@ function TreatmentsSection({
               annexIncluded={annexIncluded}
             />
           ))}
+          <NoteSignatureLine signature={t.signature} labels={labels} {...meta} />
         </View>
       ))}
     </View>
@@ -470,6 +519,7 @@ export async function buildExportPdf(
       </Page>
     ) : null;
 
+  const noteMeta = { timeZone: data.timeZone, language };
   const document = (
     <Document>
       <Page size="A4" style={styles.page} wrap>
@@ -483,13 +533,17 @@ export async function buildExportPdf(
           <Field label={labels.patientInfo.documentId} value={data.patient.documentId} />
         </View>
         {data.historiaClinica && (
-          <HistoriaClinicaSection historia={data.historiaClinica} labels={labels} />
+          <View>
+            <HistoriaClinicaSection historia={data.historiaClinica} labels={labels} />
+            <NoteSignatureLine signature={data.historiaClinica.signature} labels={labels} {...noteMeta} />
+          </View>
         )}
         {data.valoraciones && data.valoraciones.length > 0 && (
           <ValoracionSection
             valoraciones={data.valoraciones}
             diagramImages={diagramImages}
             labels={labels}
+            meta={noteMeta}
           />
         )}
         {data.treatments && data.treatments.length > 0 && (
@@ -498,6 +552,7 @@ export async function buildExportPdf(
             diagramImages={diagramImages}
             labels={labels}
             annexIncluded={(data.consents ?? []).length > 0}
+            meta={noteMeta}
           />
         )}
         {options.brandFooter && (

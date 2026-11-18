@@ -54,7 +54,7 @@ export async function getHistoriaClinica(patientId: string) {
   });
 }
 
-export async function createHistoriaClinica(patientId: string, data: HistoriaClinicaData) {
+export async function createHistoriaClinica(patientId: string, data: HistoriaClinicaData, createdById?: string) {
   const existing = await prisma.historiaClinica.findUnique({ where: { patientId } });
   if (existing) {
     throw new HistoriaClinicaExistsError('Historia clínica already exists for this patient');
@@ -64,6 +64,7 @@ export async function createHistoriaClinica(patientId: string, data: HistoriaCli
   return prisma.historiaClinica.create({
     data: {
       patientId,
+      createdById,
       ...scalarFields(data),
       allergies: { create: allergyIds.map((allergyId) => ({ allergyId })) },
     },

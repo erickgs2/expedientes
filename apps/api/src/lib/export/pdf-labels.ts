@@ -2,6 +2,16 @@ export interface PdfLabels {
   generatedOn: string;
   /** Footer on the record pages of PDFs exported on the Free plan. */
   generatedWith: string;
+  /** Author and signature line under each note (NOM-004-SSA3-2012 5.10). */
+  signature: {
+    recordedBy: string;
+    recordedAt: string;
+    authorUnknown: string;
+    signedBy: string;
+    license: string;
+    unsigned: string;
+    legacy: string;
+  };
   /** Annex of photos retired from the galleries (exported only when asked for). */
   retiredPhotos: {
     title: string;
@@ -63,6 +73,15 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   es: {
     generatedOn: 'Generado el',
     generatedWith: 'Generado con MedCloud',
+    signature: {
+      recordedBy: 'Registró',
+      recordedAt: 'el',
+      authorUnknown: 'autor no registrado',
+      signedBy: 'Firmado electrónicamente por',
+      license: 'Céd.',
+      unsigned: 'Sin firma',
+      legacy: 'Registro anterior a la firma electrónica',
+    },
     retiredPhotos: {
       title: 'Fotos retiradas de la galería',
       intro: 'Fotos que se quitaron de la galería del expediente. Se conservan como parte del expediente clínico.',
@@ -125,6 +144,15 @@ export const PDF_LABELS: Record<'es' | 'en', PdfLabels> = {
   en: {
     generatedOn: 'Generated on',
     generatedWith: 'Generated with MedCloud',
+    signature: {
+      recordedBy: 'Recorded by',
+      recordedAt: 'on',
+      authorUnknown: 'author not recorded',
+      signedBy: 'Electronically signed by',
+      license: 'Lic.',
+      unsigned: 'Not signed',
+      legacy: 'Recorded before electronic signatures',
+    },
     retiredPhotos: {
       title: 'Photos retired from the gallery',
       intro: 'Photos taken out of the record\'s gallery. They are kept as part of the clinical record.',

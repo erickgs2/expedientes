@@ -25,6 +25,7 @@ import {
   ConsentScanDialogComponent,
   type ConsentScanDialogData,
 } from './consent-scan-dialog.component';
+import { NoteSignatureComponent } from '../shared/note-signature/note-signature.component';
 
 interface TreatmentItemForm {
   treatmentTypeId: string;
@@ -45,6 +46,7 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
   selector: 'app-treatment-detail',
   standalone: true,
   imports: [
+    NoteSignatureComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -78,6 +80,7 @@ const NO_PROGRESS: TreatmentItemProgress = { diagramViews: 0, products: 0, photo
           </button>
         }
       </div>
+      <app-note-signature kind="treatment" [noteId]="treatmentNoteId" [canSign]="canEdit" [refresh]="savedTick()" />
 
       <section class="picker" [attr.aria-label]="'visitSheet.treatmentsToday' | transloco">
         <p class="hint">{{ 'visitSheet.treatmentsToday' | transloco }}</p>
@@ -526,11 +529,15 @@ export class TreatmentDetailComponent implements OnInit {
   // FacialDiagramViewsComponent/PhotoGalleryComponent for the same read-only-vs-editable split —
   // permissions don't change mid-session, so a one-time check in ngOnInit is sufficient.
   protected canEdit = false;
+  /** Bumped after each save: the signature line re-reads whether the visit is still signed. */
+  protected readonly savedTick = signal(0);
+  protected treatmentNoteId = '';
   private treatmentId = '';
 
   async ngOnInit(): Promise<void> {
     this.canEdit = this.auth.hasPermission('treatments', 'edit');
     this.treatmentId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.treatmentNoteId = this.treatmentId;
     if (!this.treatmentId) {
       this.loadFailed.set(true);
       this.loading.set(false);
@@ -704,6 +711,7 @@ export class TreatmentDetailComponent implements OnInit {
         })
       );
       this.savedSnapshot.set(this.snapshotOf(this.items()));
+      this.savedTick.update((n) => n + 1);
     } finally {
       this.saving.set(false);
     }

@@ -18,7 +18,8 @@
       "treatmentCatalog": "Treatment catalog",
       "plan": "Plan",
       "premium": "Explore Premium"
-    }
+    },
+    "profile": "My profile"
   },
   "common": {
     "save": "Save",
@@ -792,7 +793,13 @@
         "noShows": "No-shows this week",
         "whatsappOff": "WhatsApp messages to patients are switched off in Clinic settings.",
         "recent": "Recently opened",
-        "recentEmpty": "You haven't opened any records yet."
+        "recentEmpty": "You haven't opened any records yet.",
+        "toSign": "Notes to sign: {{n}}",
+        "noteKinds": {
+          "valoracion": "Assessment",
+          "treatment": "Treatment",
+          "historiaClinica": "Clinical history"
+        }
       },
       "retry": "Retry",
       "result": {
@@ -1157,6 +1164,56 @@
     "RETENTION_PERIOD": "The record must be kept 5 years after the last care.",
     "OWNER_ONLY": "Only the clinic owner can purge a record.",
     "NOT_ARCHIVED": "Archive the patient before purging the record.",
-    "CONFIRMATION_MISMATCH": "The name does not match the patient's."
+    "CONFIRMATION_MISMATCH": "The name does not match the patient's.",
+    "NOTE_SIGNED": "This note is signed."
+  },
+  "noteSignature": {
+    "recordedBy": "Recorded by {{name}} · {{when}}",
+    "signedBy": "Signed by {{name}} · {{when}}",
+    "license": "Lic. {{license}}",
+    "unsigned": "Not signed",
+    "sign": "Sign",
+    "legacy": "Recorded before electronic signatures",
+    "dialog": {
+      "title": "Sign note",
+      "lead": "Signing confirms you are the author of this note. If anyone changes it later, the signature is voided and it must be signed again.",
+      "pin": "Signing PIN (6 digits)",
+      "sign": "Sign",
+      "goToProfile": "Go to my profile"
+    },
+    "errors": {
+      "NO_SIGNING_PIN": "You have no signing PIN yet. Create it in your profile.",
+      "LICENSE_REQUIRED": "Add your professional licence to your profile to sign.",
+      "WRONG_PIN": "Wrong PIN.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes.",
+      "ALREADY_SIGNED": "This note is already signed.",
+      "UNKNOWN": "Could not sign. Try again."
+    },
+    "recordedAt": "Recorded · {{when}} · author not recorded"
+  },
+  "profile": {
+    "title": "My profile",
+    "signsAs": "How you sign",
+    "signsAsHelp": "Your title and professional licence appear on every note you sign. Notes already signed keep the details they were signed with.",
+    "professionalTitle": "Title",
+    "professionalLicense": "Professional licence",
+    "preview": "It will read:",
+    "saved": "Profile saved",
+    "pinTitle": "Signing PIN",
+    "pinSet": "PIN set",
+    "pinMissing": "No PIN yet",
+    "pinHelp": "You sign your notes with this 6-digit PIN (NOM-004). Your password is asked to create or change it.",
+    "newPin": "New PIN",
+    "confirmPin": "Repeat the PIN",
+    "currentPassword": "Your account password",
+    "setPin": "Create PIN",
+    "changePin": "Change PIN",
+    "pinSaved": "Signing PIN saved",
+    "errors": {
+      "mismatch": "The PINs do not match.",
+      "WRONG_PASSWORD": "The password is not correct.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes.",
+      "UNKNOWN": "Could not save. Try again."
+    }
   }
 }
